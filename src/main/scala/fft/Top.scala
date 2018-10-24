@@ -1,3 +1,5 @@
+/*
+
 package fft
 
 import freechips.rocketchip.config.Parameters
@@ -33,3 +35,5 @@ class ExampleTopWithFFT(implicit p: Parameters) extends ExampleTop
   with HasPeripheryFFT {
   override lazy val module = new ExampleTopModule(this)
 }
+
+*/

@@ -1,3 +1,5 @@
+/*
+
 package fft
 
 import chisel3._
@@ -159,3 +161,5 @@ class FFTThing
 
   lazy val module = new LazyModuleImp(this)
 }
+
+*/
