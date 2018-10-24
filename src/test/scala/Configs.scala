@@ -1,3 +1,5 @@
+/*
+
 // See LICENSE for license details.
 
 package craft
@@ -177,3 +179,5 @@ object ChainBuilder {
 // class AcmesConfig extends Config(ChainBuilder.acmes(channels=8192) ++ new AcmesBaseConfig)
 // class AcmesTinyConfig extends Config(ChainBuilder.acmes(channels=64) ++ new AcmesTinyBaseConfig)
 // class AcmesFPGAConfig extends Config(ChainBuilder.acmes(channels=256) ++ new AcmesTinyBaseConfig)
+
+*/

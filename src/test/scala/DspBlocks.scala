@@ -1,4 +1,4 @@
-package cordic
+package fft
 
 import chisel3._
 import chisel3.util._
@@ -137,96 +137,6 @@ class TLReadQueue
 
 }
 
-// TODO: change from CORDIC to FFT
-
-/**
-  * Make DspBlock wrapper for CORDIC
-  * @param cordicParams parameters for cordic
-  * @param ev$1
-  * @param ev$2
-  * @param ev$3
-  * @param p
-  * @tparam D
-  * @tparam U
-  * @tparam EO
-  * @tparam EI
-  * @tparam B
-  * @tparam T Type parameter for cordic, i.e. FixedPoint or DspReal
-  */
-abstract class CordicBlock[D, U, EO, EI, B <: Data, T <: Data : Real : BinaryRepresentation]
-(
-  val cordicParams: CordicParams[T]
-)(implicit p: Parameters) extends DspBlock[D, U, EO, EI, B] {
-  val streamNode = AXI4StreamIdentityNode()
-  val mem = None
-
-  lazy val module = new LazyModuleImp(this) {
-    require(streamNode.in.length == 1)
-    require(streamNode.out.length == 1)
-
-    val in = streamNode.in.head._1
-    val out = streamNode.out.head._1
-
-    val descriptorWidth: Int = CordicBundle(cordicParams).getWidth + 1 // + 1 because of vectoring
-    require(descriptorWidth <= in.params.n * 8, "Streaming interface too small")
-
-    // Implementation
-    // Input unpacking
-    val cordic = Module(new IterativeCordic(cordicParams))
-    in.ready := cordic.io.in.ready
-    cordic.io.in.valid := in.valid
-    cordic.io.in.bits := in.bits.data.asTypeOf(new CordicBundle(cordicParams))
-    // Output packing
-    cordic.io.out.ready := out.ready
-    out.valid := cordic.io.out.valid
-    out.bits.data := cordic.io.out.bits.asUInt()
-  }
-}
-
-/**
-  * TLDspBlock specialization of CordicBlock
-  * @param cordicParams parameters for cordic
-  * @param ev$1
-  * @param ev$2
-  * @param ev$3
-  * @param p
-  * @tparam T Type parameter for cordic data type
-  */
-class TLCordicBlock[T <: Data : Real : BinaryRepresentation]
-(
-  cordicParams: CordicParams[T]
-)(implicit p: Parameters) extends
-  CordicBlock[TLClientPortParameters, TLManagerPortParameters, TLEdgeOut, TLEdgeIn, TLBundle, T](cordicParams)
-  with TLDspBlock
-
-/**
-  * TLChain is the "right way" to do this, but the dspblocks library seems to be broken.
-  * In the interim, this should work.
-  * @param cordicParams parameters for cordic
-  * @param depth depth of queues
-  * @param ev$1
-  * @param ev$2
-  * @param ev$3
-  * @param p
-  * @tparam T Type parameter for cordic, i.e. FixedPoint or DspReal
-  */
-class CordicThing[T <: Data : Real : BinaryRepresentation]
-(
-  val cordicParams: CordicParams[T],
-  val depth: Int = 8,
-)(implicit p: Parameters) extends LazyModule {
-  // instantiate lazy modules
-  val writeQueue = LazyModule(new TLWriteQueue(depth))
-  val cordic = LazyModule(new TLCordicBlock(cordicParams))
-  val readQueue = LazyModule(new TLReadQueue(depth))
-
-  // connect streamNodes of queues and cordic
-  readQueue.streamNode := cordic.streamNode := writeQueue.streamNode
-
-  lazy val module = new LazyModuleImp(this)
-}
-
-// James's version
 class FFTThing
 (
   val depth: Int = 8,
@@ -244,7 +154,7 @@ class FFTThing
   val fft = LazyModule(new FFTBlock(fftConfig))
   val readQueue = LazyModule(new TLReadQueue(depth))
 
-  // connect streamNodes of queues and cordic
+  // connect streamNodes of queues and fft
   readQueue.streamNode := fft.streamNode := writeQueue.streamNode
 
   lazy val module = new LazyModuleImp(this)

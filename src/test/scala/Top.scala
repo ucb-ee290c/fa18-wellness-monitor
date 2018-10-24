@@ -1,4 +1,4 @@
-package cordic
+package fft
 
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.devices.tilelink._
@@ -19,20 +19,12 @@ class ExampleTopModule[+L <: ExampleTop](l: L) extends RocketSubsystemModuleImp(
   with HasExtInterruptsModuleImp
   with DontTouch
 
-// TODO: change from CORDIC to FFT
-
-class ExampleTopWithCordic(implicit p: Parameters) extends ExampleTop
-  // mix in cordic
-  with HasPeripheryCordic {
-  override lazy val module = new ExampleTopModule(this)
-}
-
-// James's version
 trait HasPeripheryFFT extends BaseSubsystem {
   // instantiate FFT chain
   val FFTChain = LazyModule(new FFTThing())
   // connect memory interfaces to pbus
   pbus.toVariableWidthSlave(Some("FFTWrite")) { FFTChain.writeQueue.mem.get }
+  pbus.toVariableWidthSlave(Some("FFTControl")) { FFTChain.fft.mem.get }
   pbus.toVariableWidthSlave(Some("FFTRead")) { FFTChain.readQueue.mem.get }
 }
 
@@ -41,4 +33,3 @@ class ExampleTopWithFFT(implicit p: Parameters) extends ExampleTop
   with HasPeripheryFFT {
   override lazy val module = new ExampleTopModule(this)
 }
-
