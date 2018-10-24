@@ -139,30 +139,6 @@ class TLReadQueue
 
 // TODO: change from CORDIC to FFT
 
-// James's version
-class FFTThing
-(
-  val depth: Int = 8,
-)(implicit p: Parameters) extends LazyModule {
-  // instantiate lazy modules
-  val writeQueue = LazyModule(new TLWriteQueue(depth))
-  val fftConfig = FFTConfig(
-    genIn = DspComplex(FixedPoint(12.W, 7.BP), FixedPoint(12.W, 7.BP)),
-    genOut = DspComplex(FixedPoint(18.W, 6.BP), FixedPoint(18.W, 6.BP)),
-    n = 4,
-    lanes = 2,
-    pipelineDepth = 2,
-    quadrature = false,
-  )
-  val fft = LazyModule(new FFTBlock(fftConfig))
-  val readQueue = LazyModule(new TLReadQueue(depth))
-
-  // connect streamNodes of queues and cordic
-  readQueue.streamNode := fft.streamNode := writeQueue.streamNode
-
-  lazy val module = new LazyModuleImp(this)
-}
-
 /**
   * Make DspBlock wrapper for CORDIC
   * @param cordicParams parameters for cordic
@@ -246,6 +222,30 @@ class CordicThing[T <: Data : Real : BinaryRepresentation]
 
   // connect streamNodes of queues and cordic
   readQueue.streamNode := cordic.streamNode := writeQueue.streamNode
+
+  lazy val module = new LazyModuleImp(this)
+}
+
+// James's version
+class FFTThing
+(
+  val depth: Int = 8,
+)(implicit p: Parameters) extends LazyModule {
+  // instantiate lazy modules
+  val writeQueue = LazyModule(new TLWriteQueue(depth))
+  val fftConfig = FFTConfig(
+    genIn = DspComplex(FixedPoint(12.W, 7.BP), FixedPoint(12.W, 7.BP)),
+    genOut = DspComplex(FixedPoint(18.W, 6.BP), FixedPoint(18.W, 6.BP)),
+    n = 4,
+    pipelineDepth = 2,
+    lanes = 2,
+    quadrature = false,
+  )
+  val fft = LazyModule(new FFTBlock(fftConfig))
+  val readQueue = LazyModule(new TLReadQueue(depth))
+
+  // connect streamNodes of queues and cordic
+  readQueue.streamNode := fft.streamNode := writeQueue.streamNode
 
   lazy val module = new LazyModuleImp(this)
 }
