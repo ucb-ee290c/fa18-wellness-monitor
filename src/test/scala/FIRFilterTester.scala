@@ -1,4 +1,4 @@
-/*
+
 
 package firFilter
 
@@ -65,4 +65,3 @@ object UIntFIRFilterTester {
   }
 }
 
-*/
