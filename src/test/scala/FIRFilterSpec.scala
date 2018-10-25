@@ -6,19 +6,26 @@ import dspjunctions.ValidWithSync
 import dsptools.numbers._
 import org.scalatest.{FlatSpec, Matchers}
 
+import scala.collection.mutable
+
 class FIRFilterSpec extends FlatSpec with Matchers {
   behavior of "ConstantCoefficientFIRFilter"
 
-  val params = new FIRFilterParams[UInt] {
-    val protoData = UInt(16.W)
-    val taps = Seq(3.U, 1.U, 2.U, 5.U)
-  }
   it should "UInt tomato" in {
-    val coefficients = Seq(3,1,2,5)
+
+  for(i <- 0 until 100) {
+    val tap_count = scala.util.Random.nextInt(50) + 1
+
+    val coefficients = mutable.ArrayBuffer[Int]()
+    for(j <- 0 until tap_count) coefficients += scala.util.Random.nextInt(16)
+    val params = new FIRFilterParams[UInt] {
+      val protoData = UInt(16.W)
+      val taps = coefficients.map(_.asUInt(16.W))
+    }
+
     UIntFIRFilterTester(params, coefficients) should be (true)
+    }
   }
-
-
 
 
 }

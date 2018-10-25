@@ -61,10 +61,10 @@ class ConstantCoefficientFIRFilter[T <: chisel3.Data : Ring](val params: FIRFilt
   }
 
   when(io.in.valid === true.B) {
-    for(i <- params.taps.indices)
+    /*for(i <- params.taps.indices)
       {
         printf(p"Registers: ${regs(i)}\n")
-      }
+      }*/
     shift_en := true.B
   } .otherwise{
     shift_en := false.B
