@@ -1,11 +1,7 @@
 # EE 290C Wellness Monitor: ExG
 
 ## Team Members
-Adelson Chua
-Justin Doong
-Ryan Kaveh
-Cem Yalcin
-Rachel Zoll
+Adelson Chua, Justin Doong, Ryan Kaveh, Cem Yalcin, and Rachel Zoll
 
 ## Generators
 1) Filters: FIR, IIR
