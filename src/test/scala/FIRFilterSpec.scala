@@ -26,6 +26,4 @@ class FIRFilterSpec extends FlatSpec with Matchers {
       UIntFIRFilterTester(params, coefficients) should be (true)
     }
   }
-
-
 }

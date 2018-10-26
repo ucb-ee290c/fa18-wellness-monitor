@@ -1,5 +1,3 @@
-
-
 package firFilter
 
 import chisel3.core.UInt
@@ -64,4 +62,3 @@ object UIntFIRFilterTester {
     }
   }
 }
-
