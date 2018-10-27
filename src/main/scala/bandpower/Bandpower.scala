@@ -1,6 +1,8 @@
 package bandpower
 
 import chisel3._
+//import chisel3.core.FixedPoint
+import chisel3.experimental.FixedPoint
 import dsptools.numbers._
 import dspjunctions._
 
@@ -12,6 +14,20 @@ trait BandpowerParams[T <: Data] {
   val nBins: Int
   val genIn: T
   val genOut: T
+}
+
+case class FixedBandpowerParams(
+  indStart: Int,
+  indEnd: Int,
+  n: Int,
+  width: Int,
+  bp: Int
+) extends BandpowerParams[DspComplex[FixedPoint]] {
+  val indStartBin = indStart
+  val indEndBin = indEnd
+  val nBins = n
+  val genIn = DspComplex(FixedPoint(width.W, bp.BP), FixedPoint(width.W, bp.BP))
+  val genOut = DspComplex(FixedPoint(width.W, bp.BP), FixedPoint(width.W, bp.BP))
 }
 
 class BandpowerIO[T <: Data](params: BandpowerParams[T]) extends Bundle {

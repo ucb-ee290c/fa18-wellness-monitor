@@ -2,6 +2,7 @@ package firFilter
 
 import chisel3._
 import chisel3.util.RegEnable
+import chisel3.experimental.FixedPoint
 import dspblocks.ShiftRegisterWithReset
 import dspjunctions.ValidWithSync
 import dsptools.numbers._
@@ -19,6 +20,15 @@ trait FIRFilterParams[T <: Data] {
   //TODO: Implementation -> Direct or Transposed?
   //TODO: # of Pipeline Stages?
   //TODO: Data Buffer Type -> Linear Shift Register or Circular Buffer?
+}
+
+case class FixedFIRFilterParams(
+                                 width: Int,
+                                 bp: Int,
+                                 tapSeq: Seq[DspComplex[FixedPoint]]
+) extends FIRFilterParams[DspComplex[FixedPoint]] {
+  val protoData = DspComplex(FixedPoint(width.W, bp.BP), FixedPoint(width.W, bp.BP))
+  val taps = tapSeq
 }
 
 /**
