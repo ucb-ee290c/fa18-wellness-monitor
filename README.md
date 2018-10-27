@@ -13,6 +13,6 @@ Adelson Chua, Justin Doong, Ryan Kaveh, Cem Yalcin, and Rachel Zoll
 ## System Chain
 1) Bandpass filter (FIR)
 2) FFT
-3) Bandpower: 4 - 7 Hz, 8 - 12 Hz
+3) Bandpower
 4) PCA
 5) Classifier
