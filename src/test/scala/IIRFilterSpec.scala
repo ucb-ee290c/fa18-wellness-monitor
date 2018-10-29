@@ -14,7 +14,7 @@ class IIRFilterSpec extends FlatSpec with Matchers {
   it should "UInt banana" in {
 
     for(i <- 0 until 4) {
-      val tap_count = scala.util.Random.nextInt(4) + 1
+      val tap_count = scala.util.Random.nextInt(8) + 1
 
       val coefficientsA = mutable.ArrayBuffer[Int]()
       val coefficientsB = mutable.ArrayBuffer[Int]()
@@ -22,9 +22,9 @@ class IIRFilterSpec extends FlatSpec with Matchers {
       for(j <- 0 until tap_count) coefficientsA += scala.util.Random.nextInt(16)
       for(j <- 0 until (tap_count+1)) coefficientsB += scala.util.Random.nextInt(16)
       val params = new IIRFilterParams[UInt] {
-        val protoData = UInt(16.W)
-        val consts_A = coefficientsA.map(_.asUInt(16.W))
-        val consts_B = coefficientsB.map(_.asUInt(16.W))
+        val protoData = UInt(32.W)
+        val consts_A = coefficientsA.map(_.asUInt(32.W))
+        val consts_B = coefficientsB.map(_.asUInt(32.W))
       }
 
       UIntIIRFilterTester(params, coefficientsA, coefficientsB) should be (true)
