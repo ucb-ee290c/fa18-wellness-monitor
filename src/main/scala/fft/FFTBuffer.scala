@@ -45,7 +45,7 @@ class FFTBuffer[T <: chisel3.Data : Ring](val params: FFTBufferParams[T]) extend
   val io = IO(FFTBufferIO[T](params))
 
   val shift_en = Wire(Bool())
-  val counter = Reg(UInt( (log10(params.lanes)/log10(2)).ceil.toInt.W ))
+  val counter = RegInit(UInt( ((log10(params.lanes)/log10(2)).ceil.toInt+1).W ),0.U)
 
   val regs = mutable.ArrayBuffer[T]()
   for(i <- 0 until params.lanes) {

@@ -3,9 +3,11 @@ package fft
 import chisel3.core.UInt
 import dsptools.DspTester
 
+import scala.collection.mutable
+
 class outBundle(lanes: Int) {
-  var regs = Seq.fill(lanes)(0)
-  var valid = new Boolean
+  val regs = mutable.Buffer.fill(lanes)(0)
+  var valid : Boolean = false
 }
 
 class GoldenIntFFTBuffer(lanes: Int) {
@@ -22,10 +24,14 @@ class GoldenIntFFTBuffer(lanes: Int) {
     }
     if(counter == lanes) {
       counter = 1
-      out.valid = true
     }
     else {
       counter = counter + 1
+    }
+    if(counter == lanes) {
+      out.valid = true
+    }
+    else {
       out.valid = false
     }
     out
@@ -35,18 +41,18 @@ class GoldenIntFFTBuffer(lanes: Int) {
 class FFTBufferTester[T <: chisel3.Data](c: FFTBuffer[T], lanes: Int) extends DspTester(c) {
   val fftBuffer = new GoldenIntFFTBuffer(lanes)
 
-  for(i <- 0 until 300) {
+  for(i <- 0 until 50) {
     val input = scala.util.Random.nextInt(8)
 
     val goldenModelResult = fftBuffer.poke(input)
 
     poke(c.io.in.bits, input)
-    poke(c.io.in.valid, 1)
+    poke(c.io.in.valid, true)
 
     step(1)
 
+    expect(c.io.out.valid, goldenModelResult.valid, s"i $i, input $input, gm ${goldenModelResult.valid}, ${peek(c.io.out.valid)}")
     for(i <- 0 until lanes) {
-      expect(c.io.out.valid, goldenModelResult.valid, s"i $i, input $input, gm ${goldenModelResult.valid}, ${peek(c.io.out.valid)}")
       expect(c.io.out.bits(i), goldenModelResult.regs(i), s"i $i, input $input, gm ${goldenModelResult.regs}, ${peek(c.io.out.bits)}")
     }
   }

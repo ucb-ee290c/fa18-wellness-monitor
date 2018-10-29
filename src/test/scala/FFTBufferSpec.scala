@@ -9,12 +9,12 @@ import org.scalatest.{FlatSpec, Matchers}
 import scala.collection.mutable
 
 class FFTBufferSpec extends FlatSpec with Matchers {
-  behavior of "ConstantCoefficientFIRFilter"
+  behavior of "FFT Buffer"
 
-  it should "UInt tomato" in {
+  it should "convert from stream to parallel" in {
 
     for(i <- 0 until 15) {
-      val laneCount = scala.util.Random.nextInt(70) + 1
+      val laneCount = scala.util.Random.nextInt(15) + 1
 
       val params = new FFTBufferParams[UInt] {
         val protoData = UInt(16.W)
