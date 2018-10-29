@@ -13,15 +13,15 @@ trait SVMParams[T <: Data] {
 }
 
 class SVMIO[T <: Data](params: SVMParams[T]) extends Bundle {
-  val in = Flipped(ValidWithSync(Vec(params.nFeatures, params.protoData.cloneType)))
-  val out = ValidWithSync(params.protoData.cloneType)
+  val in = Flipped(ValidWithSync(Vec(params.nFeatures, params.protoData)))
+  val out = ValidWithSync(params.protoData)
 
-  val supportVector = Input(Vec(Vec(params.nFeatures, params.protoData.cloneType), params.nSupports))
-  val alphaVector = Input(Vec(params.nSupports, params.protoData.cloneType))
-  val intercept = Input(params.protoData.cloneType)
+  val supportVector = Input(Vec(Vec(params.nFeatures, params.protoData), params.nSupports))
+  val alphaVector = Input(Vec(params.nSupports, params.protoData))
+  val intercept = Input(params.protoData)
 
-  //val alphaVector = Input(Vec(Vec(params.nSupports, params.protoData.cloneType), params.nClasses*(params.nClasses - 1)/2))
-  //val intercept = Input(Vec(params.nClasses*(params.nClasses - 1)/2, params.protoData.cloneType))
+  //val alphaVector = Input(Vec(Vec(params.nSupports, params.protoData), params.nClasses*(params.nClasses - 1)/2))
+  //val intercept = Input(Vec(params.nClasses*(params.nClasses - 1)/2, params.protoData))
 
   override def cloneType: this.type = SVMIO(params).asInstanceOf[this.type]
 }
@@ -33,7 +33,7 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
   val io = IO(new SVMIO[T](params))
 
   // dot product, this is where the kernel goes
-  val kernel = Wire(Vec(params.nSupports, params.protoData.cloneType))
+  val kernel = Wire(Vec(params.nSupports, params.protoData))
   for (i <- 0 until params.nSupports){
     kernel(i) := io.in.bits.zip(io.supportVector(i)).map{ case (a,b) => a * b}.reduce(_ + _)
   }
@@ -41,13 +41,13 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
   // multiply by the weights, add the intercept, clamp it to either 0 or 1, you're done
   // for binary classification this is easy
   io.out.bits := io.alphaVector.zip(kernel).map{ case (a,b) => a * b}.reduce(_ + _) + io.intercept
-  
+
   /*
   // multi-class support, creating votes for every classifier generated
   val nClassifiers = params.nClasses*(params.nClasses - 1)/2
 
-  val votes = Wire(Vec(nClassifiers, params.protoData.cloneType))
-  val decision = Wire(Vec(nClassifiers, params.protoData.cloneType))
+  val votes = Wire(Vec(nClassifiers, params.protoData))
+  val decision = Wire(Vec(nClassifiers, params.protoData))
   for (i <- 0 until nClassifiers) {
     //votes(i) := (io.alphaVector(i).zip(kernel).map{ case (a,b) => a * b}.reduce(_ + _) + io.intercept(i)) > 0
     votes(i) := io.alphaVector(i).zip(kernel).map{ case (a,b) => a * b}.reduce(_ + _) + io.intercept(i)
