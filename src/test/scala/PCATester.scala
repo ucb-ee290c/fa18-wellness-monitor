@@ -5,7 +5,7 @@ import dsptools.numbers._
 import dsptools.DspTester
 import scala.collection._
 
-class GoldenIntPCA(params: PCAParams[UInt]) {
+class GoldenIntPCA(params: PCAParams[SInt]) {
   def poke(input: Seq[Int], PCAVector: Seq[Seq[Int]]): Seq[Int] = {
     val answer = mutable.ArrayBuffer[Int]()
     var dotProduct = 0
@@ -21,10 +21,10 @@ class GoldenIntPCA(params: PCAParams[UInt]) {
   }
 }
 
-class PCATester[T <: Data](c: PCA[T], params: PCAParams[UInt]) extends DspTester(c) {
+class PCATester[T <: Data](c: PCA[T], params: PCAParams[SInt]) extends DspTester(c) {
   val PCA = new GoldenIntPCA(params)
-  val input = Seq.fill(params.nDimensions)(scala.util.Random.nextInt(16))
-  val PCAVector = Seq.fill(params.nFeatures,params.nDimensions)(scala.util.Random.nextInt(16))
+  val input = Seq.fill(params.nDimensions)(scala.util.Random.nextInt())
+  val PCAVector = Seq.fill(params.nFeatures,params.nDimensions)(scala.util.Random.nextInt())
   val goldenModelResult = PCA.poke(input, PCAVector)
 
   input.zip(c.io.in.bits).foreach { case(sig, port) => poke(port, sig) }
@@ -41,7 +41,7 @@ class PCATester[T <: Data](c: PCA[T], params: PCAParams[UInt]) extends DspTester
 }
 
 object PCATester {
-  def apply(params: PCAParams[UInt]): Boolean = {
+  def apply(params: PCAParams[SInt]): Boolean = {
     chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new PCA(params)) {
       c => new PCATester(c, params)
     }

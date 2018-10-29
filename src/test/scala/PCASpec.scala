@@ -9,8 +9,8 @@ class PCASpec extends FlatSpec with Matchers {
   it should "UInt apple" in {
 
     for (i <- 0 until 15) {
-      val params = new PCAParams[UInt] {
-        val protoData = UInt(32.W)
+      val params = new PCAParams[SInt] {
+        val protoData = SInt(32.W)
         val nDimensions = scala.util.Random.nextInt(10) + 1
         val nFeatures = scala.util.Random.nextInt(10) + 1
 
