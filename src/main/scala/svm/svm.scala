@@ -7,9 +7,9 @@ import scala.collection._
 
 trait SVMParams[T <: Data] {
   val protoData: T
-  val nSupports: Int
-  val nFeatures: Int
-  //val nClasses:  Int
+  val nSupports: Int // the number of support vectors, from offline training
+  val nFeatures: Int // the number of reduced dimensions, coming from SVM
+  //val nClasses:  Int // the number of classes, for multi-class classification
 }
 
 class SVMIO[T <: Data](params: SVMParams[T]) extends Bundle {
@@ -19,6 +19,8 @@ class SVMIO[T <: Data](params: SVMParams[T]) extends Bundle {
   val supportVector = Input(Vec(Vec(params.nFeatures, params.protoData), params.nSupports))
   val alphaVector = Input(Vec(params.nSupports, params.protoData))
   val intercept = Input(params.protoData)
+
+  val rawOut = Output(params.protoData)
 
   //val alphaVector = Input(Vec(Vec(params.nSupports, params.protoData), params.nClasses*(params.nClasses - 1)/2))
   //val intercept = Input(Vec(params.nClasses*(params.nClasses - 1)/2, params.protoData))
@@ -40,7 +42,15 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
 
   // multiply by the weights, add the intercept, clamp it to either 0 or 1, you're done
   // for binary classification this is easy
-  io.out.bits := io.alphaVector.zip(kernel).map{ case (a,b) => a * b}.reduce(_ + _) + io.intercept
+
+  val decisionFunction = (io.alphaVector.zip(kernel).map{ case (a,b) => a * b}.reduce(_ + _) + io.intercept).asTypeOf(params.protoData)
+  io.rawOut := decisionFunction
+
+  when (decisionFunction > 0) {
+    io.out.bits := ConvertableTo[T].fromInt(1)
+  } .otherwise {
+    io.out.bits := ConvertableTo[T].fromInt(0)
+  }
 
   /*
   // multi-class support, creating votes for every classifier generated
