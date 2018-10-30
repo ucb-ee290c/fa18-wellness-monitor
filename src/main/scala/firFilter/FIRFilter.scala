@@ -25,9 +25,9 @@ trait FIRFilterParams[T <: Data] {
 case class FixedFIRFilterParams(
                                  width: Int,
                                  bp: Int,
-                                 tapSeq: Seq[DspComplex[FixedPoint]]
-) extends FIRFilterParams[DspComplex[FixedPoint]] {
-  val protoData = DspComplex(FixedPoint(width.W, bp.BP), FixedPoint(width.W, bp.BP))
+                                 tapSeq: Seq[FixedPoint]
+) extends FIRFilterParams[FixedPoint] {
+  val protoData = FixedPoint(width.W, bp.BP)
   val taps = tapSeq
 }
 
@@ -37,8 +37,6 @@ case class FixedFIRFilterParams(
 class FIRFilterIO[T <: chisel3.Data : Ring](params: FIRFilterParams[T]) extends Bundle {
   val in = Flipped(ValidWithSync(params.protoData.cloneType))
   val out = ValidWithSync(params.protoData.cloneType)
-
-  val vectoring = Input(Bool())
 
   override def cloneType: this.type = FIRFilterIO(params).asInstanceOf[this.type]
 }
