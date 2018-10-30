@@ -7,9 +7,9 @@ import scala.collection._
 
 trait SVMParams[T <: Data] {
   val protoData: T
-  val nSupports: Int
-  val nFeatures: Int
-  //val nClasses:  Int
+  val nSupports: Int // the number of support vectors, from offline training
+  val nFeatures: Int // the number of reduced dimensions, coming from SVM
+  //val nClasses:  Int // the number of classes, for multi-class classification
 }
 
 class SVMIO[T <: Data](params: SVMParams[T]) extends Bundle {
