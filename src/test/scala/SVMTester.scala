@@ -5,7 +5,7 @@ import dsptools.numbers._
 import dsptools.DspTester
 
 class GoldenIntSVM(params: SVMParams[SInt]) {
-  def poke(input: Seq[Int], supportVector: Seq[Seq[Int]], alphaVector: Seq[Int], intercept: Int): Int = {
+  def poke(input: Seq[Int], supportVector: Seq[Seq[Int]], alphaVector: Seq[Int], intercept: Int): Seq[Int] = {
     var answer = 0
 
     for (x <- alphaVector.indices) { // number of support vectors
@@ -13,8 +13,15 @@ class GoldenIntSVM(params: SVMParams[SInt]) {
         answer = answer + alphaVector(x) * input(y) * supportVector(x)(y)
       }
     }
-    answer = answer + intercept
-    answer
+    val decision = answer + intercept
+
+    if (decision > 0) {
+      answer = 1
+    } else {
+      answer = 0
+    }
+
+    Seq(decision, answer)
   }
 }
 
@@ -35,7 +42,8 @@ class SVMTester[T <: Data](c: SVM[T], params: SVMParams[SInt]) extends DspTester
 
   poke(c.io.in.valid, value = 1)
   step(1)
-  expect(c.io.out.bits, goldenModelResult, msg = s"Input: $input, Golden: $goldenModelResult, ${peek(c.io.out.bits)}")
+  expect(c.io.rawOut, goldenModelResult(0), msg = s"Input: $input, Golden: $goldenModelResult, ${peek(c.io.rawOut)}")
+  expect(c.io.out.bits, goldenModelResult(1), msg = s"Input: $input, Golden: $goldenModelResult, ${peek(c.io.out.bits)}")
 }
 
 object SVMTester {
