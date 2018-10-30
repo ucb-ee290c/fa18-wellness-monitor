@@ -1,6 +1,7 @@
 package firFilter
 
 import chisel3._
+import chisel3.core.FixedPoint
 import dspblocks.ShiftRegisterWithReset
 import dspjunctions.ValidWithSync
 import dsptools.numbers._
@@ -26,4 +27,36 @@ class FIRFilterSpec extends FlatSpec with Matchers {
       UIntFIRFilterTester(params, coefficients) should be (true)
     }
   }
+
+  it should "multiply its input stream with correct coefficients at correct timesteps (SInt)" in {
+
+    for(i <- 0 until 15) {
+      val tap_count = scala.util.Random.nextInt(50) + 1
+
+      val coefficients = mutable.ArrayBuffer[Int]()
+      for(j <- 0 until tap_count) coefficients += (-32 + scala.util.Random.nextInt(64))
+      val params = new FIRFilterParams[SInt] {
+        val protoData = SInt(16.W)
+        val taps = coefficients.map(_.asSInt(16.W))
+      }
+
+      SIntFIRFilterTester(params, coefficients) should be (true)
+    }
+  }
+
+  /*it should "multiply its input stream with correct coefficients at correct timesteps (FixedPoint)" in {
+
+    for(i <- 0 until 15) {
+      val tap_count = scala.util.Random.nextInt(50) + 1
+
+      val coefficients = mutable.ArrayBuffer[Float]()
+      for(j <- 0 until tap_count) coefficients += (-32 + scala.util.Random.nextFloat * 64)
+      val params = new FIRFilterParams[FixedPoint] {
+        val protoData = FixedPoint(8.W,8.BP)
+        val taps = coefficients.toList.map(ConvertableTo[FixedPoint].fromDouble(_))
+      }
+
+      FixedPointFIRFilterTester(params, coefficients) should be (true)
+    }
+  }*/
 }

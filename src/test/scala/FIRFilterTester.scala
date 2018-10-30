@@ -1,6 +1,6 @@
 package firFilter
 
-import chisel3.core.UInt
+import chisel3.core._
 import dsptools.DspTester
 
 class GoldenIntFIRFilter(taps: Seq[Int]) {
@@ -34,6 +34,13 @@ class FIRFilterTester[T <: chisel3.Data](c: ConstantCoefficientFIRFilter[T], coe
 }
 object UIntFIRFilterTester {
   def apply(params: FIRFilterParams[UInt], coefficients: Seq[Int]): Boolean = {
+    chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new ConstantCoefficientFIRFilter(params)) {
+      c => new FIRFilterTester(c, coefficients)
+    }
+  }
+}
+object SIntFIRFilterTester {
+  def apply(params: FIRFilterParams[SInt], coefficients: Seq[Int]): Boolean = {
     chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new ConstantCoefficientFIRFilter(params)) {
       c => new FIRFilterTester(c, coefficients)
     }
