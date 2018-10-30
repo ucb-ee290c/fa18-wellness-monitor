@@ -2,7 +2,7 @@
 
 ## Overview
 
-The SVM block performs classification using the Support Vector Machine algorithm. [`svm_reference.py`](pca_reference.py) models the whole chain (from training all the way to inference/classification). This reference file already implements the final SVM algorithm to be implemented for this project (parametrizable number of classes, different kernel support, and variable number of features).
+The SVM block performs classification using the Support Vector Machine algorithm. [`svm_reference.py`](svm_reference.py) models the whole chain (from training all the way to inference/classification). This reference file already implements the final SVM algorithm to be implemented for this project (parametrizable number of classes, different kernel support, and variable number of features).
 
 The SVM implementation for this project will be limited to classification only. In order to perform classification, four inputs are required: 1) The actual input vector of size p x 1, where p is the number of features to be used for classification; 2) The 2D array of support vectors and the corresponding features for those support vectors having a size of s x p, where s is the number of support vectors identified after offline training; 3) The alpha vector which is essentially the weights for each support vector also determined after training, having a size of 1 x s; 4) The intercept that needs to be added after the dot products have been performed, also determined after training.
 
