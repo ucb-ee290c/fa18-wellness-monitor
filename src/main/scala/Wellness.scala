@@ -27,7 +27,7 @@ import freechips.rocketchip.subsystem._
   */
 abstract class WriteQueue
 (
-  val depth: Int = 32,
+  val depth: Int = 8,
   val streamParameters: AXI4StreamMasterParameters = AXI4StreamMasterParameters()
 )(implicit p: Parameters) extends LazyModule with HasCSR {
   // stream node, output only
@@ -67,7 +67,7 @@ abstract class WriteQueue
   */
 class TLWriteQueue
 (
-  depth: Int = 32,
+  depth: Int = 8,
   csrAddress: AddressSet = AddressSet(0x2000, 0xff),
   beatBytes: Int = 8,
 )(implicit p: Parameters) extends WriteQueue(depth) with TLHasCSR {
@@ -92,7 +92,7 @@ class TLWriteQueue
   */
 abstract class ReadQueue
 (
-  val depth: Int = 32,
+  val depth: Int = 8,
   val streamParameters: AXI4StreamSlaveParameters = AXI4StreamSlaveParameters()
 )(implicit p: Parameters) extends LazyModule with HasCSR {
   val streamNode = AXI4StreamSlaveNode(streamParameters)
@@ -100,22 +100,23 @@ abstract class ReadQueue
   lazy val module = new LazyModuleImp(this) {
     require(streamNode.in.length == 1)
 
-    // Implementation
-    // Get input bundle associated with AXI4Stream node
+    // TODO
+
+    // get the input bundle associated with the AXI4Stream node
     val in = streamNode.in(0)._1
-    // Width (in bits) of input interface
+    // width (in bits) of the input interface
     val width = in.params.n * 8
-    // Instantiate queue
+    // instantiate a queue
     val queue = Module(new Queue(UInt(in.params.dataBits.W), depth))
-    // Connect queue input to streaming input
+    // connect queue input to streaming input
     in.ready := queue.io.enq.ready
-    queue.io.enq.valid := in.valid
     queue.io.enq.bits := in.bits.data
+    queue.io.enq.valid := in.valid
 
     regmap(
-      // Each read reads an entry from the queue
+      // each write adds an entry to the queue
       0x0 -> Seq(RegField.r(width, queue.io.deq)),
-      // read cnt
+      // read the number of entries in the queue
       (width+7)/8 -> Seq(RegField.r(width, queue.io.count)),
     )
   }
@@ -130,7 +131,7 @@ abstract class ReadQueue
   */
 class TLReadQueue
 (
-  depth: Int = 32,
+  depth: Int = 8,
   csrAddress: AddressSet = AddressSet(0x2100, 0xff),
   beatBytes: Int = 8
 )(implicit p: Parameters) extends ReadQueue(depth) with TLHasCSR {
@@ -144,6 +145,7 @@ class TLReadQueue
   }
   // make diplomatic TL node for regmap
   override val mem = Some(TLRegisterNode(address = Seq(csrAddress), device = device, beatBytes = beatBytes))
+
 }
 
 
@@ -199,7 +201,7 @@ class TLWellnessDataPathBlock[T <: Data : Real]
 class WellnessThing[T <: Data : Real]
 (
   val filterParams: FIRFilterParams[T],
-  val depth: Int = 8
+  val depth: Int = 32
 )(implicit p: Parameters) extends LazyModule {
   // Instantiate lazy modules
   val writeQueue = LazyModule(new TLWriteQueue(depth))
