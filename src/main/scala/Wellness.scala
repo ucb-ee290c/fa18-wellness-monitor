@@ -1,3 +1,5 @@
+package wellness
+
 import chisel3._
 import chisel3.util._
 import chisel3.experimental.FixedPoint
@@ -25,7 +27,7 @@ import freechips.rocketchip.subsystem._
   */
 abstract class WriteQueue
 (
-  val depth: Int = 8,
+  val depth: Int = 32,
   val streamParameters: AXI4StreamMasterParameters = AXI4StreamMasterParameters()
 )(implicit p: Parameters) extends LazyModule with HasCSR {
   // stream node, output only
@@ -51,7 +53,7 @@ abstract class WriteQueue
       // each write adds an entry to the queue
       0x0 -> Seq(RegField.w(width, queue.io.enq)),
       // read the number of entries in the queue
-      // (width+7)/8 -> Seq(RegField.r(width, queue.io.count)),
+      (width+7)/8 -> Seq(RegField.r(width, queue.io.count)),
     )
   }
 }
@@ -65,7 +67,7 @@ abstract class WriteQueue
   */
 class TLWriteQueue
 (
-  depth: Int = 8,
+  depth: Int = 32,
   csrAddress: AddressSet = AddressSet(0x2000, 0xff),
   beatBytes: Int = 8,
 )(implicit p: Parameters) extends WriteQueue(depth) with TLHasCSR {
@@ -90,7 +92,7 @@ class TLWriteQueue
   */
 abstract class ReadQueue
 (
-  val depth: Int = 8,
+  val depth: Int = 32,
   val streamParameters: AXI4StreamSlaveParameters = AXI4StreamSlaveParameters()
 )(implicit p: Parameters) extends LazyModule with HasCSR {
   val streamNode = AXI4StreamSlaveNode(streamParameters)
@@ -112,7 +114,9 @@ abstract class ReadQueue
 
     regmap(
       // Each read reads an entry from the queue
-      mapping = 0x0 -> Seq(RegField.r(width, queue.io.deq))
+      0x0 -> Seq(RegField.r(width, queue.io.deq)),
+      // read cnt
+      (width+7)/8 -> Seq(RegField.r(width, queue.io.count)),
     )
   }
 }
@@ -126,7 +130,7 @@ abstract class ReadQueue
   */
 class TLReadQueue
 (
-  depth: Int = 8,
+  depth: Int = 32,
   csrAddress: AddressSet = AddressSet(0x2100, 0xff),
   beatBytes: Int = 8
 )(implicit p: Parameters) extends ReadQueue(depth) with TLHasCSR {
@@ -145,9 +149,7 @@ class TLReadQueue
 
 abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real]
 (
-  val filterParams: FIRFilterParams[T],
-  val fftConfig: FFTConfig[T],
-  val bandpowerParams: BandpowerParams[T]
+  val filterParams: FIRFilterParams[T]
 )(implicit p: Parameters) extends DspBlock[D, U, EO, EI, B] {
   val streamNode = AXI4StreamIdentityNode()
   val mem = None
@@ -161,31 +163,24 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real]
 
     // Block instantiation
     val filter = Module(new ConstantCoefficientFIRFilter(filterParams))
-    val fft = Module(new FFT(fftConfig))
-    val bandpower = Module(new Bandpower(bandpowerParams))
 
-    // Input to filter
+    in.ready := true.B
+
+    // Input to Filter
     filter.io.in.valid := in.valid
+    filter.io.in.sync := false.B
     filter.io.in.bits := in.bits.data.asTypeOf(filterParams.protoData)
-    // Filter to FFT
-    fft.io.in.valid := filter.io.out.valid
-    fft.io.in.bits := filter.io.out.bits
-    // FFT to bandpower
-    bandpower.io.in.valid := fft.io.out.valid
-    bandpower.io.in.bits := fft.io.out.bits
-    // Bandpower to output
-    out.valid := bandpower.io.out.valid
-    out.bits.data := bandpower.io.out.bits
+    // Filter to Output
+    out.valid := filter.io.out.valid
+    out.bits.data := filter.io.out.bits.asTypeOf(out.bits.data)
   }
 }
 
 class TLWellnessDataPathBlock[T <: Data : Real]
 (
-  filterParams: FIRFilterParams[T], // TODO
-  fftConfig: FFTConfig[T],
-  bandpowerParams: BandpowerParams[T]
+  filterParams: FIRFilterParams[T] // TODO
 )(implicit p: Parameters) extends
-  WellnessDataPathBlock[TLClientPortParameters, TLManagerPortParameters, TLEdgeOut, TLEdgeIn, TLBundle, T](filterParams, fftConfig, bandpowerParams)
+  WellnessDataPathBlock[TLClientPortParameters, TLManagerPortParameters, TLEdgeOut, TLEdgeIn, TLBundle, T](filterParams)
   with TLDspBlock
 
 /**
@@ -204,13 +199,11 @@ class TLWellnessDataPathBlock[T <: Data : Real]
 class WellnessThing[T <: Data : Real]
 (
   val filterParams: FIRFilterParams[T],
-  val fftConfig: FFTConfig[T],
-  val bandpowerParams: BandpowerParams[T],
   val depth: Int = 8
 )(implicit p: Parameters) extends LazyModule {
   // Instantiate lazy modules
   val writeQueue = LazyModule(new TLWriteQueue(depth))
-  val wellness = LazyModule(new TLWellnessDataPathBlock(filterParams, fftConfig, bandpowerParams))
+  val wellness = LazyModule(new TLWellnessDataPathBlock(filterParams))
   val readQueue = LazyModule(new TLReadQueue(depth))
 
   // Connect streamNodes of queues and wellness monitor
@@ -224,34 +217,19 @@ class WellnessThing[T <: Data : Real]
   *
   */
 trait HasPeripheryWellness extends BaseSubsystem {
-  val inWidth: Int = 35
-  val inBP: Int = 19
+  val inWidth: Int = 16
+  val inBP: Int = 8
   val outWidth: Int = inWidth
   val outBP: Int = inBP
 
   val filterParams = FixedFIRFilterParams(
     width = inWidth,
     bp = inBP,
-    tapSeq = Seq.fill(16)(DspComplex(1.F(inWidth.W, inBP.BP), 0.F(inWidth.W, inBP.BP)))
-  )
-  val fftConfig = FFTConfig(
-    genIn = DspComplex(FixedPoint(inWidth.W, inBP.BP), FixedPoint(inWidth.W, inBP.BP)),
-    genOut = DspComplex(FixedPoint(outWidth.W, outBP.BP), FixedPoint(outWidth.W, outBP.BP)),
-    n = 64,
-    pipelineDepth = 0,
-    lanes = 64,
-    quadrature = false,
-  )
-  val bandpowerParams = FixedBandpowerParams(
-    indStart = 13,
-    indEnd = 27,
-    n = 64,
-    width = outBP,
-    bp = outBP
+    tapSeq = Seq.fill(5)(1.F(inWidth.W, inBP.BP))
   )
 
   // Instantiate wellness monitor
-  val wellness = LazyModule(new WellnessThing(filterParams, fftConfig, bandpowerParams))
+  val wellness = LazyModule(new WellnessThing(filterParams))
   // Connect memory interfaces to pbus
   pbus.toVariableWidthSlave(Some("wellnessWrite")) { wellness.writeQueue.mem.get }
   pbus.toVariableWidthSlave(Some("wellnessRead")) { wellness.readQueue.mem.get }

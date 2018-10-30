@@ -11,7 +11,7 @@ import scala.collection.mutable
 class FIRFilterSpec extends FlatSpec with Matchers {
   behavior of "ConstantCoefficientFIRFilter"
 
-  it should "UInt tomato" in {
+  it should "multiply its input stream with correct coefficients at correct timesteps (UInt)" in {
 
     for(i <- 0 until 15) {
       val tap_count = scala.util.Random.nextInt(50) + 1

@@ -1,3 +1,5 @@
+package wellness
+
 import chisel3._
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.devices.debug.Debug

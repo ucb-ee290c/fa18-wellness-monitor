@@ -1,3 +1,5 @@
+package wellness
+
 import freechips.rocketchip.config.Parameters
 
 import freechips.rocketchip.devices.tilelink._

@@ -16,29 +16,6 @@ class GoldenIntFIRFilter(taps: Seq[Int]) {
   }
 }
 
-/**
-  * Case class holding information needed to run an individual test
-  */
-case class XYZ(
-                // input x, y and z
-                xin: Double,
-                yin: Double,
-                zin: Double,
-                // mode
-                vectoring: Boolean,
-                // optional outputs
-                // if None, then don't check the result
-                // if Some(...), check that the result matches
-                xout: Option[Double] = None,
-                yout: Option[Double] = None,
-                zout: Option[Double] = None
-              )
-
-/**
-  * DspTester for FixedIterativeCordic
-  *
-  * Run each trial in @trials
-  */
 class FIRFilterTester[T <: chisel3.Data](c: ConstantCoefficientFIRFilter[T], coefficients: Seq[Int]) extends DspTester(c) {
   val filter = new GoldenIntFIRFilter(coefficients)
 
