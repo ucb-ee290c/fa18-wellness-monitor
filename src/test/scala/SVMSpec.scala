@@ -13,6 +13,8 @@ class SVMSpec extends FlatSpec with Matchers {
         val protoData = SInt(32.W)
         val nSupports = scala.util.Random.nextInt(10) + 1
         val nFeatures = scala.util.Random.nextInt(10) + 1
+        val nClasses = scala.util.Random.nextInt(4) + 2
+        val nDegree = scala.util.Random.nextInt(1) + 1
 
       }
       SVMTester(params) should be(true)
