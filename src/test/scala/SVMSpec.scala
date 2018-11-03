@@ -14,7 +14,8 @@ class SVMSpec extends FlatSpec with Matchers {
         val nSupports = scala.util.Random.nextInt(10) + 1
         val nFeatures = scala.util.Random.nextInt(10) + 1
         val nClasses = scala.util.Random.nextInt(4) + 2
-        val nDegree = scala.util.Random.nextInt(1) + 1
+        val nDegree = scala.util.Random.nextInt(3) + 1
+        val kernelType = scala.util.Random.nextInt(1)
 
       }
       SVMTester(params) should be(true)

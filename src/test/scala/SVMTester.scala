@@ -4,6 +4,7 @@ import chisel3._
 import dsptools.numbers._
 import dsptools.DspTester
 import scala.collection._
+import scala.math.pow
 
 class GoldenIntSVM(params: SVMParams[SInt]) {
   def poke(input: Seq[Int], supportVector: Seq[Seq[Int]], alphaVector: Seq[Seq[Int]], intercept: Seq[Int]): Seq[Seq[Int]] = {
@@ -13,21 +14,34 @@ class GoldenIntSVM(params: SVMParams[SInt]) {
     val combinations = mutable.ArrayBuffer[mutable.ArrayBuffer[Int]]()
     val classVotes = mutable.ArrayBuffer.fill(params.nClasses)(0)
 
+    // just like the one in svm.scala, the generation of all pairwise combinations of classes
     for (x <- 0 until params.nClasses) {
       for (y <- x + 1 until params.nClasses) {
         combinations += mutable.ArrayBuffer(x, y)
       }
     }
+    var dotTemp = mutable.ArrayBuffer.fill(params.nSupports)(0)
+    // perform dot product, manually (that's why it's a nested for loop)
+    // if you understand the required operations for the dot product, this loop shouldn't be that hard to understand
 
-    for (x <- alphaVector.indices) { // classifiers
-      for (y <- supportVector.indices) {
-        // number of support vectors
-
+    for (x <- alphaVector.indices) { // number of classifiers
+      for (y <- supportVector.indices) { // number of support vectors
         for (z <- supportVector(0).indices) { // number of features
-          probeCheck(x) = probeCheck(x) + alphaVector(x)(y) * input(z) * supportVector(y)(z)
+          // kernel computation depends on the type: polynomial or rbf
+          if(params.kernelType == 0) { // for polynomial kernel, get the dot product first
+            dotTemp(y) = dotTemp(y) + input(z)*supportVector(y)(z)
+          } else { // for rbf kernel, solve for the exponent value first
+            probeCheck(x) = probeCheck(x) + alphaVector(x)(y) * (input(z) - supportVector(y)(z))*(input(z) - supportVector(y)(z))
+          }
+        }
+        if (params.kernelType == 0) { // multiply the dot product by itself (only used by polynomial kernel)
+          probeCheck(x) = probeCheck(x) + alphaVector(x)(y)*pow(dotTemp(y).toDouble,params.nDegree.toDouble).toInt
+        } else {
+          // TODO: this is probably where you will put the exponential for the RBF kernel
         }
       }
-      probeCheck(x) = probeCheck(x) + intercept(x)
+      dotTemp = mutable.ArrayBuffer.fill(params.nSupports)(0) // reset accumulator (only used for polynomial kernel)
+      probeCheck(x) = probeCheck(x) + intercept(x) // final addition of the intercept per classifier
 
       // similar structure with svm.scala, can possibly be optimized?
       if (probeCheck(x) > 0) {
@@ -51,15 +65,18 @@ class GoldenIntSVM(params: SVMParams[SInt]) {
 
 class SVMTester[T <: Data](c: SVM[T], params: SVMParams[SInt]) extends DspTester(c) {
   val SVM = new GoldenIntSVM(params)
-  val input = Seq.fill(params.nFeatures)(scala.util.Random.nextInt())
+  val input = Seq.fill(params.nFeatures)(scala.util.Random.nextInt(16)-8)
 
   val nClassifiers = (params.nClasses*(params.nClasses - 1))/2
-  val supportVector = Seq.fill(params.nSupports,params.nFeatures)(scala.util.Random.nextInt())
-  val alphaVector = Seq.fill(nClassifiers,params.nSupports)(scala.util.Random.nextInt())
-  val intercept = Seq.fill(nClassifiers)(scala.util.Random.nextInt())
+  val supportVector = Seq.fill(params.nSupports,params.nFeatures)(scala.util.Random.nextInt(10)-5)
+  val alphaVector = Seq.fill(nClassifiers,params.nSupports)(scala.util.Random.nextInt(4)-2)
+  val intercept = Seq.fill(nClassifiers)(scala.util.Random.nextInt(10)-5)
 
   val goldenModelResult = SVM.poke(input, supportVector, alphaVector, intercept)
 
+  print(params.kernelType, params.nDegree)
+
+  // pokes for all the vectors and arrays
   input.zip(c.io.in.bits).foreach { case(sig, port) => poke(port, sig) }
 
   for (i <- 0 until params.nSupports) {
@@ -72,16 +89,17 @@ class SVMTester[T <: Data](c: SVM[T], params: SVMParams[SInt]) extends DspTester
 
   intercept.zip(c.io.intercept).foreach { case(sig, port) => poke(port, sig) }
 
-
+  // start!
   poke(c.io.in.valid, value = 1)
-  step(1)
+  step(1) // not really needed for now since everything is combinational
 
+  // check for computational accuracy
   for (i <- 0 until nClassifiers) {
-    expect(c.io.rawVotes(i), goldenModelResult(0)(i), msg = s"Golden: $goldenModelResult, ${peek(c.io.rawVotes(i))}")
+    expect(c.io.rawVotes(i), goldenModelResult(0)(i))
   }
 
   for (i <- 0 until params.nClasses) {
-    expect(c.io.rawSums(i), goldenModelResult(1)(i), msg = s"Golden: $goldenModelResult, ${peek(c.io.rawSums(i))}")
+    expect(c.io.rawSums(i), goldenModelResult(1)(i))
   }
 }
 
