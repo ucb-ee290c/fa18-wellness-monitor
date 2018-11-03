@@ -11,19 +11,19 @@ trait SVMParams[T <: Data] {
   val nSupports: Int // the number of support vectors, from offline training
   val nFeatures: Int // the number of reduced dimensions, coming from SVM
   val nClasses:  Int // the number of classes, for multi-class classification
-  val nDegree: Int   // the polynomial kernel degree
+  val nDegree: Int   // the polynomial kernel degree, ignored if kernelType = 1
   val kernelType: Int// if 0, polynomial kernel, if 1, rbf kernel
 }
 
 class SVMIO[T <: Data](params: SVMParams[T]) extends Bundle {
   val in = Flipped(ValidWithSync(Vec(params.nFeatures, params.protoData)))
-  val out = ValidWithSync(UInt()) // TODO: update this with the actual data type!
+  val out = ValidWithSync(UInt(1.W)) // TODO: update this with the actual data type!
 
   // these are the arrays needed by the SVM for classification, these are generated through offline training
   // the collection of support vectors (number depends on training), with a vector of features mapped to each one
-  val supportVector = Input(Vec(Vec(params.nFeatures, params.protoData), params.nSupports))
+  val supportVector = Input(Vec(params.nSupports, Vec(params.nFeatures, params.protoData)))
   // the weights of the support vectors for every classifier that has to be built (acquired from the Python training)
-  val alphaVector = Input(Vec(Vec(params.nSupports, params.protoData), (params.nClasses*(params.nClasses - 1))/2))
+  val alphaVector = Input(Vec((params.nClasses*(params.nClasses - 1))/2, Vec(params.nSupports, params.protoData)))
   // the constant that has to be added after performing all the dot products, per classifier as well
   val intercept = Input(Vec((params.nClasses*(params.nClasses - 1))/2, params.protoData))
 
@@ -38,6 +38,11 @@ object SVMIO {
 }
 
 class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
+  require(params.nSupports > 0)
+  require(params.nFeatures > 0)
+  require(params.nClasses > 1)
+  require(params.nDegree > 0)
+  require(params.kernelType == 1 || params.kernelType == 0)
   val io = IO(new SVMIO[T](params))
 
   // dot product, this is where the kernel goes
@@ -46,12 +51,12 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
   // if kernelType = 0, this is a polynomial kernel
   // this is simply the dot product of the support vector and the input, raised to a power depending on the degree
   if (params.kernelType == 0) {
-    val polyKernel = Wire(Vec(Vec(params.nSupports, params.protoData), params.nDegree))
+    val polyKernel = Wire(Vec(params.nDegree, Vec(params.nSupports, params.protoData)))
     for (i <- 0 until params.nSupports) { // get the dot product first (like a typical linear kernel)
-      polyKernel(0)(i) := io.in.bits.zip(io.supportVector(i)).map { case (a, b) => a * b }.reduce(_ + _)
+      polyKernel(0)(i) := io.in.bits.zip(io.supportVector(i)).map {case (a, b) => a * b}.reduce(_ + _)
     }
     for (i <- 1 until params.nDegree) { // multiply by itself n times for nth degree polynomial
-      polyKernel(i) := polyKernel(i - 1).zip(polyKernel(0)).map { case(a, b) => a * b }
+      polyKernel(i) := polyKernel(i - 1).zip(polyKernel(0)).map {case(a, b) => a * b}
     }
     kernel := polyKernel(params.nDegree-1)
 
@@ -61,8 +66,8 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
   } else {
     val rbfKernel = Wire(Vec(params.nSupports, params.protoData))
     for (i <- 0 until params.nSupports) {
-      // TODO: after reduction, need to multiply by -1, then perform exp^(ans), how to do that?
-      rbfKernel(i) := io.in.bits.zip(io.supportVector(i)).map { case (a, b) => b - a }.map{ k => k * k}.reduce(_ + _)
+      // TODO: after reduction, perform exp^(ans), how to do that?
+      rbfKernel(i) := io.in.bits.zip(io.supportVector(i)).map {case (a, b) => b - a}.map{ k => -1*(k * k)}.reduce(_ + _)
     }
     kernel := rbfKernel
   }
@@ -74,7 +79,7 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
   val nClassifiers = (params.nClasses*(params.nClasses - 1))/2    // just a constant
   val decision = Wire(Vec(nClassifiers, params.protoData))        // the raw answer after all the dot product ops
   val combinations = mutable.ArrayBuffer[mutable.ArrayBuffer[Int]]()  // will contain the mapping to the classifiers
-  val classVotes = Wire(Vec(Vec(nClassifiers, UInt(1.W)), params.nClasses)) // votes per class per classifier
+  val classVotes = Wire(Vec(params.nClasses, Vec(nClassifiers, UInt(1.W)))) // votes per class per classifier
   val sumVotes = Wire(Vec(params.nClasses,UInt((log10(params.nClasses)/log10(2)).ceil.toInt.W))) // sum of votes / class
 
   // this creates an array of the pairwise combinations of all classes
@@ -88,7 +93,7 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
 
   // now do the actual dot product of the kernel with the alphas (weights), add the intercept as well
   for (i <- 0 until nClassifiers) {   // do this for all the 1v1 classifiers that we have
-    decision(i) := (io.alphaVector(i).zip(kernel).map{ case (a,b) => a * b}.reduce(_ + _)
+    decision(i) := (io.alphaVector(i).zip(kernel).map{case (a,b) => a * b}.reduce(_ + _)
                 + io.intercept(i)).asTypeOf(params.protoData)
 
     // now depending on the sign of the raw answer, that's the vote belonging to a class

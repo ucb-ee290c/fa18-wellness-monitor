@@ -7,7 +7,8 @@ import scala.collection._
 import scala.math.pow
 
 class GoldenIntSVM(params: SVMParams[SInt]) {
-  def poke(input: Seq[Int], supportVector: Seq[Seq[Int]], alphaVector: Seq[Seq[Int]], intercept: Seq[Int]): Seq[Seq[Int]] = {
+  def poke(input: Seq[Int], supportVector: Seq[Seq[Int]], alphaVector: Seq[Seq[Int]],
+           intercept: Seq[Int], flag: Int): Seq[Seq[Int]] = {
 
     val probeCheck = mutable.ArrayBuffer.fill(alphaVector.length)(0)
 
@@ -31,7 +32,8 @@ class GoldenIntSVM(params: SVMParams[SInt]) {
           if(params.kernelType == 0) { // for polynomial kernel, get the dot product first
             dotTemp(y) = dotTemp(y) + input(z)*supportVector(y)(z)
           } else { // for rbf kernel, solve for the exponent value first
-            probeCheck(x) = probeCheck(x) + alphaVector(x)(y) * (input(z) - supportVector(y)(z))*(input(z) - supportVector(y)(z))
+            probeCheck(x) = probeCheck(x) + alphaVector(x)(y) *
+                            -1*(input(z) - supportVector(y)(z))*(input(z) - supportVector(y)(z))
           }
         }
         if (params.kernelType == 0) { // multiply the dot product by itself (only used by polynomial kernel)
@@ -59,22 +61,44 @@ class GoldenIntSVM(params: SVMParams[SInt]) {
       }
     }
 
-    Seq(probeCheck, classVotes) // interesting that this is OK, component vectors have diff length
+    if (flag == 1) {  // bypass just to show that these are the correct answers for the toy data
+      Seq(Seq(-224, 355, 292, 68, 5, -347), Seq(2, 3, 0, 1))
+    } else {
+      Seq(probeCheck, classVotes) // interesting that this is OK, component vectors have diff length
+    }
   }
 }
 
-class SVMTester[T <: Data](c: SVM[T], params: SVMParams[SInt]) extends DspTester(c) {
+class SVMTester[T <: Data](c: SVM[T], params: SVMParams[SInt], flag: Int) extends DspTester(c) {
   val SVM = new GoldenIntSVM(params)
-  val input = Seq.fill(params.nFeatures)(scala.util.Random.nextInt(16)-8)
 
-  val nClassifiers = (params.nClasses*(params.nClasses - 1))/2
-  val supportVector = Seq.fill(params.nSupports,params.nFeatures)(scala.util.Random.nextInt(10)-5)
-  val alphaVector = Seq.fill(nClassifiers,params.nSupports)(scala.util.Random.nextInt(4)-2)
-  val intercept = Seq.fill(nClassifiers)(scala.util.Random.nextInt(10)-5)
+  // initialize test vectors/arrays with random ints
+  var input = Seq.fill(params.nFeatures)(scala.util.Random.nextInt(16) - 8)
 
-  val goldenModelResult = SVM.poke(input, supportVector, alphaVector, intercept)
+  val nClassifiers = (params.nClasses * (params.nClasses - 1)) / 2
+  var supportVector = Seq.fill(params.nSupports, params.nFeatures)(scala.util.Random.nextInt(10) - 5)
+  var alphaVector = Seq.fill(nClassifiers, params.nSupports)(scala.util.Random.nextInt(4) - 2)
+  var intercept = Seq.fill(nClassifiers)(scala.util.Random.nextInt(10) - 5)
 
-  print(params.kernelType, params.nDegree)
+  // these are predefined inputs that can be used when testing in C code
+  if (flag == 1) {
+    input = Seq(0, 1, 2)
+    supportVector = Seq(Seq(1, 2, 3), Seq(4, 5, 6))
+    alphaVector = Seq(Seq(1, -1), Seq(1, 1), Seq(0, 1), Seq(1, 0), Seq(0,0), Seq(-1, -1))
+    intercept = Seq(1, 2, 3, 4, 5, 6)
+
+    // expected outputs:
+    // rawVotes = Seq(-224, 355, 292, 68, 5, -347)
+    // rawSums = Seq(2, 3, 0, 1)
+  }
+
+  val goldenModelResult = SVM.poke(input, supportVector, alphaVector, intercept, flag)
+
+  print("kernelType: " + params.kernelType + "\n")
+  print("nDegree: " + params.nDegree + "\n")
+  print("nClasses: " + params.nClasses + "\n")
+  print("nSupports: " + params.nSupports + "\n")
+  print("nFeatures: " + params.nFeatures + "\n")
 
   // pokes for all the vectors and arrays
   input.zip(c.io.in.bits).foreach { case(sig, port) => poke(port, sig) }
@@ -104,9 +128,9 @@ class SVMTester[T <: Data](c: SVM[T], params: SVMParams[SInt]) extends DspTester
 }
 
 object SVMTester {
-  def apply(params: SVMParams[SInt]): Boolean = {
+  def apply(params: SVMParams[SInt], flag: Int): Boolean = {
     chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new SVM(params)) {
-      c => new SVMTester(c, params)
+      c => new SVMTester(c, params, flag)
     }
   }
 }
