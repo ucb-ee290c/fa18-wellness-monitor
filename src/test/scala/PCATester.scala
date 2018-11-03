@@ -23,8 +23,8 @@ class GoldenIntPCA(params: PCAParams[SInt]) {
 
 class PCATester[T <: Data](c: PCA[T], params: PCAParams[SInt]) extends DspTester(c) {
   val PCA = new GoldenIntPCA(params)
-  val input = Seq.fill(params.nDimensions)(scala.util.Random.nextInt())
-  val PCAVector = Seq.fill(params.nFeatures,params.nDimensions)(scala.util.Random.nextInt())
+  val input = Seq.fill(params.nDimensions)(scala.util.Random.nextInt(16)-8)
+  val PCAVector = Seq.fill(params.nFeatures,params.nDimensions)(scala.util.Random.nextInt(16)-8)
   val goldenModelResult = PCA.poke(input, PCAVector)
 
   input.zip(c.io.in.bits).foreach { case(sig, port) => poke(port, sig) }
