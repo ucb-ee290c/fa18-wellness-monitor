@@ -14,6 +14,7 @@ class GoldenIntSVM(params: SVMParams[SInt]) {
 
     val combinations = mutable.ArrayBuffer[mutable.ArrayBuffer[Int]]()
     val classVotes = mutable.ArrayBuffer.fill(params.nClasses)(0)
+    val rawVotes = mutable.ArrayBuffer.fill(params.nClasses)(0)
 
     // just like the one in svm.scala, the generation of all pairwise combinations of classes
     for (x <- 0 until params.nClasses) {
@@ -49,22 +50,26 @@ class GoldenIntSVM(params: SVMParams[SInt]) {
       if (probeCheck(x) > 0) {
         if(params.nClasses > 2) {
           classVotes(combinations(x)(0)) = classVotes(combinations(x)(0)) + 1
+          rawVotes(combinations(x)(0)) = rawVotes(combinations(x)(0)) + probeCheck(x)
         } else {
           classVotes(combinations(x)(1)) = classVotes(combinations(x)(1)) + 1
+          rawVotes(combinations(x)(1)) = rawVotes(combinations(x)(1)) + probeCheck(x)
         }
       } else {
         if(params.nClasses > 2) {
           classVotes(combinations(x)(1)) = classVotes(combinations(x)(1)) + 1
+          rawVotes(combinations(x)(1)) = rawVotes(combinations(x)(1)) + -1*probeCheck(x)
         } else {
           classVotes(combinations(x)(0)) = classVotes(combinations(x)(0)) + 1
+          rawVotes(combinations(x)(0)) = rawVotes(combinations(x)(0)) + -1*probeCheck(x)
         }
       }
     }
 
     if (flag == 1) {  // bypass just to show that these are the correct answers for the toy data
-      Seq(Seq(-224, 355, 292, 68, 5, -347), Seq(2, 3, 0, 1))
+      Seq(Seq(647, 297, 0, 347), Seq(2, 3, 0, 1))
     } else {
-      Seq(probeCheck, classVotes) // interesting that this is OK, component vectors have diff length
+      Seq(rawVotes, classVotes) // interesting that this is OK, component vectors have diff length
     }
   }
 }
@@ -88,8 +93,8 @@ class SVMTester[T <: Data](c: SVM[T], params: SVMParams[SInt], flag: Int) extend
     intercept = Seq(1, 2, 3, 4, 5, 6)
 
     // expected outputs:
-    // rawVotes = Seq(-224, 355, 292, 68, 5, -347)
-    // rawSums = Seq(2, 3, 0, 1)
+    // rawVotes = Seq(647, 297, 0, 347)
+    // classVotes = Seq(2, 3, 0, 1)
   }
 
   val goldenModelResult = SVM.poke(input, supportVector, alphaVector, intercept, flag)
@@ -118,12 +123,12 @@ class SVMTester[T <: Data](c: SVM[T], params: SVMParams[SInt], flag: Int) extend
   step(1) // not really needed for now since everything is combinational
 
   // check for computational accuracy
-  for (i <- 0 until nClassifiers) {
+  for (i <- 0 until params.nClasses) {
     expect(c.io.rawVotes(i), goldenModelResult(0)(i))
   }
 
   for (i <- 0 until params.nClasses) {
-    expect(c.io.rawSums(i), goldenModelResult(1)(i))
+    expect(c.io.classVotes(i), goldenModelResult(1)(i))
   }
 }
 

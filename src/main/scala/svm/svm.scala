@@ -28,8 +28,8 @@ class SVMIO[T <: Data](params: SVMParams[T]) extends Bundle {
   val intercept = Input(Vec((params.nClasses*(params.nClasses - 1))/2, params.protoData))
 
   // these are some probe points, to ensure computational accuracy
-  val rawVotes = Output(Vec((params.nClasses*(params.nClasses - 1))/2, params.protoData))
-  val rawSums = Output(Vec(params.nClasses,UInt((log10(params.nClasses)/log10(2)).ceil.toInt.W)))
+  val rawVotes = Output(Vec(params.nClasses, params.protoData))
+  val classVotes = Output(Vec(params.nClasses,UInt((log10(params.nClasses)/log10(2)).ceil.toInt.W)))
 
   override def cloneType: this.type = SVMIO(params).asInstanceOf[this.type]
 }
@@ -73,6 +73,7 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
   }
 
   // at this point, the kernel has been computed, now we perform dot product with the weights
+  // TODO: implement the one vs all, and the ECOC classification (use params)
   // this depends on the number of classes, 1v1 classification requires n*(n-1)/2 classifiers!
   // multiply by the weights, add the intercept, clamp it to either 0 or 1, you're done
 
@@ -80,7 +81,9 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
   val decision = Wire(Vec(nClassifiers, params.protoData))        // the raw answer after all the dot product ops
   val combinations = mutable.ArrayBuffer[mutable.ArrayBuffer[Int]]()  // will contain the mapping to the classifiers
   val classVotes = Wire(Vec(params.nClasses, Vec(nClassifiers, UInt(1.W)))) // votes per class per classifier
-  val sumVotes = Wire(Vec(params.nClasses,UInt((log10(params.nClasses)/log10(2)).ceil.toInt.W))) // sum of votes / class
+  val rawVotes = Wire(Vec(params.nClasses, Vec(nClassifiers, params.protoData))) // raw votes array, to be summed
+  val actualVotes = Wire(Vec(params.nClasses, params.protoData)) // summed raw votes, in case of a tie in normalized votes
+  val normalizedVotes = Wire(Vec(params.nClasses,UInt((log10(params.nClasses)/log10(2)).ceil.toInt.W))) // sum of votes / class
 
   // this creates an array of the pairwise combinations of all classes
   // for example: if we have 4 classes, then the pattern would be: (0,1) (0,2) (0,3) (1,2) (1,3) (2,3)
@@ -98,28 +101,48 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
 
     // now depending on the sign of the raw answer, that's the vote belonging to a class
     // for example, if the (2,3) classifier has a negative sign (0), then it votes for class 3 (class 2 if positive)
-    // TODO: this can probably be optimized further?
+    // TODO: this can probably be optimized further? this is so long, but there is some pattern
     when (decision(i) > 0) {
       for (j <- 0 until params.nClasses) {
         // there is a special case for 2 classes, we formed (0,1) classifier...
         // but the positive vote of 1 should correspond to 1 which is not the first element
         // this is contrary to the multi-class combination (check python script, it works)
         if(params.nClasses > 2) {
-          if (j == combinations(i)(0)) classVotes(j)(i) := 1.U
-          else classVotes(j)(i) := 0.U
+          if (j == combinations(i)(0)) {
+            classVotes(j)(i) := 1.U
+            rawVotes(j)(i) := decision(i)
+          } else {
+            classVotes(j)(i) := 0.U
+            rawVotes(j)(i) := ConvertableTo[T].fromInt(0)
+          }
         } else {
-          if (j == combinations(i)(1)) classVotes(j)(i) := 1.U
-          else classVotes(j)(i) := 0.U
+          if (j == combinations(i)(1)) {
+            classVotes(j)(i) := 1.U
+            rawVotes(j)(i) := decision(i)
+          } else {
+            classVotes(j)(i) := 0.U
+            rawVotes(j)(i) := ConvertableTo[T].fromInt(0)
+          }
         }
       }
     } .otherwise {
       for (j <- 0 until params.nClasses) {
         if(params.nClasses > 2) {
-          if (j == combinations(i)(1)) classVotes(j)(i) := 1.U
-          else classVotes(j)(i) := 0.U
+          if (j == combinations(i)(1)) {
+            classVotes(j)(i) := 1.U
+            rawVotes(j)(i) := ConvertableTo[T].fromInt(0) - decision(i)
+          } else {
+            classVotes(j)(i) := 0.U
+            rawVotes(j)(i) := ConvertableTo[T].fromInt(0)
+          }
         } else {
-          if (j == combinations(i)(0)) classVotes(j)(i) := 1.U
-          else classVotes(j)(i) := 0.U
+          if (j == combinations(i)(0)) {
+            classVotes(j)(i) := 1.U
+            rawVotes(j)(i) := ConvertableTo[T].fromInt(0) - decision(i)
+          } else {
+            classVotes(j)(i) := 0.U
+            rawVotes(j)(i) := ConvertableTo[T].fromInt(0)
+          }
         }
       }
     }
@@ -127,12 +150,16 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
 
   // sum up all the votes per class, you will use this to determine the final class of the datapoint
   for (i <- 0 until params.nClasses) {
-    sumVotes(i) := classVotes(i).reduce(_ +& _) // damn, that & is very critical to extend the bits
+    normalizedVotes(i) := classVotes(i).reduce(_ +& _) // damn, that & is very critical to extend the bits
+  }
+
+  for (i <- 0 until params.nClasses) {
+    actualVotes(i) := rawVotes(i).reduce(_ + _) // damn, that & is very critical to extend the bits
   }
 
   // put for output probing and checking for computation accuracy
-  io.rawVotes := decision
-  io.rawSums := sumVotes
+  io.classVotes := normalizedVotes  // normally, you just find the max value of normalized votes per classifier
+  io.rawVotes := actualVotes        // sometimes you end up with ties, this is for tie breaking classifications
 
   // now, we select the class that has the highest number of votes
   // TODO: how to select the index with the most number of votes?
