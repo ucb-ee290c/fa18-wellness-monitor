@@ -86,13 +86,11 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
   }
 
   // at this point, the kernel has been computed, now we perform dot product with the weights
-  // TODO: convert Vecs to Seqs as per Cordic lab feedback
-  val decision = Wire(Vec(io.nClassifiers, params.protoData))        // the raw answer after all the dot product ops
+
+  val decision = Seq.fill(io.nClassifiers)(Wire(params.protoData))    // the raw answer after all the dot product ops
   val combinations = mutable.ArrayBuffer[mutable.ArrayBuffer[Int]]()  // will contain the mapping to the classifiers
-  val classVotes = Wire(Vec(params.nClasses, Vec(io.nClassifiers, UInt(1.W)))) // votes per class per classifier
-  val rawVotes = Wire(Vec(params.nClasses, Vec(io.nClassifiers, params.protoData))) // raw votes array, to be summed
-  val actualVotes = Wire(Vec(params.nClasses, params.protoData)) // summed raw votes, in case of a tie in normalized votes
-  val normalizedVotes = Wire(Vec(params.nClasses,UInt((log2Ceil(io.nClassifiers)+1).W))) // sum of votes / class
+  val classVotes = Seq.fill(params.nClasses)(List.fill(io.nClassifiers)(Wire(UInt(1.W)))) // votes per class per classifier
+  val rawVotes = Seq.fill(params.nClasses)(List.fill(io.nClassifiers)(Wire(params.protoData)))  // raw votes array, to be summed
 
   // this creates an array of the pairwise combinations of all classes
   // for example: if we have 4 classes, then the pattern would be: (0,1) (0,2) (0,3) (1,2) (1,3) (2,3)
@@ -157,7 +155,9 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
     }
   }
 
-  // sum up all the votes per class, you will use this to determine the final class of the datapoint
+  // sum up all the votes per class, you will use this to determine the final class of the data point
+  val actualVotes = Seq.fill(params.nClasses)(Wire(params.protoData)) // summed raw votes, in case of a tie
+  val normalizedVotes = Seq.fill(params.nClasses)(Wire(UInt((log2Ceil(io.nClassifiers)+1).W)))   // sum of votes / class
 
   for (i <- 0 until params.nClasses) {
     actualVotes(i) := rawVotes(i).reduce(_ + _) // sum up the raw votes
