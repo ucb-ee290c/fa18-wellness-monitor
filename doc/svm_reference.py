@@ -199,9 +199,6 @@ vote = np.ndarray.tolist(vote.astype(int))
 # initialize container of final predicted classes using manual calculation
 y_manual = np.zeros((len(vote),1))
 
-# Using the sklearn library, for double check
-y_pred = clf.predict(X_test)
-
 if class_type == 'ovo':
     # create the votes from the values of the decision function (vote)
     for i in range(len(X_test)):
@@ -234,16 +231,28 @@ elif class_type == 'ecoc':
     # OK, apparently we shouldn't clip the value before getting the distance
     # the distance is apparently defined as the euclidean distance to [-1,1], using the raw decision function value
     # this is a little problematic since that is computationally expensive
+
+    codes[codes == 0] = -1  # when getting the distance, apparently we need to get distance to [-1,1]
+    
+    # let's try creating a pseudo euclidean distance metric
+    for i in range(len(X_test)): # number of test data
+        for j in range(classes):
+            tempvote[i][j] = sum(abs(decision2[i] - codes[j])) # sum of absolute values, instead of euclidean
+            
+        y_manual[i] = tempvote[i].argmin(axis=0) # pick the minimum distance, using this distance metric
+    
     # here's the actual operation required:
-    # codes[codes == 0] = -1
-    # y_manual = euclidean_distances(decision2,codes).argmin(axis=1)
+    #y_manual = euclidean_distances(decision2,codes).argmin(axis=1) # override if ever
     
     # we'll cheat a bit lol, this gets the distance between the clamped values already
-    y_pred = euclidean_distances(vote,codes).argmin(axis=1)
+    #y_pred = euclidean_distances(vote,codes).argmin(axis=1)
     
 #########################################
 # Model Accuracy: how often is the classifier correct?
 #########################################
+    
+# Using the sklearn library, we get obtain the actual prediction
+y_pred = clf.predict(X_test)
 
 print("Accuracy fun:",accuracy_score(y_test, y_pred))
 print("Accuracy man:",accuracy_score(y_test, y_manual))
