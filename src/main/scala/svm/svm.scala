@@ -103,16 +103,20 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
   val actualVotes = Seq.fill(params.nClasses)(Wire(params.protoData)) // summed raw votes, in case of a tie
   val normalizedVotes = Seq.fill(params.nClasses)(Wire(UInt((log2Ceil(io.nClassifiers) + 1).W))) // sum of votes / class
 
-  for (i <- 0 until io.nClassifiers) { // do this for all the classifiers that we have
+  // this is the final dot product that needs to be performed to create the SVM decision function
+  for (i <- 0 until io.nClassifiers) {
     decision(i) := (io.alphaVector(i).zip(kernel).map { case (a, b) => a * b }.reduce(_ + _)
       + io.intercept(i)).asTypeOf(params.protoData)
   }
+  // using this decision function, we can now perform classification, which depends on the type
 
   // #############################################################
   // for one vs rest classifier implementation
   if (params.classifierType == 0) {
 
     if (params.nClasses > 2) {
+      // each classifier corresponds to a single class,
+      // therefore, if the decision function corresponding to that class is positive, that's a vote to that class
       for (i <- 0 until params.nClasses) {
         actualVotes(i) := decision(i)
         when(decision(i) > 0) {
@@ -121,7 +125,8 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
           normalizedVotes(i) := 0.U
         }
       }
-    } else {  // special case for 2 classes since there's only 1 classifier for that
+    } else {  // special case for 2 classes since there's only 1 classifier for that, so we'll loop only once
+      // the logic is the same, but we assign both index 0 and 1 in one shot since we only go through here once
       when (decision(0) > 0) {
         normalizedVotes(0) := 0.U
         normalizedVotes(1) := 1.U
@@ -130,7 +135,7 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
       }.otherwise {
         normalizedVotes(0) := 1.U
         normalizedVotes(1) := 0.U
-        actualVotes(0) := ConvertableTo[T].fromInt(0) - decision(0)
+        actualVotes(0) := ConvertableTo[T].fromInt(0) - decision(0) // it is a vote to the other side, make it positive
         actualVotes(1) := ConvertableTo[T].fromInt(0)
       }
     }
@@ -157,6 +162,7 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
       // now depending on the sign of the raw answer, that's the vote belonging to a class
       // for example, if the (2,3) classifier has a negative sign (0), then it votes for class 3 (class 2 if positive)
       // TODO: this can probably be optimized further? this is so long, but there is some pattern
+
       when(decision(i) > 0) {
         for (j <- 0 until params.nClasses) {
           // there is a special case for 2 classes, we formed (0,1) classifier...
@@ -186,7 +192,7 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
           if (params.nClasses > 2) {
             if (j == combinations(i)(1)) {
               classVotes(j)(i) := 1.U
-              rawVotes(j)(i) := ConvertableTo[T].fromInt(0) - decision(i)
+              rawVotes(j)(i) := ConvertableTo[T].fromInt(0) - decision(i) // essentially, absolute value
             } else {
               classVotes(j)(i) := 0.U
               rawVotes(j)(i) := ConvertableTo[T].fromInt(0)
@@ -213,9 +219,13 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
   } else {
 
     // hmm, I can't think of something to put into normalized votes
+    // from the classifier combinations, we end up with a binary string, which we then compare to the code book
+    // so the votes are actually a distance metric (look at my Python code for this)
     val decisionBits = Seq.fill(io.nClassifiers)(Wire(UInt(1.W)))
     val codeBookBits = Seq.fill(params.nClasses,io.nClassifiers)(Wire(UInt(1.W)))
 
+    // creating an array containing the sign of the decision function
+    // we will use this for the hamming distance measurement
     for (i <- 0 until io.nClassifiers) {
       when (decision(i) > 0) {
         decisionBits(i) := 1.U
@@ -224,6 +234,9 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
       }
     }
 
+    // this translates the code book from [-1,1] to [0,1]
+    // the [-1,1] is used for L1 distance measurement (sum of absolute values of raw scores)
+    // the [0,1] is used for the hamming distance (sum of absolute values of binary scores
     for (i <- 0 until params.nClasses) {
       for (j <- 0 until io.nClassifiers) {
         if(params.codeBook(i)(j) == 1) {
@@ -234,6 +247,7 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
       }
     }
 
+    // we can just do the distance measurement using this chain of function calls
     for (i <- 0 until params.nClasses) {
       actualVotes(i) := decision.zip(params.codeBook(i)).map{ case (a,b) => (a - b).abs()}.reduce(_ + _)
       normalizedVotes(i) := decisionBits.zip(codeBookBits(i)).map{ case (a,b) => (a - b).abs()}.reduce(_ +& _)
@@ -250,6 +264,8 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
   //io.out := sumVotes.zipWithIndex.maxBy(_._1)._2 // UInt has no max, damn
   io.out.bits := 0.U
 
+  // technically, this isn't needed because everything is combinational right now
+  // TODO: you might want to implement some sequential logic (pipelines) to reduce the critical path
   io.out.valid := io.in.valid
   io.out.sync := io.in.sync
 }

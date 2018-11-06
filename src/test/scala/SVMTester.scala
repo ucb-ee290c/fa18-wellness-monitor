@@ -53,6 +53,7 @@ class GoldenIntSVM(params: SVMParams[SInt]) {
     // for one vs rest classifier implementation
     if (params.classifierType == 0) {
 
+      // this block is essentially the same as in the svm.scala implementation, but a little bit high-level
       if (params.nClasses > 2) {
         rawVotes = decision
         for (x <- 0 until params.nClasses) {
@@ -82,7 +83,8 @@ class GoldenIntSVM(params: SVMParams[SInt]) {
       }
 
       for (x <- alphaVector.indices) {
-        // similar structure with svm.scala, can possibly be optimized?
+        // similar structure with svm.scala, although a little high level (thus shorter)
+        // can possibly be optimized?
         if (decision(x) > 0) {
           if (params.nClasses > 2) {
             classVotes(combinations(x)(0)) = classVotes(combinations(x)(0)) + 1
@@ -106,6 +108,7 @@ class GoldenIntSVM(params: SVMParams[SInt]) {
     // for error correcting output code classifier implementation
     } else {
 
+      // again, same structure as the svm.scala implementation
       val decisionBits = mutable.ArrayBuffer.fill(alphaVector.length)(0)
       val codeBookBits = mutable.ArrayBuffer.fill(params.nClasses,alphaVector.length)(0)
 
@@ -119,6 +122,7 @@ class GoldenIntSVM(params: SVMParams[SInt]) {
         }
       }
 
+      // do the dot product in a nested loop, since I know how to do it
       for (x <- 0 until params.nClasses) {
         for (y <- alphaVector.indices) {  // number of classifiers, we'll compute for the distance
           rawVotes(x) = rawVotes(x) + abs(decision(y) - params.codeBook(x)(y))
