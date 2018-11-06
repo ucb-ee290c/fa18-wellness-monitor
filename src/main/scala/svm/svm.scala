@@ -92,28 +92,25 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
     }
     kernel := rbfKernel
   }
+  // at this point, the kernel has been computed, now we perform dot product with the weights
 
   // ##################################################################################################################
   // DECISION MAKING / VOTING CALCULATION
   // ##################################################################################################################
 
-  // at this point, the kernel has been computed, now we perform dot product with the weights
-
   val decision = Seq.fill(io.nClassifiers)(Wire(params.protoData)) // the raw answer after all the dot product ops
 
+  val actualVotes = Seq.fill(params.nClasses)(Wire(params.protoData)) // summed raw votes, in case of a tie
+  val normalizedVotes = Seq.fill(params.nClasses)(Wire(UInt((log2Ceil(io.nClassifiers) + 1).W))) // sum of votes / class
+
+  for (i <- 0 until io.nClassifiers) { // do this for all the classifiers that we have
+    decision(i) := (io.alphaVector(i).zip(kernel).map { case (a, b) => a * b }.reduce(_ + _)
+      + io.intercept(i)).asTypeOf(params.protoData)
+  }
 
   // #############################################################
   // for one vs rest classifier implementation
   if (params.classifierType == 0) {
-
-    for (i <- 0 until io.nClassifiers) { // do this for all the 1v1 classifiers that we have
-      decision(i) := (io.alphaVector(i).zip(kernel).map { case (a, b) => a * b }.reduce(_ + _)
-        + io.intercept(i)).asTypeOf(params.protoData)
-    }
-
-    // sum up all the votes per class, you will use this to determine the final class of the data point
-    val actualVotes = Seq.fill(params.nClasses)(Wire(params.protoData)) // summed raw votes, in case of a tie
-    val normalizedVotes = Seq.fill(params.nClasses)(Wire(UInt((log2Ceil(io.nClassifiers) + 1).W))) // sum of votes / class
 
     if (params.nClasses > 2) {
       for (i <- 0 until params.nClasses) {
@@ -138,10 +135,6 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
       }
     }
 
-    // put for output probing and checking for computation accuracy
-    io.rawVotes := actualVotes      // sometimes you end up with ties, this is for tie breaking classifications
-    io.classVotes := normalizedVotes  // normally, you just find the max value of normalized votes per classifier
-
   // #############################################################
   // for one vs one classifier implementation
   } else if (params.classifierType == 1) {
@@ -161,9 +154,6 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
 
     // now do the actual dot product of the kernel with the alphas (weights), add the intercept as well
     for (i <- 0 until io.nClassifiers) { // do this for all the 1v1 classifiers that we have
-      decision(i) := (io.alphaVector(i).zip(kernel).map { case (a, b) => a * b }.reduce(_ + _)
-        + io.intercept(i)).asTypeOf(params.protoData)
-
       // now depending on the sign of the raw answer, that's the vote belonging to a class
       // for example, if the (2,3) classifier has a negative sign (0), then it votes for class 3 (class 2 if positive)
       // TODO: this can probably be optimized further? this is so long, but there is some pattern
@@ -190,6 +180,7 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
             }
           }
         }
+
       }.otherwise {
         for (j <- 0 until params.nClasses) {
           if (params.nClasses > 2) {
@@ -214,21 +205,44 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
     }
 
     // sum up all the votes per class, you will use this to determine the final class of the data point
-    val actualVotes = Seq.fill(params.nClasses)(Wire(params.protoData)) // summed raw votes, in case of a tie
-    val normalizedVotes = Seq.fill(params.nClasses)(Wire(UInt((log2Ceil(io.nClassifiers) + 1).W))) // sum of votes / class
-
     for (i <- 0 until params.nClasses) actualVotes(i) := rawVotes(i).reduce(_ + _) // sum up the raw votes
     for (i <- 0 until params.nClasses) normalizedVotes(i) := classVotes(i).reduce(_ +& _) // damn, that +&
-
-    // put for output probing and checking for computation accuracy
-    io.rawVotes := actualVotes        // sometimes you end up with ties, this is for tie breaking classifications
-    io.classVotes := normalizedVotes  // normally, you just find the max value of normalized votes per classifier
 
   // #############################################################
   // for error correcting output code classifier implementation
   } else {
 
+    // hmm, I can't think of something to put into normalized votes
+    val decisionBits = Seq.fill(io.nClassifiers)(Wire(UInt(1.W)))
+    val codeBookBits = Seq.fill(params.nClasses,io.nClassifiers)(Wire(UInt(1.W)))
+
+    for (i <- 0 until io.nClassifiers) {
+      when (decision(i) > 0) {
+        decisionBits(i) := 1.U
+      } .otherwise {
+        decisionBits(i) := 0.U
+      }
+    }
+
+    for (i <- 0 until params.nClasses) {
+      for (j <- 0 until io.nClassifiers) {
+        if(params.codeBook(i)(j) == 1) {
+          codeBookBits(i)(j) := 1.U
+        } else {
+          codeBookBits(i)(j) := 0.U
+        }
+      }
+    }
+
+    for (i <- 0 until params.nClasses) {
+      actualVotes(i) := decision.zip(params.codeBook(i)).map{ case (a,b) => (a - b).abs()}.reduce(_ + _)
+      normalizedVotes(i) := decisionBits.zip(codeBookBits(i)).map{ case (a,b) => (a - b).abs()}.reduce(_ +& _)
+    }
   }
+
+  // put for output probing and checking for computation accuracy
+  io.rawVotes := actualVotes      // sometimes you end up with ties, this is for tie breaking classifications
+  io.classVotes := normalizedVotes  // normally, you just find the max value of normalized votes per classifier
 
   // now, we select the class that has the highest number of votes
   // TODO: how to select the index with the most number of votes?

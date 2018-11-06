@@ -17,8 +17,7 @@ class SVMSpec extends FlatSpec with Matchers {
         val nClasses = scala.util.Random.nextInt(2) + 2   // minimum 2 classes
         val nDegree = scala.util.Random.nextInt(3) + 1    // minimum degree 1 (linear kernel)
         val kernelType = scala.util.Random.nextInt(2)     // 0 (polynomial) or 1 (rbf)
-        //val classifierType = scala.util.Random.nextInt(3) // 0 = one vs rest, 1 = one vs one, 2 = error correcting
-        val classifierType = 0  // testing
+        val classifierType = scala.util.Random.nextInt(3) // 0 = one vs rest, 1 = one vs one, 2 = error correcting
         val codeBook = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // -1 and 1
       }
       SVMTester(params, 0) should be(true)

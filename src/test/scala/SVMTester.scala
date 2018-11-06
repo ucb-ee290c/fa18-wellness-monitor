@@ -3,8 +3,9 @@ package svm
 import chisel3._
 import dsptools.numbers._
 import dsptools.DspTester
+
 import scala.collection._
-import scala.math.pow
+import scala.math._
 
 class GoldenIntSVM(params: SVMParams[SInt]) {
   def poke(input: Seq[Int], supportVector: Seq[Seq[Int]], alphaVector: Seq[Seq[Int]],
@@ -68,7 +69,6 @@ class GoldenIntSVM(params: SVMParams[SInt]) {
         }
       }
 
-
     // #############################################################
     // for one vs one classifier implementation
     } else if (params.classifierType == 1) {
@@ -106,6 +106,25 @@ class GoldenIntSVM(params: SVMParams[SInt]) {
     // for error correcting output code classifier implementation
     } else {
 
+      val decisionBits = mutable.ArrayBuffer.fill(alphaVector.length)(0)
+      val codeBookBits = mutable.ArrayBuffer.fill(params.nClasses,alphaVector.length)(0)
+
+      for (x <- alphaVector.indices) {
+        if (decision(x) > 0) decisionBits(x) = 1
+      }
+
+      for (x <- 0 until params.nClasses) {
+        for (y <- alphaVector.indices) {
+          if (params.codeBook(x)(y) == 1) codeBookBits(x)(y) = 1
+        }
+      }
+
+      for (x <- 0 until params.nClasses) {
+        for (y <- alphaVector.indices) {  // number of classifiers, we'll compute for the distance
+          rawVotes(x) = rawVotes(x) + abs(decision(y) - params.codeBook(x)(y))
+          classVotes(x) = classVotes(x) + abs(decisionBits(y) - codeBookBits(x)(y))
+        }
+      }
     }
 
     if (flag == 1) { // bypass just to show that these are the correct answers for the toy data
@@ -146,6 +165,7 @@ class SVMTester[T <: Data](c: SVM[T], params: SVMParams[SInt], flag: Int) extend
   print("nClasses: " + params.nClasses + "\n")
   print("nSupports: " + params.nSupports + "\n")
   print("nFeatures: " + params.nFeatures + "\n")
+  print("Classifiers: " + params.codeBook.head.length + "\n")
 
   // pokes for all the vectors and arrays
   input.zip(c.io.in.bits).foreach { case(sig, port) => poke(port, sig) }
