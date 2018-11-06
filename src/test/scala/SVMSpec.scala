@@ -12,7 +12,7 @@ class SVMSpec extends FlatSpec with Matchers {
     for (i <- 0 until 15) {
       val params = new SVMParams[SInt] {
         val protoData = SInt(32.W)
-        val nSupports = scala.util.Random.nextInt(10) + 1 // minimum 1 support vector
+        val nSupports = scala.util.Random.nextInt(10) + 2 // minimum 1 support vector
         val nFeatures = scala.util.Random.nextInt(10) + 1 // minimum 1 feature
         val nClasses = scala.util.Random.nextInt(2) + 2   // minimum 2 classes
         val nDegree = scala.util.Random.nextInt(3) + 1    // minimum degree 1 (linear kernel)

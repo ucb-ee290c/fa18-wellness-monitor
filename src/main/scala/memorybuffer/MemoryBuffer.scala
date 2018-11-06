@@ -1,9 +1,7 @@
 package memorybuffer
 
-import breeze.numerics.{log, log10}
 import chisel3._
-import chisel3.util.RegEnable
-import chisel3.experimental.FixedPoint
+import chisel3.util.{RegEnable, log2Ceil}
 import dspblocks.ShiftRegisterWithReset
 import dspjunctions.ValidWithSync
 import dsptools.numbers._
@@ -18,7 +16,7 @@ trait MemoryBufferParams[T <: Data] {
 
 class MemoryBufferIO[T <: Data](params: MemoryBufferParams[T]) extends Bundle {
   val in = Flipped(ValidWithSync(params.protoData))
-  val out = ValidWithSync(Vec(Vec(params.nRows,params.protoData),params.nColumns))
+  val out = ValidWithSync(Vec(params.nColumns,Vec(params.nRows,params.protoData)))
 
   override def cloneType: this.type = MemoryBufferIO(params).asInstanceOf[this.type]
 }
@@ -35,7 +33,7 @@ class MemoryBuffer[T <: chisel3.Data : Real](val params: MemoryBufferParams[T]) 
 
   val totalSize = params.nRows * params.nColumns
   val shift_en = Wire(Bool())
-  val counter = RegInit(UInt( ((log10(totalSize)/log10(2)).ceil.toInt+1).W ),0.U)
+  val counter = RegInit(UInt((log2Ceil(totalSize)+1).W),0.U)
 
   // create the register matrix
   val regs = mutable.ArrayBuffer[T]()

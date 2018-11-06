@@ -48,7 +48,7 @@ class MemoryBufferTester[T <: chisel3.Data](c: MemoryBuffer[T], params: MemoryBu
   val MemoryBuffer = new GoldenIntMemoryBuffer(params)
 
   for(i <- 0 until (params.nRows*params.nColumns + 1)) {
-    val input = scala.util.Random.nextInt()
+    val input = scala.util.Random.nextInt(20)-10
 
     val goldenModelResult = MemoryBuffer.poke(input)
 
@@ -57,7 +57,7 @@ class MemoryBufferTester[T <: chisel3.Data](c: MemoryBuffer[T], params: MemoryBu
 
     step(1)
 
-    expect(c.io.out.valid, goldenModelResult.valid, s"i $i, input $input, gm ${goldenModelResult.valid}, ${peek(c.io.out.valid)}")
+    expect(c.io.out.valid, goldenModelResult.valid)
     for(x <- 0 until params.nColumns) {
       for (y <- 0 until params.nRows) {
         expect(c.io.out.bits(x)(y), goldenModelResult.regs(x)(y))

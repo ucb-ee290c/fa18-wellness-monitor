@@ -50,7 +50,7 @@ object SVMIO {
 }
 
 class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
-  require(params.nSupports > 0, "Must have more than 1 support vector")
+  require(params.nSupports > 1, "Must have more than 1 support vector")
   require(params.nFeatures > 0, "Must have at least 1 feature")
   require(params.nClasses > 1, "Must have at least 2 classes")
   require(params.nDegree > 0, "Polynomial degree must be at least 1")
@@ -119,10 +119,8 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
       // therefore, if the decision function corresponding to that class is positive, that's a vote to that class
       for (i <- 0 until params.nClasses) {
         actualVotes(i) := decision(i)
-        when(decision(i) > 0) {
-          normalizedVotes(i) := 1.U
-        }.otherwise {
-          normalizedVotes(i) := 0.U
+        when(decision(i) > 0) {   normalizedVotes(i) := 1.U
+        }.otherwise {             normalizedVotes(i) := 0.U
         }
       }
     } else {  // special case for 2 classes since there's only 1 classifier for that, so we'll loop only once
@@ -135,7 +133,7 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
       }.otherwise {
         normalizedVotes(0) := 1.U
         normalizedVotes(1) := 0.U
-        actualVotes(0) := ConvertableTo[T].fromInt(0) - decision(0) // it is a vote to the other side, make it positive
+        actualVotes(0) := decision(0).abs() // it is a vote to the other side, make it positive
         actualVotes(1) := ConvertableTo[T].fromInt(0)
       }
     }
@@ -144,8 +142,8 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
   // for one vs one classifier implementation
   } else if (params.classifierType == 1) {
 
-    val classVotes = Seq.fill(params.nClasses)(List.fill(io.nClassifiers)(Wire(UInt(1.W)))) // votes per class per classifier
-    val rawVotes = Seq.fill(params.nClasses)(List.fill(io.nClassifiers)(Wire(params.protoData))) // raw votes array, to be summed
+    val classVotes = Seq.fill(params.nClasses,io.nClassifiers)(Wire(UInt(1.W))) // votes per class per classifier
+    val rawVotes = Seq.fill(params.nClasses,io.nClassifiers)(Wire(params.protoData)) // raw votes array, to be summed
 
     val combinations = mutable.ArrayBuffer[mutable.ArrayBuffer[Int]]() // will contain the mapping to the classifiers
     // this creates an array of the pairwise combinations of all classes
@@ -192,7 +190,7 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
           if (params.nClasses > 2) {
             if (j == combinations(i)(1)) {
               classVotes(j)(i) := 1.U
-              rawVotes(j)(i) := ConvertableTo[T].fromInt(0) - decision(i) // essentially, absolute value
+              rawVotes(j)(i) := decision(i).abs()
             } else {
               classVotes(j)(i) := 0.U
               rawVotes(j)(i) := ConvertableTo[T].fromInt(0)
@@ -200,7 +198,7 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
           } else {
             if (j == combinations(i)(0)) {
               classVotes(j)(i) := 1.U
-              rawVotes(j)(i) := ConvertableTo[T].fromInt(0) - decision(i)
+              rawVotes(j)(i) := decision(i).abs()
             } else {
               classVotes(j)(i) := 0.U
               rawVotes(j)(i) := ConvertableTo[T].fromInt(0)
@@ -211,8 +209,10 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
     }
 
     // sum up all the votes per class, you will use this to determine the final class of the data point
-    for (i <- 0 until params.nClasses) actualVotes(i) := rawVotes(i).reduce(_ + _) // sum up the raw votes
-    for (i <- 0 until params.nClasses) normalizedVotes(i) := classVotes(i).reduce(_ +& _) // damn, that +&
+    for (i <- 0 until params.nClasses) {
+      actualVotes(i) := rawVotes(i).reduce(_ + _) // sum up the raw votes
+      normalizedVotes(i) := classVotes(i).reduce(_ +& _) // damn, that +&
+    }
 
   // #############################################################
   // for error correcting output code classifier implementation
@@ -227,10 +227,8 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
     // creating an array containing the sign of the decision function
     // we will use this for the hamming distance measurement
     for (i <- 0 until io.nClassifiers) {
-      when (decision(i) > 0) {
-        decisionBits(i) := 1.U
-      } .otherwise {
-        decisionBits(i) := 0.U
+      when (decision(i) > 0) {  decisionBits(i) := 1.U
+      } .otherwise {            decisionBits(i) := 0.U
       }
     }
 
@@ -239,11 +237,8 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
     // the [0,1] is used for the hamming distance (sum of absolute values of binary scores
     for (i <- 0 until params.nClasses) {
       for (j <- 0 until io.nClassifiers) {
-        if(params.codeBook(i)(j) == 1) {
-          codeBookBits(i)(j) := 1.U
-        } else {
-          codeBookBits(i)(j) := 0.U
-        }
+        if(params.codeBook(i)(j) == 1) codeBookBits(i)(j) := 1.U
+        else codeBookBits(i)(j) := 0.U
       }
     }
 
