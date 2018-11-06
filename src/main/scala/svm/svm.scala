@@ -24,12 +24,11 @@ class SVMIO[T <: Data](params: SVMParams[T]) extends Bundle {
   // define the number of classifiers
   var nClassifiers = params.nClasses  // one vs rest default
   if (params.classifierType == 0) {
-    if (params.nClasses > 2) nClassifiers = params.nClasses
-    else nClassifiers = params.nClasses - 1
+    if (params.nClasses == 2) nClassifiers = params.nClasses - 1
   } else if (params.classifierType == 1) {   // one vs one
     nClassifiers = (params.nClasses*(params.nClasses - 1))/2
   } else if (params.classifierType == 2) {  // error correcting output code
-    nClassifiers = params.codeBook(0).length // # rows = # classes; # columns = # classifiers
+    nClassifiers = params.codeBook.head.length // # columns = # classifiers
   }
 
   // these are the arrays needed by the SVM for classification, these are generated through offline training
@@ -51,12 +50,21 @@ object SVMIO {
 }
 
 class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
-  require(params.nSupports > 0)
-  require(params.nFeatures > 0)
-  require(params.nClasses > 1)
-  require(params.nDegree > 0)
-  require(params.kernelType == 1 || params.kernelType == 0)
+  require(params.nSupports > 0, "Must have more than 1 support vector")
+  require(params.nFeatures > 0, "Must have at least 1 feature")
+  require(params.nClasses > 1, "Must have at least 2 classes")
+  require(params.nDegree > 0, "Polynomial degree must be at least 1")
+  require(params.kernelType == 1 || params.kernelType == 0, "Kernel type must be either 0 (poly) or 1 (rbf")
+  require(params.classifierType == 0 || params.classifierType == 1 || params.classifierType == 2,
+                                "Classifier type must be either 0 (one vs rest), 1 (one vs one), 2 (error correct)")
+  require(params.codeBook.length == params.nClasses,
+                                "Number of rows for codeBook should be the number of classes (nClasses)")
+
   val io = IO(new SVMIO[T](params))
+
+  // ##################################################################################################################
+  // KERNEL CALCULATION
+  // ##################################################################################################################
 
   // dot product, this is where the kernel goes
   val kernel = Wire(Vec(params.nSupports, params.protoData))
@@ -85,91 +93,142 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
     kernel := rbfKernel
   }
 
+  // ##################################################################################################################
+  // DECISION MAKING / VOTING CALCULATION
+  // ##################################################################################################################
+
   // at this point, the kernel has been computed, now we perform dot product with the weights
 
-  val decision = Seq.fill(io.nClassifiers)(Wire(params.protoData))    // the raw answer after all the dot product ops
-  val combinations = mutable.ArrayBuffer[mutable.ArrayBuffer[Int]]()  // will contain the mapping to the classifiers
-  val classVotes = Seq.fill(params.nClasses)(List.fill(io.nClassifiers)(Wire(UInt(1.W)))) // votes per class per classifier
-  val rawVotes = Seq.fill(params.nClasses)(List.fill(io.nClassifiers)(Wire(params.protoData)))  // raw votes array, to be summed
+  val decision = Seq.fill(io.nClassifiers)(Wire(params.protoData)) // the raw answer after all the dot product ops
 
-  // this creates an array of the pairwise combinations of all classes
-  // for example: if we have 4 classes, then the pattern would be: (0,1) (0,2) (0,3) (1,2) (1,3) (2,3)
-  // we need this since this is how the alpha vectors are configured (after training)
-  for (x <- 0 until params.nClasses) {
-    for (y <- x + 1 until params.nClasses) {
-      combinations += mutable.ArrayBuffer(x,y)
+
+  // #############################################################
+  // for one vs rest classifier implementation
+  if (params.classifierType == 0) {
+
+    for (i <- 0 until io.nClassifiers) { // do this for all the 1v1 classifiers that we have
+      decision(i) := (io.alphaVector(i).zip(kernel).map { case (a, b) => a * b }.reduce(_ + _)
+        + io.intercept(i)).asTypeOf(params.protoData)
     }
-  }
 
-  // now do the actual dot product of the kernel with the alphas (weights), add the intercept as well
-  for (i <- 0 until io.nClassifiers) {   // do this for all the 1v1 classifiers that we have
-    decision(i) := (io.alphaVector(i).zip(kernel).map{case (a,b) => a * b}.reduce(_ + _)
-      + io.intercept(i)).asTypeOf(params.protoData)
+    // sum up all the votes per class, you will use this to determine the final class of the data point
+    val actualVotes = Seq.fill(params.nClasses)(Wire(params.protoData)) // summed raw votes, in case of a tie
+    val normalizedVotes = Seq.fill(params.nClasses)(Wire(UInt((log2Ceil(io.nClassifiers) + 1).W))) // sum of votes / class
 
-    // now depending on the sign of the raw answer, that's the vote belonging to a class
-    // for example, if the (2,3) classifier has a negative sign (0), then it votes for class 3 (class 2 if positive)
-    // TODO: this can probably be optimized further? this is so long, but there is some pattern
-    when (decision(i) > 0) {
-      for (j <- 0 until params.nClasses) {
-        // there is a special case for 2 classes, we formed (0,1) classifier...
-        // but the positive vote of 1 should correspond to 1 which is not the first element
-        // this is contrary to the multi-class combination (check python script, it works)
-        if(params.nClasses > 2) {
-          if (j == combinations(i)(0)) {
-            classVotes(j)(i) := 1.U
-            rawVotes(j)(i) := decision(i)
+    if (params.nClasses > 2) {
+      for (i <- 0 until params.nClasses) {
+        actualVotes(i) := decision(i)
+        when(decision(i) > 0) {
+          normalizedVotes(i) := 1.U
+        }.otherwise {
+          normalizedVotes(i) := 0.U
+        }
+      }
+    } else {  // special case for 2 classes since there's only 1 classifier for that
+      when (decision(0) > 0) {
+        normalizedVotes(0) := 0.U
+        normalizedVotes(1) := 1.U
+        actualVotes(0) := ConvertableTo[T].fromInt(0)
+        actualVotes(1) := decision(0)
+      }.otherwise {
+        normalizedVotes(0) := 1.U
+        normalizedVotes(1) := 0.U
+        actualVotes(0) := ConvertableTo[T].fromInt(0) - decision(0)
+        actualVotes(1) := ConvertableTo[T].fromInt(0)
+      }
+    }
+
+    // put for output probing and checking for computation accuracy
+    io.rawVotes := actualVotes      // sometimes you end up with ties, this is for tie breaking classifications
+    io.classVotes := normalizedVotes  // normally, you just find the max value of normalized votes per classifier
+
+  // #############################################################
+  // for one vs one classifier implementation
+  } else if (params.classifierType == 1) {
+
+    val classVotes = Seq.fill(params.nClasses)(List.fill(io.nClassifiers)(Wire(UInt(1.W)))) // votes per class per classifier
+    val rawVotes = Seq.fill(params.nClasses)(List.fill(io.nClassifiers)(Wire(params.protoData))) // raw votes array, to be summed
+
+    val combinations = mutable.ArrayBuffer[mutable.ArrayBuffer[Int]]() // will contain the mapping to the classifiers
+    // this creates an array of the pairwise combinations of all classes
+    // for example: if we have 4 classes, then the pattern would be: (0,1) (0,2) (0,3) (1,2) (1,3) (2,3)
+    // we need this since this is how the alpha vectors are configured (after training)
+    for (x <- 0 until params.nClasses) {
+      for (y <- x + 1 until params.nClasses) {
+        combinations += mutable.ArrayBuffer(x, y)
+      }
+    }
+
+    // now do the actual dot product of the kernel with the alphas (weights), add the intercept as well
+    for (i <- 0 until io.nClassifiers) { // do this for all the 1v1 classifiers that we have
+      decision(i) := (io.alphaVector(i).zip(kernel).map { case (a, b) => a * b }.reduce(_ + _)
+        + io.intercept(i)).asTypeOf(params.protoData)
+
+      // now depending on the sign of the raw answer, that's the vote belonging to a class
+      // for example, if the (2,3) classifier has a negative sign (0), then it votes for class 3 (class 2 if positive)
+      // TODO: this can probably be optimized further? this is so long, but there is some pattern
+      when(decision(i) > 0) {
+        for (j <- 0 until params.nClasses) {
+          // there is a special case for 2 classes, we formed (0,1) classifier...
+          // but the positive vote of 1 should correspond to 1 which is not the first element
+          // this is contrary to the multi-class combination (check python script, it works)
+          if (params.nClasses > 2) {
+            if (j == combinations(i)(0)) {
+              classVotes(j)(i) := 1.U
+              rawVotes(j)(i) := decision(i)
+            } else {
+              classVotes(j)(i) := 0.U
+              rawVotes(j)(i) := ConvertableTo[T].fromInt(0)
+            }
           } else {
-            classVotes(j)(i) := 0.U
-            rawVotes(j)(i) := ConvertableTo[T].fromInt(0)
+            if (j == combinations(i)(1)) {
+              classVotes(j)(i) := 1.U
+              rawVotes(j)(i) := decision(i)
+            } else {
+              classVotes(j)(i) := 0.U
+              rawVotes(j)(i) := ConvertableTo[T].fromInt(0)
+            }
           }
-        } else {
-          if (j == combinations(i)(1)) {
-            classVotes(j)(i) := 1.U
-            rawVotes(j)(i) := decision(i)
+        }
+      }.otherwise {
+        for (j <- 0 until params.nClasses) {
+          if (params.nClasses > 2) {
+            if (j == combinations(i)(1)) {
+              classVotes(j)(i) := 1.U
+              rawVotes(j)(i) := ConvertableTo[T].fromInt(0) - decision(i)
+            } else {
+              classVotes(j)(i) := 0.U
+              rawVotes(j)(i) := ConvertableTo[T].fromInt(0)
+            }
           } else {
-            classVotes(j)(i) := 0.U
-            rawVotes(j)(i) := ConvertableTo[T].fromInt(0)
+            if (j == combinations(i)(0)) {
+              classVotes(j)(i) := 1.U
+              rawVotes(j)(i) := ConvertableTo[T].fromInt(0) - decision(i)
+            } else {
+              classVotes(j)(i) := 0.U
+              rawVotes(j)(i) := ConvertableTo[T].fromInt(0)
+            }
           }
         }
       }
-    } .otherwise {
-      for (j <- 0 until params.nClasses) {
-        if(params.nClasses > 2) {
-          if (j == combinations(i)(1)) {
-            classVotes(j)(i) := 1.U
-            rawVotes(j)(i) := ConvertableTo[T].fromInt(0) - decision(i)
-          } else {
-            classVotes(j)(i) := 0.U
-            rawVotes(j)(i) := ConvertableTo[T].fromInt(0)
-          }
-        } else {
-          if (j == combinations(i)(0)) {
-            classVotes(j)(i) := 1.U
-            rawVotes(j)(i) := ConvertableTo[T].fromInt(0) - decision(i)
-          } else {
-            classVotes(j)(i) := 0.U
-            rawVotes(j)(i) := ConvertableTo[T].fromInt(0)
-          }
-        }
-      }
     }
+
+    // sum up all the votes per class, you will use this to determine the final class of the data point
+    val actualVotes = Seq.fill(params.nClasses)(Wire(params.protoData)) // summed raw votes, in case of a tie
+    val normalizedVotes = Seq.fill(params.nClasses)(Wire(UInt((log2Ceil(io.nClassifiers) + 1).W))) // sum of votes / class
+
+    for (i <- 0 until params.nClasses) actualVotes(i) := rawVotes(i).reduce(_ + _) // sum up the raw votes
+    for (i <- 0 until params.nClasses) normalizedVotes(i) := classVotes(i).reduce(_ +& _) // damn, that +&
+
+    // put for output probing and checking for computation accuracy
+    io.rawVotes := actualVotes        // sometimes you end up with ties, this is for tie breaking classifications
+    io.classVotes := normalizedVotes  // normally, you just find the max value of normalized votes per classifier
+
+  // #############################################################
+  // for error correcting output code classifier implementation
+  } else {
+
   }
-
-  // sum up all the votes per class, you will use this to determine the final class of the data point
-  val actualVotes = Seq.fill(params.nClasses)(Wire(params.protoData)) // summed raw votes, in case of a tie
-  val normalizedVotes = Seq.fill(params.nClasses)(Wire(UInt((log2Ceil(io.nClassifiers)+1).W)))   // sum of votes / class
-
-  for (i <- 0 until params.nClasses) {
-    actualVotes(i) := rawVotes(i).reduce(_ + _) // sum up the raw votes
-  }
-
-  for (i <- 0 until params.nClasses) {
-    normalizedVotes(i) := classVotes(i).reduce(_ +& _) // damn, that & is very critical to extend the bits
-  }
-
-  // put for output probing and checking for computation accuracy
-  io.rawVotes := actualVotes        // sometimes you end up with ties, this is for tie breaking classifications
-  io.classVotes := normalizedVotes  // normally, you just find the max value of normalized votes per classifier
 
   // now, we select the class that has the highest number of votes
   // TODO: how to select the index with the most number of votes?

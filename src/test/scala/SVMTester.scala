@@ -10,67 +10,110 @@ class GoldenIntSVM(params: SVMParams[SInt]) {
   def poke(input: Seq[Int], supportVector: Seq[Seq[Int]], alphaVector: Seq[Seq[Int]],
            intercept: Seq[Int], flag: Int): Seq[Seq[Int]] = {
 
-    val probeCheck = mutable.ArrayBuffer.fill(alphaVector.length)(0)
+    // this is the decision function (raw output of each classifier), array of length #classifiers
+    val decision = mutable.ArrayBuffer.fill(alphaVector.length)(0)
+    var dotTemp = mutable.ArrayBuffer.fill(params.nSupports)(0) // used for the polynomial kernel
 
-    val combinations = mutable.ArrayBuffer[mutable.ArrayBuffer[Int]]()
-    val classVotes = mutable.ArrayBuffer.fill(params.nClasses)(0)
-    val rawVotes = mutable.ArrayBuffer.fill(params.nClasses)(0)
+    var classVotes = mutable.ArrayBuffer.fill(params.nClasses)(0) // contains binarized votes per class
+    var rawVotes = mutable.ArrayBuffer.fill(params.nClasses)(0) // contains the raw votes per class
 
-    // just like the one in svm.scala, the generation of all pairwise combinations of classes
-    for (x <- 0 until params.nClasses) {
-      for (y <- x + 1 until params.nClasses) {
-        combinations += mutable.ArrayBuffer(x, y)
-      }
-    }
-    var dotTemp = mutable.ArrayBuffer.fill(params.nSupports)(0)
+    // ################################################################################################################
+    // KERNEL CALCULATION
+    // ################################################################################################################
+
     // perform dot product, manually (that's why it's a nested for loop)
     // if you understand the required operations for the dot product, this loop shouldn't be that hard to understand
-
     for (x <- alphaVector.indices) { // number of classifiers
       for (y <- supportVector.indices) { // number of support vectors
         for (z <- supportVector(0).indices) { // number of features
           // kernel computation depends on the type: polynomial or rbf
-          if(params.kernelType == 0) { // for polynomial kernel, get the dot product first
-            dotTemp(y) = dotTemp(y) + input(z)*supportVector(y)(z)
+          if (params.kernelType == 0) { // for polynomial kernel, get the dot product first
+            dotTemp(y) = dotTemp(y) + input(z) * supportVector(y)(z)
           } else { // for rbf kernel, solve for the exponent value first
-            probeCheck(x) = probeCheck(x) + alphaVector(x)(y) *
-                            -1*(input(z) - supportVector(y)(z))*(input(z) - supportVector(y)(z))
+            decision(x) = decision(x) + alphaVector(x)(y) *
+              -1 * (input(z) - supportVector(y)(z)) * (input(z) - supportVector(y)(z))
           }
         }
         if (params.kernelType == 0) { // multiply the dot product by itself (only used by polynomial kernel)
-          probeCheck(x) = probeCheck(x) + alphaVector(x)(y)*pow(dotTemp(y).toDouble,params.nDegree.toDouble).toInt
+          decision(x) = decision(x) + alphaVector(x)(y) * pow(dotTemp(y).toDouble, params.nDegree.toDouble).toInt
         } else {
           // TODO: this is probably where you will put the exponential for the RBF kernel
         }
       }
       dotTemp = mutable.ArrayBuffer.fill(params.nSupports)(0) // reset accumulator (only used for polynomial kernel)
-      probeCheck(x) = probeCheck(x) + intercept(x) // final addition of the intercept per classifier
-
-      // similar structure with svm.scala, can possibly be optimized?
-      if (probeCheck(x) > 0) {
-        if(params.nClasses > 2) {
-          classVotes(combinations(x)(0)) = classVotes(combinations(x)(0)) + 1
-          rawVotes(combinations(x)(0)) = rawVotes(combinations(x)(0)) + probeCheck(x)
-        } else {
-          classVotes(combinations(x)(1)) = classVotes(combinations(x)(1)) + 1
-          rawVotes(combinations(x)(1)) = rawVotes(combinations(x)(1)) + probeCheck(x)
-        }
-      } else {
-        if(params.nClasses > 2) {
-          classVotes(combinations(x)(1)) = classVotes(combinations(x)(1)) + 1
-          rawVotes(combinations(x)(1)) = rawVotes(combinations(x)(1)) + -1*probeCheck(x)
-        } else {
-          classVotes(combinations(x)(0)) = classVotes(combinations(x)(0)) + 1
-          rawVotes(combinations(x)(0)) = rawVotes(combinations(x)(0)) + -1*probeCheck(x)
-        }
-      }
+      decision(x) = decision(x) + intercept(x) // final addition of the intercept per classifier
     }
 
-    if (flag == 1) {  // bypass just to show that these are the correct answers for the toy data
+    // ################################################################################################################
+    // DECISION MAKING / VOTING CALCULATION
+    // ################################################################################################################
+    
+    // #############################################################
+    // for one vs rest classifier implementation
+    if (params.classifierType == 0) {
+
+      if (params.nClasses > 2) {
+        rawVotes = decision
+        for (x <- 0 until params.nClasses) {
+          if (decision(x) > 0)  classVotes(x) = 1
+          else                  classVotes(x) = 0
+        }
+      } else {
+        if (decision(0) > 0) {
+          classVotes = mutable.ArrayBuffer(0, 1)
+          rawVotes = mutable.ArrayBuffer(0, decision(0))
+        } else {
+          classVotes = mutable.ArrayBuffer(1,0)
+          rawVotes = mutable.ArrayBuffer(-1*decision(0), 0)
+        }
+      }
+
+
+    // #############################################################
+    // for one vs one classifier implementation
+    } else if (params.classifierType == 1) {
+
+      val combinations = mutable.ArrayBuffer[mutable.ArrayBuffer[Int]]()
+      // just like the one in svm.scala, the generation of all pairwise combinations of classes
+      for (x <- 0 until params.nClasses) {
+        for (y <- x + 1 until params.nClasses) {
+          combinations += mutable.ArrayBuffer(x, y)
+        }
+      }
+
+      for (x <- alphaVector.indices) {
+        // similar structure with svm.scala, can possibly be optimized?
+        if (decision(x) > 0) {
+          if (params.nClasses > 2) {
+            classVotes(combinations(x)(0)) = classVotes(combinations(x)(0)) + 1
+            rawVotes(combinations(x)(0)) = rawVotes(combinations(x)(0)) + decision(x)
+          } else {
+            classVotes(combinations(x)(1)) = classVotes(combinations(x)(1)) + 1
+            rawVotes(combinations(x)(1)) = rawVotes(combinations(x)(1)) + decision(x)
+          }
+        } else {
+          if (params.nClasses > 2) {
+            classVotes(combinations(x)(1)) = classVotes(combinations(x)(1)) + 1
+            rawVotes(combinations(x)(1)) = rawVotes(combinations(x)(1)) + -1 * decision(x)
+          } else {
+            classVotes(combinations(x)(0)) = classVotes(combinations(x)(0)) + 1
+            rawVotes(combinations(x)(0)) = rawVotes(combinations(x)(0)) + -1 * decision(x)
+          }
+        }
+      }
+
+    // #############################################################
+    // for error correcting output code classifier implementation
+    } else {
+
+    }
+
+    if (flag == 1) { // bypass just to show that these are the correct answers for the toy data
       Seq(Seq(647, 297, 0, 347), Seq(2, 3, 0, 1))
     } else {
       Seq(rawVotes, classVotes) // interesting that this is OK, component vectors have diff length
     }
+
   }
 }
 
@@ -80,10 +123,9 @@ class SVMTester[T <: Data](c: SVM[T], params: SVMParams[SInt], flag: Int) extend
   // initialize test vectors/arrays with random ints
   var input = Seq.fill(params.nFeatures)(scala.util.Random.nextInt(16) - 8)
 
-  val nClassifiers = (params.nClasses * (params.nClasses - 1)) / 2
   var supportVector = Seq.fill(params.nSupports, params.nFeatures)(scala.util.Random.nextInt(10) - 5)
-  var alphaVector = Seq.fill(nClassifiers, params.nSupports)(scala.util.Random.nextInt(4) - 2)
-  var intercept = Seq.fill(nClassifiers)(scala.util.Random.nextInt(10) - 5)
+  var alphaVector = Seq.fill(c.io.nClassifiers, params.nSupports)(scala.util.Random.nextInt(4) - 2)
+  var intercept = Seq.fill(c.io.nClassifiers)(scala.util.Random.nextInt(10) - 5)
 
   // these are predefined inputs that can be used when testing in C code
   if (flag == 1) {
@@ -112,7 +154,7 @@ class SVMTester[T <: Data](c: SVM[T], params: SVMParams[SInt], flag: Int) extend
     supportVector(i).zip(c.io.supportVector(i)).foreach { case (sig, port) => poke(port, sig) }
   }
 
-  for (i <- 0 until nClassifiers) {
+  for (i <- 0 until c.io.nClassifiers) {
     alphaVector(i).zip(c.io.alphaVector(i)).foreach { case (sig, port) => poke(port, sig) }
   }
 
