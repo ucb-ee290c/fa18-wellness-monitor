@@ -244,8 +244,8 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
 
     // we can just do the distance measurement using this chain of function calls
     for (i <- 0 until params.nClasses) {
-      actualVotes(i) := decision.zip(params.codeBook(i)).map{ case (a,b) => (a - b).abs()}.reduce(_ + _)
-      normalizedVotes(i) := decisionBits.zip(codeBookBits(i)).map{ case (a,b) => (a - b).abs()}.reduce(_ +& _)
+      actualVotes(i) := decision.zip(params.codeBook(i)).map{ case (a,b) => -1*(a - b)*(a - b)}.reduce(_ + _)
+      normalizedVotes(i) := io.nClassifiers -  decisionBits.zip(codeBookBits(i)).map{ case (a,b) => (a - b).abs()}.reduce(_ +& _)
     }
   }
 

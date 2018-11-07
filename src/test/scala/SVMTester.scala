@@ -125,9 +125,10 @@ class GoldenIntSVM(params: SVMParams[SInt]) {
       // do the dot product in a nested loop, since I know how to do it
       for (x <- 0 until params.nClasses) {
         for (y <- alphaVector.indices) {  // number of classifiers, we'll compute for the distance
-          rawVotes(x) = rawVotes(x) + abs(decision(y) - params.codeBook(x)(y))
+          rawVotes(x) = rawVotes(x) + -1*pow((decision(y) - params.codeBook(x)(y)).toDouble,2.toDouble).toInt
           classVotes(x) = classVotes(x) + abs(decisionBits(y) - codeBookBits(x)(y))
         }
+        classVotes(x) = alphaVector.length - classVotes(x)
       }
     }
 
