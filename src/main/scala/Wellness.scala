@@ -172,9 +172,18 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real]
     filter.io.in.valid := in.valid
     filter.io.in.sync := false.B
     filter.io.in.bits := in.bits.data.asTypeOf(filterParams.protoData)
-    // Filter to Output
-    out.valid := filter.io.out.valid
-    out.bits.data := filter.io.out.bits.asTypeOf(out.bits.data)
+    // Filter to FFT
+    // TODO: JUSTIN TO CONNECT THIS
+    // FFT to Band Power
+    // TODO: JUSTIN TO CONNECT THIS
+    // Band Power to PCA
+    // TODO: JUSTIN/RACHEL TO CONNECT THIS
+    // PCA to SVM
+    // TODO: RACHEL/ADEL TO CONNECT THIS
+    // SVM to Output
+    // TODO: ADEL TO CONNECT THESE
+    // TODO: out.valid := ?
+    // TODO: out.bits.data := filter.io.out.bits.asTypeOf(out.bits.data)
   }
 }
 
