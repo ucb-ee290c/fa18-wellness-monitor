@@ -9,13 +9,13 @@ class SVMSpec extends FlatSpec with Matchers {
 
   it should "work with random Ints as parameters" in {
 
-    for (i <- 0 until 15) {
+    for (i <- 0 until 100) {
       val params = new SVMParams[SInt] {
         val protoData = SInt(32.W)
         val nSupports = scala.util.Random.nextInt(10) + 2 // minimum 1 support vector
         val nFeatures = scala.util.Random.nextInt(10) + 1 // minimum 1 feature
         val nClasses = scala.util.Random.nextInt(2) + 2   // minimum 2 classes
-        val nDegree = scala.util.Random.nextInt(3) + 1    // minimum degree 1 (linear kernel)
+        val nDegree = scala.util.Random.nextInt(1) + 1    // minimum degree 1 (linear kernel)
         val kernelType = scala.util.Random.nextInt(2)     // 0 (polynomial) or 1 (rbf)
         val classifierType = scala.util.Random.nextInt(3) // 0 = one vs rest, 1 = one vs one, 2 = error correcting
         val codeBook = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // -1 and 1
