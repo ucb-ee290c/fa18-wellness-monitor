@@ -5,17 +5,20 @@ import chisel3.util._
 import chisel3.experimental.FixedPoint
 import dspblocks._
 import dsptools.numbers._
-
 import firFilter._
 import fft._
 import bandpower._
-
+import pca._
+import memorybuffer._
 import freechips.rocketchip.amba.axi4stream._
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.regmapper._
 import freechips.rocketchip.tilelink._
 import freechips.rocketchip.subsystem._
+
+
+import scala.collection.Seq
 
 
 /**
@@ -41,19 +44,19 @@ abstract class WriteQueue
     // width (in bits) of the output interface
     val width = out.params.n * 8
     // instantiate a queue
-    val queue = Module(new Queue(UInt(out.params.dataBits.W), depth))
+    val streamInQueue = Module(new Queue(UInt(out.params.dataBits.W), depth))
     // connect queue output to streaming output
-    out.valid := queue.io.deq.valid
-    out.bits.data := queue.io.deq.bits
+    out.valid := streamInQueue.io.deq.valid
+    out.bits.data := streamInQueue.io.deq.bits
     // don't use last
     out.bits.last := false.B
-    queue.io.deq.ready := out.ready
+    streamInQueue.io.deq.ready := out.ready
 
     regmap(
-      // each write adds an entry to the queue
-      0x0 -> Seq(RegField.w(width, queue.io.enq)),
-      // read the number of entries in the queue
-      (width+7)/8 -> Seq(RegField.r(width, queue.io.count)),
+      // each write adds an entry to the Stream In Queue
+      0x0 -> Seq(RegField.w(width, streamInQueue.io.enq)),
+      // read the number of entries in the Stream In Queue
+      (width+7)/8 -> Seq(RegField.r(width, streamInQueue.io.count)),
     )
   }
 }
@@ -151,7 +154,11 @@ class TLReadQueue
 
 abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real]
 (
-  val filterParams: FIRFilterParams[T]
+  val filter1Params: FIRFilterParams[T],
+  val filter2Params: FIRFilterParams[T],
+  val filter3Params: FIRFilterParams[T],
+  val pcaParams: PCAParams[T],
+  val pcaVectorBufferParams: MemoryBufferParams[T]
 )(implicit p: Parameters) extends DspBlock[D, U, EO, EI, B] {
   val streamNode = AXI4StreamIdentityNode()
   val mem = None
@@ -164,34 +171,72 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real]
     val out = streamNode.out.head._1
 
     // Block instantiation
-    val filter = Module(new ConstantCoefficientFIRFilter(filterParams))
+    val filter1 = Module(new ConstantCoefficientFIRFilter(filter1Params))
+    val filter2 = Module(new ConstantCoefficientFIRFilter(filter2Params))
+    val filter3 = Module(new ConstantCoefficientFIRFilter(filter3Params))
+    val pca = Module(new PCA(pcaParams))
+    //val pcaVectorBuffer = Module(new MemoryBuffer(pcaVectorBufferParams))
+
+    val referencePCAVector = Seq(Seq(5, 0, -2), Seq(1, 2, 3))
+    val PCAVector = Wire(Vec(2, Vec(3, pcaParams.protoData)))
+    for(i <- 0 until 2) {
+        PCAVector(i) := VecInit(referencePCAVector(i).map(ConvertableTo[T].fromInt(_)))
+    }
+
+    val pcaInVector = Wire(Vec(3,pcaParams.protoData))
 
     in.ready := true.B
 
-    // Input to Filter
-    filter.io.in.valid := in.valid
-    filter.io.in.sync := false.B
-    filter.io.in.bits := in.bits.data.asTypeOf(filterParams.protoData)
+    // Input to Filters
+    filter1.io.in.valid := in.valid
+    filter1.io.in.sync := false.B
+    filter1.io.in.bits := in.bits.data.asTypeOf(filter1Params.protoData)
+
+    filter2.io.in.valid := in.valid
+    filter2.io.in.sync := false.B
+    filter2.io.in.bits := in.bits.data.asTypeOf(filter2Params.protoData)
+
+    filter3.io.in.valid := in.valid
+    filter3.io.in.sync := false.B
+    filter3.io.in.bits := in.bits.data.asTypeOf(filter3Params.protoData)
+
+    // TOP LEVEL INTEGRATION TRIALS
+    pcaInVector(0) := filter1.io.out.bits
+    pcaInVector(1) := filter2.io.out.bits
+    pcaInVector(2) := filter3.io.out.bits
+    pca.io.PCAVector := PCAVector
+    pca.io.in.bits := pcaInVector
+    pca.io.in.sync := false.B
+    pca.io.in.valid := filter1.io.out.valid
+
+
     // Filter to FFT
     // TODO: JUSTIN TO CONNECT THIS
+
     // FFT to Band Power
     // TODO: JUSTIN TO CONNECT THIS
     // Band Power to PCA
-    // TODO: JUSTIN/RACHEL TO CONNECT THIS
+
+
+
     // PCA to SVM
     // TODO: RACHEL/ADEL TO CONNECT THIS
     // SVM to Output
     // TODO: ADEL TO CONNECT THESE
-    // TODO: out.valid := ?
-    // TODO: out.bits.data := filter.io.out.bits.asTypeOf(out.bits.data)
+    out.valid := pca.io.out.valid
+    out.bits.data := Cat(pca.io.out.bits(0).asUInt(),pca.io.out.bits(1).asUInt())
   }
 }
 
 class TLWellnessDataPathBlock[T <: Data : Real]
 (
-  filterParams: FIRFilterParams[T] // TODO
+  filter1Params: FIRFilterParams[T],
+  filter2Params: FIRFilterParams[T],
+  filter3Params: FIRFilterParams[T],
+  pcaParams: PCAParams[T],
+  pcaVectorBufferParams: MemoryBufferParams[T]
 )(implicit p: Parameters) extends
-  WellnessDataPathBlock[TLClientPortParameters, TLManagerPortParameters, TLEdgeOut, TLEdgeIn, TLBundle, T](filterParams)
+  WellnessDataPathBlock[TLClientPortParameters, TLManagerPortParameters, TLEdgeOut, TLEdgeIn, TLBundle, T](filter1Params, filter2Params, filter3Params, pcaParams, pcaVectorBufferParams)
   with TLDspBlock
 
 /**
@@ -209,12 +254,16 @@ class TLWellnessDataPathBlock[T <: Data : Real]
   */
 class WellnessThing[T <: Data : Real]
 (
-  val filterParams: FIRFilterParams[T],
+  val filter1Params: FIRFilterParams[T],
+  val filter2Params: FIRFilterParams[T],
+  val filter3Params: FIRFilterParams[T],
+  val pcaParams: PCAParams[T],
+  val pcaVectorBufferParams: MemoryBufferParams[T],
   val depth: Int = 32
 )(implicit p: Parameters) extends LazyModule {
   // Instantiate lazy modules
   val writeQueue = LazyModule(new TLWriteQueue(depth))
-  val wellness = LazyModule(new TLWellnessDataPathBlock(filterParams))
+  val wellness = LazyModule(new TLWellnessDataPathBlock(filter1Params, filter2Params, filter3Params, pcaParams, pcaVectorBufferParams))
   val readQueue = LazyModule(new TLReadQueue(depth))
 
   // Connect streamNodes of queues and wellness monitor
@@ -233,14 +282,35 @@ trait HasPeripheryWellness extends BaseSubsystem {
   val outWidth: Int = inWidth
   val outBP: Int = inBP
 
-  val filterParams = FixedFIRFilterParams(
-    width = inWidth,
-    bp = inBP,
-    tapSeq = Seq.fill(5)(1.F(inWidth.W, inBP.BP))
-  )
+  val filter1Params = new FIRFilterParams[SInt] {
+    override val protoData = SInt(32.W)
+    override val taps = Seq(0.S, 1.S, 2.S, 3.S, 4.S, 5.S)
+  }
+
+  val filter2Params = new FIRFilterParams[SInt] {
+    override val protoData = SInt(32.W)
+    override val taps = Seq(5.S, 4.S, 3.S, 2.S, 1.S, 0.S)
+  }
+
+  val filter3Params = new FIRFilterParams[SInt] {
+    override val protoData = SInt(32.W)
+    override val taps = Seq(0.S, 1.S, 2.S, 2.S, 1.S, 0.S)
+  }
+
+  val pcaParams = new PCAParams[SInt] {
+    override val protoData = SInt(32.W)
+    override val nDimensions = 3 // input dimension, minimum 1
+    override val nFeatures = 2   // output dimension to SVM, minimum 1
+  }
+
+  val pcaVectorBufferParams = new MemoryBufferParams[SInt] {
+    override val protoData = SInt(32.W)
+    override val nRows:Int = pcaParams.nFeatures
+    override val nColumns:Int = pcaParams.nDimensions
+  }
 
   // Instantiate wellness monitor
-  val wellness = LazyModule(new WellnessThing(filterParams))
+  val wellness = LazyModule(new WellnessThing(filter1Params, filter2Params, filter3Params, pcaParams, pcaVectorBufferParams))
   // Connect memory interfaces to pbus
   pbus.toVariableWidthSlave(Some("wellnessWrite")) { wellness.writeQueue.mem.get }
   pbus.toVariableWidthSlave(Some("wellnessRead")) { wellness.readQueue.mem.get }
