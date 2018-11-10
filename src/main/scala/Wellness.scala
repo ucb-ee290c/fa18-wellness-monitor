@@ -10,6 +10,7 @@ import fft._
 import bandpower._
 import pca._
 import memorybuffer._
+import svm._
 import freechips.rocketchip.amba.axi4stream._
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
@@ -158,6 +159,7 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real]
   val filter2Params: FIRFilterParams[T],
   val filter3Params: FIRFilterParams[T],
   val pcaParams: PCAParams[T],
+  val svmParams: SVMParams[T],
   val pcaVectorBufferParams: MemoryBufferParams[T]
 )(implicit p: Parameters) extends DspBlock[D, U, EO, EI, B] {
   val streamNode = AXI4StreamIdentityNode()
@@ -175,6 +177,7 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real]
     val filter2 = Module(new ConstantCoefficientFIRFilter(filter2Params))
     val filter3 = Module(new ConstantCoefficientFIRFilter(filter3Params))
     val pca = Module(new PCA(pcaParams))
+    val svm = Module(new SVM(svmParams))
     //val pcaVectorBuffer = Module(new MemoryBuffer(pcaVectorBufferParams))
 
     val referencePCAVector = Seq(Seq(5, 0, -2), Seq(1, 2, 3))
@@ -183,7 +186,23 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real]
         PCAVector(i) := VecInit(referencePCAVector(i).map(ConvertableTo[T].fromInt(_)))
     }
 
-    val pcaInVector = Wire(Vec(3,pcaParams.protoData))
+    val referenceSVMSupportVector = Seq(Seq(1, 2), Seq(3, 4))
+    val SVMSupportVector = Wire(Vec(2, Vec(2, svmParams.protoData)))
+    for(i <- 0 until 2) {
+      SVMSupportVector(i) := VecInit(referenceSVMSupportVector(i).map(ConvertableTo[T].fromInt(_)))
+    }
+
+    val referenceSVMAlphaVector = Seq(Seq(7, 3))
+    val SVMAlphaVector = Wire(Vec(1, Vec(2, svmParams.protoData)))
+    for(i <- 0 until 1) {
+      SVMAlphaVector(i) := VecInit(referenceSVMAlphaVector(i).map(ConvertableTo[T].fromInt(_)))
+    }
+
+    val referenceSVMIntercept = Seq(4)
+    val SVMIntercept = VecInit(referenceSVMIntercept.map(ConvertableTo[T].fromInt(_)))
+    //for(i <- 0 until 1) {
+    //  SVMIntercept(i) := VecInit(ConvertableTo[T].fromInt(referenceSVMIntercept(i)))
+    //}
 
     in.ready := true.B
 
@@ -201,6 +220,7 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real]
     filter3.io.in.bits := in.bits.data.asTypeOf(filter3Params.protoData)
 
     // TOP LEVEL INTEGRATION TRIALS
+    val pcaInVector = Wire(Vec(3,pcaParams.protoData))
     pcaInVector(0) := filter1.io.out.bits
     pcaInVector(1) := filter2.io.out.bits
     pcaInVector(2) := filter3.io.out.bits
@@ -220,11 +240,19 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real]
 
 
     // PCA to SVM
-    // TODO: RACHEL/ADEL TO CONNECT THIS
+    svm.io.in.valid := pca.io.out.valid
+    svm.io.in.bits := pca.io.out.bits
+    svm.io.in.sync := false.B
+    svm.io.supportVector := SVMSupportVector
+    svm.io.alphaVector := SVMAlphaVector
+    svm.io.intercept := SVMIntercept
     // SVM to Output
     // TODO: ADEL TO CONNECT THESE
-    out.valid := pca.io.out.valid
-    out.bits.data := Cat(pca.io.out.bits(0).asUInt(),pca.io.out.bits(1).asUInt())
+
+
+
+    out.valid := svm.io.out.valid
+    out.bits.data := Cat(svm.io.rawVotes(0).asUInt(),svm.io.rawVotes(1).asUInt())
   }
 }
 
@@ -234,9 +262,10 @@ class TLWellnessDataPathBlock[T <: Data : Real]
   filter2Params: FIRFilterParams[T],
   filter3Params: FIRFilterParams[T],
   pcaParams: PCAParams[T],
+  svmParams: SVMParams[T],
   pcaVectorBufferParams: MemoryBufferParams[T]
 )(implicit p: Parameters) extends
-  WellnessDataPathBlock[TLClientPortParameters, TLManagerPortParameters, TLEdgeOut, TLEdgeIn, TLBundle, T](filter1Params, filter2Params, filter3Params, pcaParams, pcaVectorBufferParams)
+  WellnessDataPathBlock[TLClientPortParameters, TLManagerPortParameters, TLEdgeOut, TLEdgeIn, TLBundle, T](filter1Params, filter2Params, filter3Params, pcaParams, svmParams, pcaVectorBufferParams)
   with TLDspBlock
 
 /**
@@ -258,12 +287,13 @@ class WellnessThing[T <: Data : Real]
   val filter2Params: FIRFilterParams[T],
   val filter3Params: FIRFilterParams[T],
   val pcaParams: PCAParams[T],
+  val svmParams: SVMParams[T],
   val pcaVectorBufferParams: MemoryBufferParams[T],
   val depth: Int = 32
 )(implicit p: Parameters) extends LazyModule {
   // Instantiate lazy modules
   val writeQueue = LazyModule(new TLWriteQueue(depth))
-  val wellness = LazyModule(new TLWellnessDataPathBlock(filter1Params, filter2Params, filter3Params, pcaParams, pcaVectorBufferParams))
+  val wellness = LazyModule(new TLWellnessDataPathBlock(filter1Params, filter2Params, filter3Params, pcaParams, svmParams, pcaVectorBufferParams))
   val readQueue = LazyModule(new TLReadQueue(depth))
 
   // Connect streamNodes of queues and wellness monitor
@@ -303,6 +333,17 @@ trait HasPeripheryWellness extends BaseSubsystem {
     override val nFeatures = 2   // output dimension to SVM, minimum 1
   }
 
+  val svmParams = new SVMParams[SInt] {
+    val protoData = SInt(32.W)
+    val nSupports = 2
+    val nFeatures = pcaParams.nFeatures
+    val nClasses = 2
+    val nDegree = 1
+    val kernelType = 0
+    val classifierType = 1
+    val codeBook = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
+  }
+
   val pcaVectorBufferParams = new MemoryBufferParams[SInt] {
     override val protoData = SInt(32.W)
     override val nRows:Int = pcaParams.nFeatures
@@ -310,7 +351,7 @@ trait HasPeripheryWellness extends BaseSubsystem {
   }
 
   // Instantiate wellness monitor
-  val wellness = LazyModule(new WellnessThing(filter1Params, filter2Params, filter3Params, pcaParams, pcaVectorBufferParams))
+  val wellness = LazyModule(new WellnessThing(filter1Params, filter2Params, filter3Params, pcaParams, svmParams, pcaVectorBufferParams))
   // Connect memory interfaces to pbus
   pbus.toVariableWidthSlave(Some("wellnessWrite")) { wellness.writeQueue.mem.get }
   pbus.toVariableWidthSlave(Some("wellnessRead")) { wellness.readQueue.mem.get }
