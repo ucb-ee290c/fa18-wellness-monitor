@@ -9,14 +9,11 @@ import scala.math._
 
 class GoldenIntSVM(params: SVMParams[SInt]) {
   def poke(input: Seq[Int], supportVector: Seq[Seq[Int]], alphaVector: Seq[Seq[Int]],
-           intercept: Seq[Int], flag: Int): Seq[Seq[Int]] = {
+           intercept: Seq[Int], flag: Int): Seq[Seq[Long]] = {
 
     // this is the decision function (raw output of each classifier), array of length #classifiers
-    val decision = mutable.ArrayBuffer.fill(alphaVector.length)(0)
+    val decision = mutable.ArrayBuffer.fill(alphaVector.length)(0L)
     var dotTemp = mutable.ArrayBuffer.fill(params.nSupports)(0) // used for the polynomial kernel
-
-    var classVotes = mutable.ArrayBuffer.fill(params.nClasses)(0) // contains binarized votes per class
-    var rawVotes = mutable.ArrayBuffer.fill(params.nClasses)(0) // contains the raw votes per class
 
     // ################################################################################################################
     // KERNEL CALCULATION
@@ -48,7 +45,10 @@ class GoldenIntSVM(params: SVMParams[SInt]) {
     // ################################################################################################################
     // DECISION MAKING / VOTING CALCULATION
     // ################################################################################################################
-    
+
+    var classVotes = mutable.ArrayBuffer.fill(params.nClasses)(0L) // contains binarized votes per class
+    var rawVotes = mutable.ArrayBuffer.fill(params.nClasses)(0L) // contains the raw votes per class
+
     // #############################################################
     // for one vs rest classifier implementation
     if (params.classifierType == 0) {
@@ -125,10 +125,11 @@ class GoldenIntSVM(params: SVMParams[SInt]) {
       // do the dot product in a nested loop, since I know how to do it
       for (x <- 0 until params.nClasses) {
         for (y <- alphaVector.indices) {  // number of classifiers, we'll compute for the distance
-          rawVotes(x) = rawVotes(x) + -1*pow((decision(y) - params.codeBook(x)(y)).toDouble,2.toDouble).toInt
+          rawVotes(x) = rawVotes(x) + ((decision(y) - params.codeBook(x)(y))*(decision(y) - params.codeBook(x)(y)))
           classVotes(x) = classVotes(x) + abs(decisionBits(y) - codeBookBits(x)(y))
         }
         classVotes(x) = alphaVector.length - classVotes(x)
+        rawVotes(x) = -1*rawVotes(x)
       }
     }
 
@@ -170,6 +171,7 @@ class SVMTester[T <: Data](c: SVM[T], params: SVMParams[SInt], flag: Int) extend
   print("nClasses: " + params.nClasses + "\n")
   print("nSupports: " + params.nSupports + "\n")
   print("nFeatures: " + params.nFeatures + "\n")
+  print("classifierType: " + params.classifierType + "\n")
   print("Classifiers: " + params.codeBook.head.length + "\n")
 
   // pokes for all the vectors and arrays
