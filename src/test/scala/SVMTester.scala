@@ -1,5 +1,6 @@
 package svm
 
+import wellness._
 import chisel3._
 import dsptools.numbers._
 import dsptools.DspTester
@@ -203,7 +204,8 @@ class SVMTester[T <: Data](c: SVM[T], params: SVMParams[SInt], flag: Int) extend
 
 object SVMTester {
   def apply(params: SVMParams[SInt], flag: Int): Boolean = {
-    chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new SVM(params)) {
+    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new SVM(params)) {
+    dsptools.Driver.execute(() => new SVM(params), TestSetup.dspTesterOptions) {
       c => new SVMTester(c, params, flag)
     }
   }

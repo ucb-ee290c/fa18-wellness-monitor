@@ -1,5 +1,6 @@
 package bandpower
 
+import wellness._
 import chisel3._
 import dsptools.numbers._
 import dsptools.DspTester
@@ -26,7 +27,8 @@ class BandpowerTester[T <: Data](c: Bandpower[T], params: BandpowerParams[UInt])
 }
 object UIntBandpowerTester {
   def apply(params: BandpowerParams[UInt]): Boolean = {
-    chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new Bandpower(params)) {
+    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new Bandpower(params)) {
+    dsptools.Driver.execute(() => new Bandpower(params), TestSetup.dspTesterOptions) {
       c => new BandpowerTester(c, params)
     }
   }

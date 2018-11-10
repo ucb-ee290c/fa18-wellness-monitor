@@ -12,6 +12,8 @@ scalacOptions ++= Seq(
   "-Ywarn-value-discard",
 )
 
+parallelExecution in Test := false
+
 libraryDependencies ++= Seq(
   "edu.berkeley.cs" %% "rocket-dsptools" % "1.2-102318-SNAPSHOT"
 )

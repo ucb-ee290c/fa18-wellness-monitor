@@ -1,5 +1,6 @@
 package pca
 
+import wellness._
 import chisel3._
 import dsptools.numbers._
 import dsptools.DspTester
@@ -46,7 +47,8 @@ class PCATester[T <: Data](c: PCA[T], params: PCAParams[SInt]) extends DspTester
 
 object PCATester {
   def apply(params: PCAParams[SInt]): Boolean = {
-    chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new PCA(params)) {
+    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new PCA(params)) {
+    dsptools.Driver.execute(() => new PCA(params), TestSetup.dspTesterOptions) {
       c => new PCATester(c, params)
     }
   }

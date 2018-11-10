@@ -1,5 +1,6 @@
 package fft
 
+import wellness._
 import chisel3.core.UInt
 import dsptools.DspTester
 
@@ -59,7 +60,8 @@ class FFTBufferTester[T <: chisel3.Data](c: FFTBuffer[T], lanes: Int) extends Ds
 }
 object UIntFFTBufferTester {
   def apply(params: FFTBufferParams[UInt], lanes: Int): Boolean = {
-    chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new FFTBuffer(params)) {
+    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new FFTBuffer(params)) {
+    dsptools.Driver.execute(() => new FFTBuffer(params), TestSetup.dspTesterOptions) {
       c => new FFTBufferTester(c, lanes)
     }
   }

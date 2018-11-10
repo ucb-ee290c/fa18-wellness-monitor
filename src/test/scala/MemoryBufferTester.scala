@@ -1,5 +1,6 @@
 package memorybuffer
 
+import wellness._
 import chisel3._
 import dsptools.numbers._
 import dsptools.DspTester
@@ -67,7 +68,8 @@ class MemoryBufferTester[T <: chisel3.Data](c: MemoryBuffer[T], params: MemoryBu
 }
 object MemoryBufferTester {
   def apply(params: MemoryBufferParams[SInt]): Boolean = {
-    chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new MemoryBuffer(params)) {
+    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new MemoryBuffer(params)) {
+    dsptools.Driver.execute(() => new MemoryBuffer(params), TestSetup.dspTesterOptions) {
       c => new MemoryBufferTester(c, params)
     }
   }

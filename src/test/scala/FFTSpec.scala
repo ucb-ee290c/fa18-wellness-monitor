@@ -123,11 +123,16 @@ object spectrumTester {
 
   def setupTester[T <: Data](c: () => FFT[T], verbose: Boolean = false): FFTTester[T] = {
     var tester: FFTTester[T] = null
-    val manager = new TesterOptionsManager {
+    //val manager = new TesterOptionsManager {
+    val manager = new dsptools.DspTesterOptionsManager {
       testerOptions = TesterOptions(backendName = "firrtl", testerSeed = 7L)
       interpreterOptions = InterpreterOptions(setVerbose = false, writeVCD = verbose, maxExecutionDepth = 2000)
+      dspTesterOptions = dspTesterOptions.copy(
+        isVerbose = false
+      )
     }
-    chisel3.iotesters.Driver.execute(c, manager) (c => {
+    //chisel3.iotesters.Driver.execute(c, manager) (c => {
+    dsptools.Driver.execute(c, manager) (c => {
       val t = new FFTTester(c)
       tester = t
       t

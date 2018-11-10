@@ -2,6 +2,7 @@
 
 package iirFilter
 
+import wellness._
 import chisel3.core.UInt
 import dsptools.DspTester
 
@@ -72,7 +73,8 @@ class IIRFilterTester[T <: chisel3.Data](c: ConstantCoefficientIIRFilter[T], coe
 }
 object UIntIIRFilterTester {
   def apply(params: IIRFilterParams[UInt], coefficients_A: Seq[Int], coefficients_B: Seq[Int]): Boolean = {
-    chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new ConstantCoefficientIIRFilter(params)) {
+    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new ConstantCoefficientIIRFilter(params)) {
+    dsptools.Driver.execute(() => new ConstantCoefficientIIRFilter(params), TestSetup.dspTesterOptions) {
       c => new IIRFilterTester(c, coefficients_A,coefficients_B)
     }
   }

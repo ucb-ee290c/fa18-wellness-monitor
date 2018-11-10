@@ -1,5 +1,6 @@
 package firFilter
 
+import wellness._
 import chisel3.core._
 import dsptools.DspTester
 import dsptools.numbers.ConvertableTo
@@ -70,21 +71,24 @@ class FIRFilterFloatTester[T <: chisel3.Data](c: ConstantCoefficientFIRFilter[T]
 
 object UIntFIRFilterTester {
   def apply(params: FIRFilterParams[UInt], coefficients: Seq[Int]): Boolean = {
-    chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new ConstantCoefficientFIRFilter(params)) {
+    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new ConstantCoefficientFIRFilter(params)) {
+    dsptools.Driver.execute(() => new ConstantCoefficientFIRFilter(params), TestSetup.dspTesterOptions) {
       c => new FIRFilterIntTester(c, coefficients)
     }
   }
 }
 object SIntFIRFilterTester {
   def apply(params: FIRFilterParams[SInt], coefficients: Seq[Int]): Boolean = {
-    chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new ConstantCoefficientFIRFilter(params)) {
+    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new ConstantCoefficientFIRFilter(params)) {
+    dsptools.Driver.execute(() => new ConstantCoefficientFIRFilter(params), TestSetup.dspTesterOptions) {
       c => new FIRFilterIntTester(c, coefficients)
     }
   }
 }
 object FixedPointFIRFilterTester {
   def apply(params: FIRFilterParams[FixedPoint], coefficients: Seq[Double], dataWidth: Int, dataBP: Int): Boolean = {
-    chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new ConstantCoefficientFIRFilter(params)) {
+    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new ConstantCoefficientFIRFilter(params)) {
+    dsptools.Driver.execute(() => new ConstantCoefficientFIRFilter(params), TestSetup.dspTesterOptions) {
       c => new FIRFilterFloatTester(c, coefficients, dataWidth, dataBP)
     }
   }

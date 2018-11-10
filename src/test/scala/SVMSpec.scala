@@ -9,7 +9,7 @@ class SVMSpec extends FlatSpec with Matchers {
 
   it should "work with random Ints as parameters" in {
 
-    for (i <- 0 until 100) {
+    for (i <- 0 until 15) {
       val params = new SVMParams[SInt] {
         val protoData = SInt(64.W)
         val nSupports = scala.util.Random.nextInt(10) + 2 // minimum 1 support vector
