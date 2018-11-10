@@ -14,6 +14,13 @@
  */
 #define DATA_WIDTH 32
 
+#define DIMENSIONS 3         // number of channels going into the PCA
+#define FEATURES 2           // number of reduced dimensions going into the SVM
+#define SUPPORTS 2           // number of support vectors for SVM
+#define CLASSES 2            // number of classes
+
+#define CLASSIFIERS 1        // number of classifiers created
+
 uint64_t pack_data(double x) {
   uint64_t pack = (uint64_t)x;
   return pack;
@@ -37,6 +44,62 @@ int check_tol(double x, double exp_x, double x_tol) {
   return 1;
 }
 
+int PCA(int inputs[DIMENSIONS], int pcaVector[FEATURES][DIMENSIONS], int index) {
+
+  int PCAout[FEATURES];
+
+  for (int i=0 ; i<FEATURES ; i++) {
+    PCAout[i] = 0;
+    for (int j=0 ; j<DIMENSIONS ; j++) {
+      PCAout[i] = PCAout[i] + inputs[j]*pcaVector[i][j];
+    }
+  }
+  return PCAout[index];
+}
+
+int SVM(int inputs[FEATURES], int SVMSupportVector[SUPPORTS][FEATURES],
+        int SVMAlphaVector[CLASSIFIERS][SUPPORTS], int SVMIntercept[CLASSIFIERS], int index) {
+
+  int i,j;
+  int SVMout[CLASSES];
+  int kernel[SUPPORTS];
+
+  // computation of the kernel (dot product of inputs and support vector)
+  for(i=0 ; i < SUPPORTS ; i++) {
+    kernel[i] = 0;
+    for(j=0; j < FEATURES ; j++) {
+      kernel[i] = kernel[i] + inputs[j]*SVMSupportVector[i][j];
+      //printf("kernel %d %d %d\n",inputs[j],SVMSupportVector[i][j],kernel[i]);
+    }
+    //kernel[i] = pow(kernel[i],degree); // for polynomial degrees
+  }
+
+  int decision[CLASSIFIERS];
+
+  // final dot product of the kernel with the weights (alphas)
+  for(i=0 ; i < CLASSIFIERS ; i++) {
+    decision[i] = 0;
+    for(j=0 ; j < SUPPORTS ; j++) {
+      decision[i] = decision[i] + SVMAlphaVector[i][j]*kernel[j];
+    }
+    decision[i] = decision[i] + SVMIntercept[i];
+  }
+
+  // voting time, depends on the classifier type and number of classifiers
+  // try 2 first, just to have an initial test, just compute for the raw
+  // this logic is a translation from svm.scala line 126-138
+
+  if(decision[0] > 0) {
+    SVMout[0] = 0;
+    SVMout[1] = decision[0];
+  } else {
+    SVMout[0] = -1*decision[0];
+    SVMout[1] = 0;
+  }
+
+  return SVMout[index];
+}
+
 int main(void)
 {
   printf("%d\n", 3);
@@ -52,6 +115,34 @@ int main(void)
   double ex[24] = {5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,4,3,2,1};
   double tol = 0.5;
 
+  // the array constants, must be consistent with Wellness.scala
+  // TODO: I'm declaring this as an int for now, since I can't print doubles for debugging
+  int pcaVector[FEATURES][DIMENSIONS] = {{5,0,-2},{1,2,3}};
+  int SVMSupportVector[SUPPORTS][FEATURES] = {{1,2},{3,4}};
+  int SVMAlphaVector[CLASSIFIERS][SUPPORTS] = {{7,3}};
+  int SVMIntercept[CLASSIFIERS] = {4};
+
+  // TODO: Feed the computed features here
+  int inputs[DIMENSIONS] = {35,45,21};
+
+  int PCAout[FEATURES];
+  int SVMout[CLASSES];
+
+  for (i=0;i<FEATURES;i++) {
+    // it seems like passing a pointer isn't supported in this system, lol
+    PCAout[i] = PCA(inputs,pcaVector,i);
+  }
+
+  printf("pca0 %d\n",PCAout[0]);
+  printf("pca1 %d\n",PCAout[1]);
+
+  for (i=0;i<CLASSES;i++) {
+    SVMout[i] = SVM(PCAout,SVMSupportVector,SVMAlphaVector,SVMIntercept,i);
+  }
+
+  printf("svm0 %d\n",SVMout[0]);
+  printf("svm1 %d\n",SVMout[1]);
+  // ##################################### END DIAGNOSTIC
 
   for(i=0;i<24;i++) {
     write_data = pack_data(in[i]);
