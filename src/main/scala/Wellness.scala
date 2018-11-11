@@ -155,9 +155,9 @@ class TLReadQueue
 
 abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real]
 (
-  val filter1Params: lineLengthParams[T],
-  val filter2Params: lineLengthParams[T],
-  val filter3Params: lineLengthParams[T],
+  val filter1Params: FIRFilterParams[T],
+  val filter2Params: FIRFilterParams[T],
+  val filter3Params: FIRFilterParams[T],
   val pcaParams: PCAParams[T],
   val svmParams: SVMParams[T],
   val pcaVectorBufferParams: MemoryBufferParams[T]
@@ -173,9 +173,9 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real]
     val out = streamNode.out.head._1
 
     // Block instantiation
-    val filter1 = Module(new lineLength(filter1Params))
-    val filter2 = Module(new lineLength(filter2Params))
-    val filter3 = Module(new lineLength(filter3Params))
+    val filter1 = Module(new ConstantCoefficientFIRFilter(filter1Params))
+    val filter2 = Module(new ConstantCoefficientFIRFilter(filter2Params))
+    val filter3 = Module(new ConstantCoefficientFIRFilter(filter3Params))
     val pca = Module(new PCA(pcaParams))
     val svm = Module(new SVM(svmParams))
     //val pcaVectorBuffer = Module(new MemoryBuffer(pcaVectorBufferParams))
@@ -252,9 +252,9 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real]
 
 class TLWellnessDataPathBlock[T <: Data : Real]
 (
-  filter1Params: lineLengthParams[T],
-  filter2Params: lineLengthParams[T],
-  filter3Params: lineLengthParams[T],
+  filter1Params: FIRFilterParams[T],
+  filter2Params: FIRFilterParams[T],
+  filter3Params: FIRFilterParams[T],
   pcaParams: PCAParams[T],
   svmParams: SVMParams[T],
   pcaVectorBufferParams: MemoryBufferParams[T]
@@ -277,9 +277,9 @@ class TLWellnessDataPathBlock[T <: Data : Real]
   */
 class WellnessThing[T <: Data : Real]
 (
-  val filter1Params: lineLengthParams[T],
-  val filter2Params: lineLengthParams[T],
-  val filter3Params: lineLengthParams[T],
+  val filter1Params: FIRFilterParams[T],
+  val filter2Params: FIRFilterParams[T],
+  val filter3Params: FIRFilterParams[T],
   val pcaParams: PCAParams[T],
   val svmParams: SVMParams[T],
   val pcaVectorBufferParams: MemoryBufferParams[T],
@@ -306,17 +306,17 @@ trait HasPeripheryWellness extends BaseSubsystem {
   val outWidth: Int = inWidth
   val outBP: Int = inBP
 
-  val filter1Params = new lineLengthParams[SInt] {
+  val filter1Params = new FIRFilterParams[SInt] {
     override val protoData = SInt(32.W)
     override val taps = Seq(0.S, 1.S, 2.S, 3.S, 4.S, 5.S)
   }
 
-  val filter2Params = new lineLengthParams[SInt] {
+  val filter2Params = new FIRFilterParams[SInt] {
     override val protoData = SInt(32.W)
     override val taps = Seq(5.S, 4.S, 3.S, 2.S, 1.S, 0.S)
   }
 
-  val filter3Params = new lineLengthParams[SInt] {
+  val filter3Params = new FIRFilterParams[SInt] {
     override val protoData = SInt(32.W)
     override val taps = Seq(0.S, 1.S, 2.S, 2.S, 1.S, 0.S)
   }
