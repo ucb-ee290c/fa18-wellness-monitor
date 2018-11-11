@@ -1,5 +1,6 @@
 package features
 
+import breeze.numerics.log10
 import chisel3._
 import chisel3.util.RegEnable
 import chisel3.experimental.FixedPoint
@@ -36,8 +37,11 @@ object AbsVal {
   }
 }
 
-class lineLength[T <: chisel3.Data : Ring : Order](val params: lineLengthParams[T]) extends Module {
+class lineLength[T <: chisel3.Data : Ring : Order : BinaryRepresentation](val params: lineLengthParams[T]) extends Module {
+  // Check that there are at least 2 line length windows to be averaged.
   require(params.windowSize > 1)
+  // Check that window size is a power of 2. This is enforced due to output normalization, to make division easier.
+  require( (params.windowSize & (params.windowSize - 1)) == 0 )
   val io = IO(lineLengthIO[T](params))
 
   val shift_en = Wire(Bool())
@@ -73,8 +77,9 @@ class lineLength[T <: chisel3.Data : Ring : Order](val params: lineLengthParams[
     shift_en := false.B
   }
 
-  //TODO: Output is not being normalized yet!! Need to figure out a way to normalize UInts for non power of 2 values of window size.
-  io.out.bits := accumulator.last
+  //Output normalization: Take the average over the given window size. Currently only works for window sizes
+  // of powers of 2.
+  io.out.bits := accumulator.last >> (log10(params.windowSize) / log10(2)).toInt
   io.out.valid := (ShiftRegisterWithReset(io.in.valid, params.windowSize, false.B, shift_en) && shift_en)
   io.out.sync := (ShiftRegisterWithReset(io.in.sync, params.windowSize, false.B, shift_en) && shift_en)
 

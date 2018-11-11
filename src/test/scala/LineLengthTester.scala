@@ -1,6 +1,6 @@
 package features
 
-import breeze.numerics.abs
+import breeze.numerics.{abs, floor}
 import wellness._
 import chisel3.core._
 import dsptools.DspTester
@@ -21,7 +21,7 @@ class GoldenDoubleLineLength(windowSize: Int) {
     for(i <- 0 until windowSize-1) {
       accumulator += lineLengths(i)
     }
-    accumulator///windowSize
+    floor(accumulator/windowSize)
   }
 }
 
@@ -29,9 +29,9 @@ class lineLengthFloatTester[T <: chisel3.Data](c: lineLength[T], windowSize: Int
   val filter = new GoldenDoubleLineLength(windowSize)
 
   for(i <- 0 until 100) {
-    var input = scala.util.Random.nextFloat*8
+    var input = scala.util.Random.nextFloat*32
     if (testType == 0) {
-      input = scala.util.Random.nextInt(8)
+      input = scala.util.Random.nextInt(32)
     }
 
     val goldenModelResult = filter.poke(input)

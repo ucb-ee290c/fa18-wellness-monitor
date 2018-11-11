@@ -1,5 +1,6 @@
 package features
 
+import breeze.numerics.pow
 import chisel3._
 import chisel3.core.FixedPoint
 import dsptools.numbers._
@@ -13,7 +14,7 @@ class LineLengthSpec extends FlatSpec with Matchers {
   it should "multiply its input stream with correct coefficients at correct timesteps (UInt)" in {
 
     for(i <- 0 until 15) {
-      val window_size = scala.util.Random.nextInt(50) + 2
+      val window_size = pow(2,scala.util.Random.nextInt(6) + 1)
 
       val params = new lineLengthParams[UInt] {
         val protoData = UInt(16.W)
@@ -27,7 +28,7 @@ class LineLengthSpec extends FlatSpec with Matchers {
   it should "multiply its input stream with correct coefficients at correct timesteps (SInt)" in {
 
     for(i <- 0 until 15) {
-      val window_size = scala.util.Random.nextInt(50) + 2
+      val window_size = pow(2,scala.util.Random.nextInt(6) + 1)
 
       val params = new lineLengthParams[SInt] {
         val protoData = SInt(16.W)
@@ -41,7 +42,7 @@ class LineLengthSpec extends FlatSpec with Matchers {
   it should "multiply its input stream with correct coefficients at correct timesteps (FixedPoint)" in {
 
     for(i <- 0 until 15) {
-      val window_size = scala.util.Random.nextInt(50) + 2
+      val window_size = pow(2,scala.util.Random.nextInt(6) + 1)
       val dataWidth = 32 + 2*i
       val dataBP = 16 + i
 
