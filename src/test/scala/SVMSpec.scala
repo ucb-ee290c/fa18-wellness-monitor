@@ -32,14 +32,14 @@ class SVMSpec extends FlatSpec with Matchers {
   it should "work with random Floats" in {
     val debug = 0
 
-    for (i <- 0 until 10) {
+    for (i <- 0 until 100) {
       val classifierTypenum = scala.util.Random.nextInt(3)
       val kernelTypenum = scala.util.Random.nextInt(2)
 
       val params = new SVMParams[FixedPoint] {
         val protoData = FixedPoint(64.W,16.BP)
-        val nSupports = scala.util.Random.nextInt(3) + 2 // minimum 1 support vector
-        val nFeatures = scala.util.Random.nextInt(3) + 1 // minimum 1 feature
+        val nSupports = scala.util.Random.nextInt(5) + 2 // minimum 1 support vector
+        val nFeatures = scala.util.Random.nextInt(5) + 1 // minimum 1 feature
         val nClasses = scala.util.Random.nextInt(2) + 2   // minimum 2 classes
         val nDegree = scala.util.Random.nextInt(2) + 1    // minimum degree 1 (linear kernel)
         val kernelType = if(kernelTypenum == 0) "poly" else "rbf"

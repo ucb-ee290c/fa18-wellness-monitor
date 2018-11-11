@@ -37,7 +37,7 @@ class GoldenSVM(nSupports: Int, nFeatures: Int, nClasses: Int, nDegree: Int,
           }
         }
         if (kernelType == "poly") { // multiply the dot product by itself (only used by polynomial kernel)
-          decision(x) = decision(x) + alphaVector(x)(y) * pow(dotTemp(y).toDouble, nDegree.toDouble).toInt
+          decision(x) = decision(x) + alphaVector(x)(y) * pow(dotTemp(y), nDegree.toDouble)
         } else {
           // TODO: this is probably where you will put the exponential for the RBF kernel
         }
@@ -242,12 +242,11 @@ class SVMTester[T <: Data](c: SVM[T], nSupports: Int, nFeatures: Int, nClasses: 
       expect(c.io.classVotes(i), goldenModelResult(1)(i))
     } else {
       // due to the series of multiply and accumulates, error actually blows up, let's be lenient
-      fixTolLSBs.withValue(c.params.protoData.getWidth / 2) {
+      fixTolLSBs.withValue(20) { // +-16, 4 extra bits after the binary point
         expect(c.io.rawVotes(i), goldenModelResult(0)(i))
       }
-      fixTolLSBs.withValue(2) { // allow +-2 error for votes due to error in raw score accuracy
-        expect(c.io.classVotes(i), goldenModelResult(1)(i))
-      }
+      // strict check for the class votes
+      expect(c.io.classVotes(i), goldenModelResult(1)(i))
     }
   }
 }
