@@ -37,10 +37,10 @@ class SVMSpec extends FlatSpec with Matchers {
 
       val params = new SVMParams[FixedPoint] {
         val protoData = FixedPoint(64.W,16.BP)
-        val nSupports = scala.util.Random.nextInt(5) + 2 // minimum 1 support vector
-        val nFeatures = scala.util.Random.nextInt(5) + 1 // minimum 1 feature
+        val nSupports = scala.util.Random.nextInt(3) + 2 // minimum 1 support vector
+        val nFeatures = scala.util.Random.nextInt(3) + 1 // minimum 1 feature
         val nClasses = scala.util.Random.nextInt(2) + 2   // minimum 2 classes
-        val nDegree = scala.util.Random.nextInt(3) + 1    // minimum degree 1 (linear kernel)
+        val nDegree = scala.util.Random.nextInt(2) + 1    // minimum degree 1 (linear kernel)
         val kernelType = if(kernelTypenum == 0) "poly" else "rbf"
         val classifierType = if(classifierTypenum == 0) "ovr" else if (classifierTypenum == 1) "ovo" else "ecoc"
         val codeBook = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // -1 and 1
