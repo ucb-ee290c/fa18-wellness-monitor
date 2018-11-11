@@ -22,18 +22,6 @@ trait FIRFilterParams[T <: Data] {
   //TODO: Data Buffer Type -> Linear Shift Register or Circular Buffer?
 }
 
-case class FixedFIRFilterParams(
-                                 width: Int,
-                                 bp: Int,
-                                 tapSeq: Seq[FixedPoint]
-) extends FIRFilterParams[FixedPoint] {
-  val protoData = FixedPoint(width.W, bp.BP)
-  val taps = tapSeq
-}
-
-/**
-  * Bundle type as IO for FIR Filter modules
-  */
 class FIRFilterIO[T <: chisel3.Data : Ring](params: FIRFilterParams[T]) extends Bundle {
   val in = Flipped(ValidWithSync(params.protoData.cloneType))
   val out = ValidWithSync(params.protoData.cloneType)
@@ -51,11 +39,22 @@ class ConstantCoefficientFIRFilter[T <: chisel3.Data : Ring](val params: FIRFilt
 
   val shift_en = Wire(Bool())
 
-  val regs = mutable.ArrayBuffer[T]()
+  val regs = RegInit(Vec(params.taps.length, params.protoData), VecInit(List.fill(params.taps.length)(Ring[T].zero)))
+
   for(i <- params.taps.indices) {
-    if(i == 0) regs += RegEnable(io.in.bits, Ring[T].zero, shift_en)
-    else       regs += RegEnable(regs(i - 1), Ring[T].zero, shift_en)
+    when(shift_en === true.B) {
+      if (i == 0) regs(i) := io.in.bits
+      else regs(i) := regs(i - 1)
+    } .otherwise {
+      regs(i) := regs(i)
+    }
   }
+
+//  val regs = mutable.ArrayBuffer[T]()
+//  for(i <- params.taps.indices) {
+//    if(i == 0) regs += RegEnable(io.in.bits, Ring[T].zero, shift_en)
+//    else       regs += RegEnable(regs(i - 1), Ring[T].zero, shift_en)
+//  }
 
   val muls = mutable.ArrayBuffer[T]()
   for(i <- params.taps.indices) {

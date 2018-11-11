@@ -51,6 +51,13 @@ class FIRFilterIntTester[T <: chisel3.Data](c: ConstantCoefficientFIRFilter[T], 
 class FIRFilterFloatTester[T <: chisel3.Data](c: ConstantCoefficientFIRFilter[T], coefficients: Seq[Double], dataWidth: Int, dataBP: Int) extends DspTester(c) {
   val filter = new GoldenDoubleFIRFilter(coefficients)
 
+  //print(s"Coefficients: ")
+  //for(i <- coefficients.indices) {
+  //  print(s"Coeff:${coefficients(i)} - ")
+  //  print(s"Tap: ${peek(c.params.taps(i))}\n")
+  //}
+  //print(s"\n------------\n")
+
   for(i <- 0 until 100) {
     val input = scala.util.Random.nextFloat*8
 
@@ -58,14 +65,17 @@ class FIRFilterFloatTester[T <: chisel3.Data](c: ConstantCoefficientFIRFilter[T]
 
     poke(c.io.in.bits, input)
     poke(c.io.in.valid, 1)
+    //print(s"Input: ${peek(c.io.in.bits)}\n")
 
     step(1)
+    //print(s"Got: ${peek(c.io.out.bits)}\n")
+    //print(s"Expected: $goldenModelResult\n")
+    //print(s"--\n")
 
-    fixTolLSBs.withValue(9) {
+    fixTolLSBs.withValue(c.params.protoData.getWidth/2) {
       expect(c.io.out.bits, goldenModelResult, s"i $i, input $input, gm $goldenModelResult, ${peek(c.io.out.bits)}")
     }
 
-    //expect(c.io.out.bits, goldenModelResult, s"i $i, input $input, gm $goldenModelResult, ${peek(c.io.out.bits)}")
   }
 }
 

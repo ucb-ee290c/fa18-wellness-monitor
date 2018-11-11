@@ -44,12 +44,12 @@ class FIRFilterSpec extends FlatSpec with Matchers {
     }
   }
 
-/*  it should "multiply its input stream with correct coefficients at correct timesteps (FixedPoint)" in {
+  it should "multiply its input stream with correct coefficients at correct timesteps (FixedPoint)" in {
 
     for(i <- 0 until 15) {
       val tap_count = scala.util.Random.nextInt(50) + 1
-      val dataWidth = 8+2*i
-      val dataBP = 4+i
+      val dataWidth = 32 + 2*i
+      val dataBP = 16 + i
 
       val coefficients = mutable.ArrayBuffer[Double]()
       for(j <- 0 until tap_count) coefficients += (-32 + scala.util.Random.nextFloat * 64)
@@ -60,5 +60,5 @@ class FIRFilterSpec extends FlatSpec with Matchers {
 
       FixedPointFIRFilterTester(params, coefficients, dataWidth, dataBP) should be (true)
     }
-  }*/
+  }
 }
