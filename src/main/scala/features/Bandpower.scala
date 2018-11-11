@@ -1,4 +1,4 @@
-package bandpower
+package features
 
 import chisel3._
 //import chisel3.core.FixedPoint
