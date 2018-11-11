@@ -7,7 +7,7 @@ import dspblocks._
 import dsptools.numbers._
 import firFilter._
 import fft._
-import bandpower._
+import features._
 import pca._
 import memorybuffer._
 import svm._
@@ -235,9 +235,7 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real]
 
     // FFT to Band Power
     // TODO: JUSTIN TO CONNECT THIS
-    // Band Power to PCA
-
-
+    // Features to PCA
 
     // PCA to SVM
     svm.io.in.valid := pca.io.out.valid
@@ -247,10 +245,6 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real]
     svm.io.alphaVector := SVMAlphaVector
     svm.io.intercept := SVMIntercept
     // SVM to Output
-    // TODO: ADEL TO CONNECT THESE
-
-
-
     out.valid := svm.io.out.valid
     out.bits.data := Cat(svm.io.rawVotes(0).asUInt(),svm.io.rawVotes(1).asUInt())
   }

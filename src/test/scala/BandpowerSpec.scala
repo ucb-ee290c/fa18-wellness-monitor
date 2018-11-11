@@ -1,4 +1,4 @@
-package bandpower
+package features
 
 import chisel3._
 import org.scalatest.{FlatSpec, Matchers}

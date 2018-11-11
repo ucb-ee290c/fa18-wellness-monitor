@@ -1,4 +1,4 @@
-package bandpower
+package features
 
 import wellness._
 import chisel3._
