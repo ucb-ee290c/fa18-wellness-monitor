@@ -43,9 +43,6 @@ class SVMIO[T <: Data](params: SVMParams[T]) extends Bundle {
   val rawVotes = Output(Vec(params.nClasses, params.protoData))
   val classVotes = Output(Vec(params.nClasses,UInt((log2Ceil(nClassifiers)+1).W)))
 
-  val kernelProbe = Output(Vec(params.nSupports, params.protoData))
-  val decisionProbe = Output(Vec(nClassifiers, params.protoData))
-
   override def cloneType: this.type = SVMIO(params).asInstanceOf[this.type]
 }
 object SVMIO {
@@ -254,9 +251,6 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
   // put for output probing and checking for computation accuracy
   io.rawVotes := actualVotes      // sometimes you end up with ties, this is for tie breaking classifications
   io.classVotes := normalizedVotes  // normally, you just find the max value of normalized votes per classifier
-
-  io.kernelProbe := kernel
-  io.decisionProbe := decision
 
   // now, we select the class that has the highest number of votes
   // TODO: how to select the index with the most number of votes?

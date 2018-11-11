@@ -244,7 +244,7 @@ class SVMTester[T <: Data](c: SVM[T], nSupports: Int, nFeatures: Int, nClasses: 
         print("tolerance bits" + c.params.protoData.getWidth + "\n")
         expect(c.io.rawVotes(i), goldenModelResult(0)(i))
       }
-      fixTolLSBs.withValue(1) { // allow +-1 error for votes due to error in raw score accuracy
+      fixTolLSBs.withValue(2) { // allow +-2 error for votes due to error in raw score accuracy
         expect(c.io.classVotes(i), goldenModelResult(1)(i))
       }
     }
