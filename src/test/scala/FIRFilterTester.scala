@@ -18,15 +18,8 @@ class GoldenDoubleFIRFilter(taps: Seq[Double]) {
   }
 }
 
-class FIRFilterFloatTester[T <: chisel3.Data](c: ConstantCoefficientFIRFilter[T], coefficients: Seq[Double], dataWidth: Int, dataBP: Int, testType: Int) extends DspTester(c) {
+class FIRFilterFloatTester[T <: chisel3.Data](c: ConstantCoefficientFIRFilter[T], coefficients: Seq[Double], testType: Int) extends DspTester(c) {
   val filter = new GoldenDoubleFIRFilter(coefficients)
-
-  //print(s"Coefficients: ")
-  //for(i <- coefficients.indices) {
-  //  print(s"Coeff:${coefficients(i)} - ")
-  //  print(s"Tap: ${peek(c.params.taps(i))}\n")
-  //}
-  //print(s"\n------------\n")
 
   for(i <- 0 until 100) {
     var input = scala.util.Random.nextFloat*8
@@ -41,9 +34,6 @@ class FIRFilterFloatTester[T <: chisel3.Data](c: ConstantCoefficientFIRFilter[T]
     //print(s"Input: ${peek(c.io.in.bits)}\n")
 
     step(1)
-    //print(s"Got: ${peek(c.io.out.bits)}\n")
-    //print(s"Expected: $goldenModelResult\n")
-    //print(s"--\n")
 
     if (testType == 0) {
       expect(c.io.out.bits, goldenModelResult, s"i $i, input $input, gm $goldenModelResult, ${peek(c.io.out.bits)}")
@@ -58,27 +48,22 @@ class FIRFilterFloatTester[T <: chisel3.Data](c: ConstantCoefficientFIRFilter[T]
 
 object UIntFIRFilterTester {
   def apply(params: FIRFilterParams[UInt], coefficients: Seq[Int]): Boolean = {
-    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new ConstantCoefficientFIRFilter(params)) {
     dsptools.Driver.execute(() => new ConstantCoefficientFIRFilter(params), TestSetup.dspTesterOptions) {
-      //c => new FIRFilterIntTester(c, coefficients)
-      c => new FIRFilterFloatTester(c, coefficients.map(_.toDouble), 0, 0, 0)
+      c => new FIRFilterFloatTester(c, coefficients.map(_.toDouble), 0)
     }
   }
 }
 object SIntFIRFilterTester {
   def apply(params: FIRFilterParams[SInt], coefficients: Seq[Int]): Boolean = {
-    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new ConstantCoefficientFIRFilter(params)) {
     dsptools.Driver.execute(() => new ConstantCoefficientFIRFilter(params), TestSetup.dspTesterOptions) {
-      //c => new FIRFilterIntTester(c, coefficients)
-      c => new FIRFilterFloatTester(c, coefficients.map(_.toDouble), 0, 0, 0)
+      c => new FIRFilterFloatTester(c, coefficients.map(_.toDouble),  0)
     }
   }
 }
 object FixedPointFIRFilterTester {
-  def apply(params: FIRFilterParams[FixedPoint], coefficients: Seq[Double], dataWidth: Int, dataBP: Int): Boolean = {
-    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new ConstantCoefficientFIRFilter(params)) {
+  def apply(params: FIRFilterParams[FixedPoint], coefficients: Seq[Double]): Boolean = {
     dsptools.Driver.execute(() => new ConstantCoefficientFIRFilter(params), TestSetup.dspTesterOptions) {
-      c => new FIRFilterFloatTester(c, coefficients, dataWidth, dataBP, 1)
+      c => new FIRFilterFloatTester(c, coefficients, 1)
     }
   }
 }

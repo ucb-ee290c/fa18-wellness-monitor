@@ -30,7 +30,13 @@ object lineLengthIO {
     new lineLengthIO(params)
 }
 
-class lineLength[T <: chisel3.Data : Ring](val params: lineLengthParams[T]) extends Module {
+object AbsVal {
+  def apply[T <: Data : Ring](sel: Bool, a: T, b: T): T = {
+    Mux(sel, a - b, b - a)
+  }
+}
+
+class lineLength[T <: chisel3.Data : Ring : Order](val params: lineLengthParams[T]) extends Module {
   require(params.windowSize > 1)
   val io = IO(lineLengthIO[T](params))
 
@@ -48,7 +54,7 @@ class lineLength[T <: chisel3.Data : Ring](val params: lineLengthParams[T]) exte
 
   for(i <- 0 until params.windowSize-1) {
     when(shift_en === true.B) {
-      if (i == 0) lineLengths(i) := io.in.bits - pastVal
+      if (i == 0) lineLengths(i) := AbsVal( io.in.bits >= pastVal, io.in.bits, pastVal )
       else lineLengths(i) := lineLengths(i - 1)
     } .otherwise {
       lineLengths(i) := lineLengths(i)
@@ -67,7 +73,8 @@ class lineLength[T <: chisel3.Data : Ring](val params: lineLengthParams[T]) exte
     shift_en := false.B
   }
 
-  io.out.bits := accumulator.last * (1/params.windowSize).asUInt.asTypeOf(params.protoData)
+  //TODO: Output is not being normalized yet!! Need to figure out a way to normalize UInts for non power of 2 values of window size.
+  io.out.bits := accumulator.last
   io.out.valid := (ShiftRegisterWithReset(io.in.valid, params.windowSize, false.B, shift_en) && shift_en)
   io.out.sync := (ShiftRegisterWithReset(io.in.sync, params.windowSize, false.B, shift_en) && shift_en)
 
