@@ -9,6 +9,7 @@ class SVMSpec extends FlatSpec with Matchers {
   behavior of "SVM"
 
   it should "work with random Ints" in {
+    val debug = 0
 
     for (i <- 0 until 10) {
       val classifierTypenum = scala.util.Random.nextInt(3)
@@ -24,12 +25,12 @@ class SVMSpec extends FlatSpec with Matchers {
         val classifierType = if(classifierTypenum == 0) "ovr" else if (classifierTypenum == 1) "ovo" else "ecoc"
         val codeBook = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // -1 and 1
       }
-
-      IntSVMTester(params, 0) should be(true)
+      IntSVMTester(params, 0, debug) should be(true)
     }
   }
 
   it should "work with random Floats" in {
+    val debug = 0
 
     for (i <- 0 until 10) {
       val classifierTypenum = scala.util.Random.nextInt(3)
@@ -45,11 +46,12 @@ class SVMSpec extends FlatSpec with Matchers {
         val classifierType = if(classifierTypenum == 0) "ovr" else if (classifierTypenum == 1) "ovo" else "ecoc"
         val codeBook = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // -1 and 1
       }
-      FixedPointSVMTester(params, 0) should be(true)
+      FixedPointSVMTester(params, 0, debug) should be(true)
     }
   }
 
   it should "work for predefined Float test" in {
+    val debug = 0
 
     val params = new SVMParams[FixedPoint] {
       val protoData = FixedPoint(64.W,16.BP)
@@ -61,10 +63,11 @@ class SVMSpec extends FlatSpec with Matchers {
       val classifierType = "ovo"
       val codeBook = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
     }
-    FixedPointSVMTester(params, 1) should be(true)
+    FixedPointSVMTester(params, 1, debug) should be(true)
   }
 
   it should "work for predefined Int test" in {
+    val debug = 0
 
     val params = new SVMParams[SInt] {
       val protoData = SInt(32.W)
@@ -76,6 +79,6 @@ class SVMSpec extends FlatSpec with Matchers {
       val classifierType = "ovo"
       val codeBook = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
     }
-    IntSVMTester(params, 1) should be(true)
+    IntSVMTester(params, 1, debug) should be(true)
   }
 }

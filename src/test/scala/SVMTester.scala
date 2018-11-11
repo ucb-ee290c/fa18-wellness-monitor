@@ -149,7 +149,7 @@ class GoldenSVM(nSupports: Int, nFeatures: Int, nClasses: Int, nDegree: Int,
 }
 
 class SVMTester[T <: Data](c: SVM[T], nSupports: Int, nFeatures: Int, nClasses: Int, nDegree: Int,
-                            kernelType: String, classifierType: String, codeBook: Seq[Seq[Int]], flag: Int)
+                            kernelType: String, classifierType: String, codeBook: Seq[Seq[Int]], flag: Int, debug: Int)
                             extends DspTester(c) {
   val dataType = c.params.protoData.getClass.getTypeName
   val SVM = new GoldenSVM(nSupports, nFeatures, nClasses, nDegree, kernelType, classifierType, codeBook, flag, dataType)
@@ -206,15 +206,17 @@ class SVMTester[T <: Data](c: SVM[T], nSupports: Int, nFeatures: Int, nClasses: 
   val goldenModelResult = SVM.poke(input.map(_.toDouble), supportVector.map(_.map(_.toDouble)),
                                   alphaVector.map(_.map(_.toDouble)), intercept.map(_.toDouble), flag)
 
-  // print the configuration the tester is doing right now
-  print("datatype: " + c.params.protoData.getClass.getTypeName + "\n")
-  print("kernelType: " + kernelType + "\n")
-  print("nDegree: " + nDegree + "\n")
-  print("nClasses: " + nClasses + "\n")
-  print("nSupports: " + nSupports + "\n")
-  print("nFeatures: " + nFeatures + "\n")
-  print("classifierType: " + classifierType + "\n")
-  print("nClassifiers: " + c.io.nClassifiers + "\n")
+  if (debug == 1) {
+    // print the configuration the tester is doing right now
+    print("datatype: " + c.params.protoData.getClass.getTypeName + "\n")
+    print("kernelType: " + kernelType + "\n")
+    print("nDegree: " + nDegree + "\n")
+    print("nClasses: " + nClasses + "\n")
+    print("nSupports: " + nSupports + "\n")
+    print("nFeatures: " + nFeatures + "\n")
+    print("classifierType: " + classifierType + "\n")
+    print("nClassifiers: " + c.io.nClassifiers + "\n")
+  }
 
   // pokes for all the vectors and arrays
   input.zip(c.io.in.bits).foreach { case(sig, port) => poke(port, sig) }
@@ -241,7 +243,6 @@ class SVMTester[T <: Data](c: SVM[T], nSupports: Int, nFeatures: Int, nClasses: 
     } else {
       // due to the series of multiply and accumulates, error actually blows up, let's be lenient
       fixTolLSBs.withValue(c.params.protoData.getWidth / 2) {
-        print("tolerance bits" + c.params.protoData.getWidth + "\n")
         expect(c.io.rawVotes(i), goldenModelResult(0)(i))
       }
       fixTolLSBs.withValue(2) { // allow +-2 error for votes due to error in raw score accuracy
@@ -252,21 +253,33 @@ class SVMTester[T <: Data](c: SVM[T], nSupports: Int, nFeatures: Int, nClasses: 
 }
 
 object IntSVMTester {
-  def apply(params: SVMParams[SInt], flag: Int): Boolean = {
-    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new SVM(params)) {
-    dsptools.Driver.execute(() => new SVM(params), TestSetup.dspTesterOptions) {
-      c => new SVMTester(c, params.nSupports, params.nFeatures, params.nClasses,
-        params.nDegree, params.kernelType, params.classifierType, params.codeBook, flag)
+  def apply(params: SVMParams[SInt], flag: Int, debug: Int): Boolean = {
+    if (debug == 1) {
+      chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new SVM(params)) {
+        c => new SVMTester(c, params.nSupports, params.nFeatures, params.nClasses,
+          params.nDegree, params.kernelType, params.classifierType, params.codeBook, flag, debug)
+      }
+    } else {
+      dsptools.Driver.execute(() => new SVM(params), TestSetup.dspTesterOptions) {
+        c => new SVMTester(c, params.nSupports, params.nFeatures, params.nClasses,
+          params.nDegree, params.kernelType, params.classifierType, params.codeBook, flag, debug)
+      }
     }
   }
 }
 
 object FixedPointSVMTester {
-  def apply(params: SVMParams[FixedPoint], flag: Int): Boolean = {
-    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new SVM(params)) {
-    dsptools.Driver.execute(() => new SVM(params), TestSetup.dspTesterOptions) {
-      c => new SVMTester(c, params.nSupports, params.nFeatures, params.nClasses,
-        params.nDegree, params.kernelType, params.classifierType, params.codeBook, flag)
+  def apply(params: SVMParams[FixedPoint], flag: Int, debug: Int): Boolean = {
+    if (debug == 1) {
+      chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new SVM(params)) {
+        c => new SVMTester(c, params.nSupports, params.nFeatures, params.nClasses,
+          params.nDegree, params.kernelType, params.classifierType, params.codeBook, flag, debug)
+      }
+    } else {
+      dsptools.Driver.execute(() => new SVM(params), TestSetup.dspTesterOptions) {
+        c => new SVMTester(c, params.nSupports, params.nFeatures, params.nClasses,
+          params.nDegree, params.kernelType, params.classifierType, params.codeBook, flag, debug)
+      }
     }
   }
 }
