@@ -339,8 +339,8 @@ trait HasPeripheryWellness extends BaseSubsystem {
     val nFeatures = pcaParams.nFeatures
     val nClasses = 2
     val nDegree = 1
-    val kernelType = 0
-    val classifierType = 1
+    val kernelType = "poly"
+    val classifierType = "ovo"
     val codeBook = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
   }
 

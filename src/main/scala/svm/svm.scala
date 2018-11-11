@@ -8,12 +8,12 @@ import scala.collection._
 
 trait SVMParams[T <: Data] {
   val protoData: T
-  val nSupports: Int // the number of support vectors, from offline training
-  val nFeatures: Int // the number of reduced dimensions, coming from SVM
-  val nClasses:  Int // the number of classes, for multi-class classification
-  val nDegree: Int   // the polynomial kernel degree, ignored if kernelType = 1
-  val kernelType: Int// if 0, polynomial kernel, if 1, rbf kernel
-  val classifierType: Int     // if 0, one vs rest; if 1, one vs one; if 2, error correcting output code
+  val nSupports: Int          // the number of support vectors, from offline training
+  val nFeatures: Int          // the number of reduced dimensions, coming from SVM
+  val nClasses:  Int          // the number of classes, for multi-class classification
+  val nDegree: Int            // the polynomial kernel degree, ignored if kernelType = 1
+  val kernelType: String      // if 0, polynomial kernel, if 1, rbf kernel
+  val classifierType: String  // if 0, one vs rest; if 1, one vs one; if 2, error correcting output code
   val codeBook: Seq[Seq[Int]] // code array used for error correcting output codes, ignored otherwise
 }
 
@@ -23,11 +23,11 @@ class SVMIO[T <: Data](params: SVMParams[T]) extends Bundle {
 
   // define the number of classifiers
   var nClassifiers = params.nClasses  // one vs rest default
-  if (params.classifierType == 0) {
+  if (params.classifierType == "ovr") {
     if (params.nClasses == 2) nClassifiers = params.nClasses - 1
-  } else if (params.classifierType == 1) {   // one vs one
+  } else if (params.classifierType == "ovo") {   // one vs one
     nClassifiers = (params.nClasses*(params.nClasses - 1))/2
-  } else if (params.classifierType == 2) {  // error correcting output code
+  } else if (params.classifierType == "ecoc") {  // error correcting output code
     nClassifiers = params.codeBook.head.length // # columns = # classifiers
   }
 
@@ -43,6 +43,9 @@ class SVMIO[T <: Data](params: SVMParams[T]) extends Bundle {
   val rawVotes = Output(Vec(params.nClasses, params.protoData))
   val classVotes = Output(Vec(params.nClasses,UInt((log2Ceil(nClassifiers)+1).W)))
 
+  val kernelProbe = Output(Vec(params.nSupports, params.protoData))
+  val decisionProbe = Output(Vec(nClassifiers, params.protoData))
+
   override def cloneType: this.type = SVMIO(params).asInstanceOf[this.type]
 }
 object SVMIO {
@@ -52,11 +55,11 @@ object SVMIO {
 class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
   require(params.nSupports > 1, "Must have more than 1 support vector")
   require(params.nFeatures > 0, "Must have at least 1 feature")
-  require(params.nClasses > 1, "Must have at least 2 classes")
-  require(params.nDegree > 0, "Polynomial degree must be at least 1")
-  require(params.kernelType == 1 || params.kernelType == 0, "Kernel type must be either 0 (poly) or 1 (rbf")
-  require(params.classifierType == 0 || params.classifierType == 1 || params.classifierType == 2,
-                                "Classifier type must be either 0 (one vs rest), 1 (one vs one), 2 (error correct)")
+  require(params.nClasses >= 2, "Must have at least 2 classes")
+  require(params.nDegree >= 1, "Polynomial degree must be at least 1")
+  require(params.kernelType == "poly" || params.kernelType == "rbf", "Kernel type must be either poly or rbf")
+  require(params.classifierType == "ovr" || params.classifierType == "ovo" || params.classifierType == "ecoc",
+                                "Classifier type must be either ovr (one vs rest), ovo (one vs one), ecoc (error correct)")
   require(params.codeBook.length == params.nClasses,
                                 "Number of rows for codeBook should be the number of classes (nClasses)")
 
@@ -69,9 +72,9 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
   // dot product, this is where the kernel goes
   val kernel = Wire(Vec(params.nSupports, params.protoData))
 
-  // if kernelType = 0, this is a polynomial kernel
+  // this is the computation for a polynomial kernel
   // this is simply the dot product of the support vector and the input, raised to a power depending on the degree
-  if (params.kernelType == 0) {
+  if (params.kernelType == "poly") {
     val polyKernel = Wire(Vec(params.nDegree, Vec(params.nSupports, params.protoData)))
     for (i <- 0 until params.nSupports) { // get the dot product first (like a typical linear kernel)
       polyKernel(0)(i) := io.in.bits.zip(io.supportVector(i)).map {case (a, b) => a * b}.reduce(_ + _)
@@ -81,7 +84,7 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
     }
     kernel := polyKernel(params.nDegree-1)
 
-    // if kernelType = 1, this is an RBF kernel
+    // else, this is for the RBF kernel
     // you subtract the support vector features to the input, square it, then sum it all up
     // you also have to use that answer as an exponent (negative) to an exponential function
   } else {
@@ -105,42 +108,41 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
 
   // this is the final dot product that needs to be performed to create the SVM decision function
   for (i <- 0 until io.nClassifiers) {
-    decision(i) := (io.alphaVector(i).zip(kernel).map { case (a, b) => a * b }.reduce(_ + _)
-      + io.intercept(i)).asTypeOf(params.protoData)
+    decision(i) := io.alphaVector(i).zip(kernel).map { case (a, b) => a * b }.reduce(_ + _) + io.intercept(i)
   }
   // using this decision function, we can now perform classification, which depends on the type
 
   // #############################################################
   // for one vs rest classifier implementation
-  if (params.classifierType == 0) {
+  if (params.classifierType == "ovr") {
 
     if (params.nClasses > 2) {
       // each classifier corresponds to a single class,
       // therefore, if the decision function corresponding to that class is positive, that's a vote to that class
       for (i <- 0 until params.nClasses) {
         actualVotes(i) := decision(i)
-        when(decision(i) > 0) {   normalizedVotes(i) := 1.U
-        }.otherwise {             normalizedVotes(i) := 0.U
+        when(decision(i) > 0) {   normalizedVotes(i) := 1.U   // if decision is +, vote for that class
+        }.otherwise {             normalizedVotes(i) := 0.U   // else if decision is -, don't vote
         }
       }
     } else {  // special case for 2 classes since there's only 1 classifier for that, so we'll loop only once
       // the logic is the same, but we assign both index 0 and 1 in one shot since we only go through here once
-      when (decision(0) > 0) {
-        normalizedVotes(0) := 0.U
-        normalizedVotes(1) := 1.U
-        actualVotes(0) := ConvertableTo[T].fromInt(0)
-        actualVotes(1) := decision(0)
-      }.otherwise {
+      when (decision(0) > 0) {                          // if decision is +
+        normalizedVotes(0) := 0.U                       // class 0 is 0
+        normalizedVotes(1) := 1.U                       // class 1 is 1
+        actualVotes(0) := ConvertableTo[T].fromInt(0)   // class 0 has 0 raw vote
+        actualVotes(1) := decision(0)                   // class 1 takes the decision value
+      }.otherwise {                                     // else if decision is -, everything is reversed
         normalizedVotes(0) := 1.U
         normalizedVotes(1) := 0.U
-        actualVotes(0) := decision(0).abs() // it is a vote to the other side, make it positive
+        actualVotes(0) := decision(0).abs()             // it is a vote to the other side, make it positive
         actualVotes(1) := ConvertableTo[T].fromInt(0)
       }
     }
 
   // #############################################################
   // for one vs one classifier implementation
-  } else if (params.classifierType == 1) {
+  } else if (params.classifierType == "ovo") {
 
     val classVotes = Seq.fill(params.nClasses,io.nClassifiers)(Wire(UInt(1.W))) // votes per class per classifier
     val rawVotes = Seq.fill(params.nClasses,io.nClassifiers)(Wire(params.protoData)) // raw votes array, to be summed
@@ -167,39 +169,39 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
           // but the positive vote of 1 should correspond to 1 which is not the first element
           // this is contrary to the multi-class combination (check python script, it works)
           if (params.nClasses > 2) {
-            if (j == combinations(i)(0)) {
+            if (j == combinations(i)(0)) {          // for a positive decision, the 1st class in the pair gets the vote
               classVotes(j)(i) := 1.U
               rawVotes(j)(i) := decision(i)
-            } else {
+            } else {                                // all the other classes will not have the vote (equal 0)
               classVotes(j)(i) := 0.U
               rawVotes(j)(i) := ConvertableTo[T].fromInt(0)
             }
-          } else {
-            if (j == combinations(i)(1)) {
+          } else {                                  // special case for 2 classes...
+            if (j == combinations(i)(1)) {          // for a positive decision, class 1 gets the vote
               classVotes(j)(i) := 1.U
               rawVotes(j)(i) := decision(i)
-            } else {
+            } else {                                // the other class (class 0) gets 0 votes
               classVotes(j)(i) := 0.U
               rawVotes(j)(i) := ConvertableTo[T].fromInt(0)
             }
           }
         }
 
-      }.otherwise {
+      }.otherwise {                                 // handler for negative decision values
         for (j <- 0 until params.nClasses) {
-          if (params.nClasses > 2) {
-            if (j == combinations(i)(1)) {
+          if (params.nClasses > 2) {                // basically the logic is reversed...
+            if (j == combinations(i)(1)) {          // 2nd class in pair will now get the vote
               classVotes(j)(i) := 1.U
               rawVotes(j)(i) := decision(i).abs()
-            } else {
+            } else {                                // all other classes will get 0 votes
               classVotes(j)(i) := 0.U
               rawVotes(j)(i) := ConvertableTo[T].fromInt(0)
             }
-          } else {
-            if (j == combinations(i)(0)) {
+          } else {                                  // again, special case for 2 classes
+            if (j == combinations(i)(0)) {          // similar to ovr classification, class 0 now gets the vote
               classVotes(j)(i) := 1.U
-              rawVotes(j)(i) := decision(i).abs()
-            } else {
+              rawVotes(j)(i) := decision(i).abs()   // take the absolute value, that's the vote for this class
+            } else {                                // class 1 gets 0 vote since the decision is negative
               classVotes(j)(i) := 0.U
               rawVotes(j)(i) := ConvertableTo[T].fromInt(0)
             }
@@ -252,6 +254,9 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
   // put for output probing and checking for computation accuracy
   io.rawVotes := actualVotes      // sometimes you end up with ties, this is for tie breaking classifications
   io.classVotes := normalizedVotes  // normally, you just find the max value of normalized votes per classifier
+
+  io.kernelProbe := kernel
+  io.decisionProbe := decision
 
   // now, we select the class that has the highest number of votes
   // TODO: how to select the index with the most number of votes?
