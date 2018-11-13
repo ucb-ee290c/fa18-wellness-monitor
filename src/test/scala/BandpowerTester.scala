@@ -10,7 +10,7 @@ class GoldenIntBandpower(params: BandpowerParams[UInt]) {
     val p2 = input.map(scala.math.abs(_))
     val p1Scaled = p2.slice(1, params.nBins / 2 - 1).map(_ * 2)
     val p1 = Seq(p2(0)) ++ p1Scaled ++ Seq(p2(params.nBins / 2))
-    val output = p1.slice(params.indStartBin, params.indEndBin).map{ case p => p * p}.reduce(_ + _)
+    val output = p1.slice(params.idxStartBin, params.idxEndBin).map{ case p => p * p}.reduce(_ + _)
     output
   }
 }

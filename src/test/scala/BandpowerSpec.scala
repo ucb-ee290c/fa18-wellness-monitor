@@ -7,14 +7,13 @@ class BandpowerSpec extends FlatSpec with Matchers {
   behavior of "Bandpower"
 
   val params = new BandpowerParams[UInt] {
-    val indStartBin = 13
-    val indEndBin = 37
+    val idxStartBin = 13
+    val idxEndBin = 37
     val nBins = 64
-    val genIn = UInt(16.W)
-    val genOut = UInt(16.W)
+    val protoData = UInt(16.W)
   }
 
-  it should "UInt bandpower (sum)" in {
+  it should "sum squares of inputs (UInt)" in {
     UIntBandpowerTester(params) should be (true)
   }
 }

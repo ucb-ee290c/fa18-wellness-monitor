@@ -1,38 +1,21 @@
 package features
 
 import chisel3._
-//import chisel3.core.FixedPoint
-import chisel3.experimental.FixedPoint
 import dsptools.numbers._
 import dspjunctions._
 
 // Currently designed with a lane for each bin
 
 trait BandpowerParams[T <: Data] {
-  val indStartBin: Int
-  val indEndBin: Int
+  val idxStartBin: Int
+  val idxEndBin: Int
   val nBins: Int
-  val genIn: T
-  val genOut: T
-}
-
-case class FixedBandpowerParams(
-  indStart: Int,
-  indEnd: Int,
-  n: Int,
-  width: Int,
-  bp: Int
-) extends BandpowerParams[DspComplex[FixedPoint]] {
-  val indStartBin = indStart
-  val indEndBin = indEnd
-  val nBins = n
-  val genIn = DspComplex(FixedPoint(width.W, bp.BP), FixedPoint(width.W, bp.BP))
-  val genOut = DspComplex(FixedPoint(width.W, bp.BP), FixedPoint(width.W, bp.BP))
+  val protoData: T
 }
 
 class BandpowerIO[T <: Data](params: BandpowerParams[T]) extends Bundle {
-  val in = Flipped(ValidWithSync(Vec(params.nBins, params.genIn.cloneType)))
-  val out = ValidWithSync(params.genOut.cloneType)
+  val in = Flipped(ValidWithSync(Vec(params.nBins, params.protoData.cloneType)))
+  val out = ValidWithSync(params.protoData.cloneType)
 
   override def cloneType: this.type = BandpowerIO(params).asInstanceOf[this.type]
 }
@@ -56,7 +39,7 @@ class Bandpower[T <: Data : Real](val params: BandpowerParams[T]) extends Module
   // Concatenate back in unscaled DC and sampling freq elems
   val p1 = VecInit(p2(0)) ++ p1Scaled ++ VecInit(p2(params.nBins/2))
   // Square and sum elems in band of interest
-  io.out.bits := p1.slice(params.indStartBin, params.indEndBin).map{ case p => p * p}.reduce(_ + _)
+  io.out.bits := p1.slice(params.idxStartBin, params.idxEndBin).map{ case p => p * p}.reduce(_ + _)
 
   io.out.valid := io.in.valid
   io.out.sync := io.in.sync
