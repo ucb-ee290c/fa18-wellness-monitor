@@ -7,8 +7,8 @@ class BandpowerSpec extends FlatSpec with Matchers {
   behavior of "Bandpower"
 
   val params = new BandpowerParams[UInt] {
-    val idxStartBin = 13
-    val idxEndBin = 37
+    val idxStartBin = 0
+    val idxEndBin = 63
     val nBins = 64
     val protoData = UInt(16.W)
   }
