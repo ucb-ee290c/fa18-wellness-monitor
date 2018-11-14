@@ -4,7 +4,7 @@
 
 The SVM block performs classification using the Support Vector Machine algorithm. [`svm_reference.py`](svm_reference.py) models the whole chain (from training all the way to inference/classification). This reference file already implements the final SVM algorithm to be implemented for this project (parametrizable number of classes, different kernel support, and variable number of features).
 
-![Screenshot](fa18-wellness-monitor/doc/images/test.png)
+![Screenshot](images/test.png)
 
 ![Screenshot](https://www.analyticsvidhya.com/wp-content/uploads/2015/10/SVM_1.png)
 
