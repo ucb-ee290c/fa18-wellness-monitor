@@ -445,19 +445,19 @@ trait HasPeripheryWellness extends BaseSubsystem {
     val idxStartBin = 0
     val idxEndBin = nPts-1
     val nBins = nPts
-    val protoData = UInt(16.W)
+    val protoData = SInt(32.W)
   }
-  val bandpower2Params = new BandpowerParams[UInt] {
+  val bandpower2Params = new BandpowerParams[SInt] {
     val idxStartBin = 0
     val idxEndBin = nPts-1
     val nBins = nPts
-    val protoData = UInt(16.W)
+    val protoData = SInt(32.W)
   }
-  val bandpower3Params = new BandpowerParams[UInt] {
+  val bandpower3Params = new BandpowerParams[SInt] {
     val idxStartBin = 0
     val idxEndBin = nPts-1
     val nBins = nPts
-    val protoData = UInt(16.W)
+    val protoData = SInt(32.W)
   }
 
   val pcaParams = new PCAParams[SInt] {
