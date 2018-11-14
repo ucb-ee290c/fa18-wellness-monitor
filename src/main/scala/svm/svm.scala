@@ -9,12 +9,12 @@ import scala.collection._
 trait SVMParams[T <: Data] {
   val protoData: T
   val nSupports: Int          // the number of support vectors, from offline training
-  val nFeatures: Int          // the number of reduced dimensions, coming from SVM
+  val nFeatures: Int          // the number of reduced dimensions, coming from PCA
   val nClasses:  Int          // the number of classes, for multi-class classification
-  val nDegree: Int            // the polynomial kernel degree, ignored if kernelType = 1
-  val kernelType: String      // if 0, polynomial kernel, if 1, rbf kernel
-  val classifierType: String  // if 0, one vs rest; if 1, one vs one; if 2, error correcting output code
+  val classifierType: String  // 'ovr' (one vs rest), 'ovo' (one vs one), 'ecoc' (error correcting)
   val codeBook: Seq[Seq[Int]] // code array used for error correcting output codes, ignored otherwise
+  val kernelType: String      // 'poly' or 'rbf' kernels
+  val nDegree: Int            // the polynomial kernel degree, ignored if kernelType = 'poly'
 }
 
 class SVMIO[T <: Data](params: SVMParams[T]) extends Bundle {
@@ -59,6 +59,7 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
                 "Classifier type must be either ovr (one vs rest), ovo (one vs one), ecoc (error correct)")
   require(params.codeBook.length == params.nClasses,
                 "Number of rows for codeBook should be the number of classes (nClasses)")
+  //require(params.codeBook.forall(_ == 1) || params.codeBook.forall(_ == -1) )
 
   val io = IO(new SVMIO[T](params))
 
