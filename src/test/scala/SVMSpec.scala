@@ -32,7 +32,7 @@ class SVMSpec extends FlatSpec with Matchers {
   it should "work with random Floats" in {
     val debug = 0
 
-    for (i <- 0 until 100) {
+    for (i <- 0 until 10) {
       val classifierTypenum = scala.util.Random.nextInt(3)
       val kernelTypenum = scala.util.Random.nextInt(2)
 
@@ -50,22 +50,6 @@ class SVMSpec extends FlatSpec with Matchers {
     }
   }
 
-  it should "work for predefined Float test" in {
-    val debug = 0
-
-    val params = new SVMParams[FixedPoint] {
-      val protoData = FixedPoint(64.W,16.BP)
-      val nSupports = 2
-      val nFeatures = 3
-      val nClasses = 4
-      val nDegree = 2
-      val kernelType = "poly"
-      val classifierType = "ovo"
-      val codeBook = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
-    }
-    FixedPointSVMTester(params, 1, debug) should be(true)
-  }
-
   it should "work for predefined Int test" in {
     val debug = 0
 
@@ -80,5 +64,21 @@ class SVMSpec extends FlatSpec with Matchers {
       val codeBook = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
     }
     IntSVMTester(params, 1, debug) should be(true)
+  }
+
+  it should "work for predefined Float test" in {
+    val debug = 0
+
+    val params = new SVMParams[FixedPoint] {
+      val protoData = FixedPoint(64.W,16.BP)
+      val nSupports = 2
+      val nFeatures = 3
+      val nClasses = 4
+      val nDegree = 2
+      val kernelType = "poly"
+      val classifierType = "ovo"
+      val codeBook = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
+    }
+    FixedPointSVMTester(params, 1, debug) should be(true)
   }
 }

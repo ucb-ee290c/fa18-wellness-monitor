@@ -17,32 +17,21 @@ class GoldenSVM(nSupports: Int, nFeatures: Int, nClasses: Int, nDegree: Int,
 
     // this is the decision function (raw output of each classifier), array of length #classifiers
     val decision = mutable.ArrayBuffer.fill(alphaVector.length)(0D)
-    var dotTemp = mutable.ArrayBuffer.fill(nSupports)(0D) // used for the polynomial kernel
 
     // ################################################################################################################
     // KERNEL CALCULATION
     // ################################################################################################################
 
-    // perform dot product, manually (that's why it's a nested for loop)
-    // if you understand the required operations for the dot product, this loop shouldn't be that hard to understand
+    // perform dot product, doing both the kernel calculation and the alpha vector multiplication
+    // I'm doing everything in one loop, contrary to the implementation in svm.scala, don't be confused
     for (x <- alphaVector.indices) { // number of classifiers
       for (y <- supportVector.indices) { // number of support vectors
-        for (z <- supportVector(0).indices) { // number of features
-          // kernel computation depends on the type: polynomial or rbf
-          if (kernelType == "poly") { // for polynomial kernel, get the dot product first
-            dotTemp(y) = dotTemp(y) + input(z) * supportVector(y)(z)
-          } else { // for rbf kernel, solve for the exponent value first
-            decision(x) = decision(x) + alphaVector(x)(y) *
-              -1 * (input(z) - supportVector(y)(z)) * (input(z) - supportVector(y)(z))
-          }
-        }
-        if (kernelType == "poly") { // multiply the dot product by itself (only used by polynomial kernel)
-          decision(x) = decision(x) + alphaVector(x)(y) * pow(dotTemp(y), nDegree.toDouble)
-        } else {
+        if (kernelType == "poly") decision(x) = decision(x) + alphaVector(x)(y) *
+            pow(input.zip(supportVector(y)).map { case (a, b) => a * b }.sum, nDegree.toDouble)
+        else decision(x) = decision(x) - alphaVector(x)(y) *
+            input.zip(supportVector(y)).map { case (a, b) => a - b }.map{ k => k * k}.sum
           // TODO: this is probably where you will put the exponential for the RBF kernel
-        }
       }
-      dotTemp = mutable.ArrayBuffer.fill(nSupports)(0D) // reset accumulator (only used for polynomial kernel)
       decision(x) = decision(x) + intercept(x) // final addition of the intercept per classifier
     }
 
@@ -60,18 +49,10 @@ class GoldenSVM(nSupports: Int, nFeatures: Int, nClasses: Int, nDegree: Int,
       // this block is essentially the same as in the svm.scala implementation, but a little bit high-level
       if (nClasses > 2) {
         rawVotes = decision
-        for (x <- 0 until nClasses) {
-          if (decision(x) > 0)  classVotes(x) = 1
-          else                  classVotes(x) = 0
-        }
+        for (x <- 0 until nClasses) classVotes(x) = if (decision(x) > 0) 1 else 0
       } else {
-        if (decision(0) > 0) {
-          classVotes = mutable.ArrayBuffer(0, 1)
-          rawVotes = mutable.ArrayBuffer(0, decision(0))
-        } else {
-          classVotes = mutable.ArrayBuffer(1,0)
-          rawVotes = mutable.ArrayBuffer(-1*decision(0), 0)
-        }
+        classVotes = if (decision(0) > 0) mutable.ArrayBuffer(0, 1) else mutable.ArrayBuffer(1,0)
+        rawVotes = if (decision(0) > 0) mutable.ArrayBuffer(0, decision(0)) else mutable.ArrayBuffer(-1*decision(0), 0)
       }
 
     // #############################################################
@@ -80,31 +61,19 @@ class GoldenSVM(nSupports: Int, nFeatures: Int, nClasses: Int, nDegree: Int,
 
       val combinations = mutable.ArrayBuffer[mutable.ArrayBuffer[Int]]()
       // just like the one in svm.scala, the generation of all pairwise combinations of classes
-      for (x <- 0 until nClasses) {
-        for (y <- x + 1 until nClasses) {
+      for (x <- 0 until nClasses)
+        for (y <- x + 1 until nClasses)
           combinations += mutable.ArrayBuffer(x, y)
-        }
-      }
 
       for (x <- alphaVector.indices) {
-        // similar structure with svm.scala, although a little high level (thus shorter)
-        // can possibly be optimized?
-        if (decision(x) > 0) {
-          if (nClasses > 2) {
-            classVotes(combinations(x)(0)) = classVotes(combinations(x)(0)) + 1
-            rawVotes(combinations(x)(0)) = rawVotes(combinations(x)(0)) + decision(x)
-          } else {
-            classVotes(combinations(x)(1)) = classVotes(combinations(x)(1)) + 1
-            rawVotes(combinations(x)(1)) = rawVotes(combinations(x)(1)) + decision(x)
-          }
+        // similar structure with svm.scala, we do the XOR due to the special case for classes = 2
+        // check my comments in that code segment for the explanation
+        if ((decision(x) > 0) ^ (nClasses > 2)) {
+          classVotes(combinations(x)(1)) = classVotes(combinations(x)(1)) + 1
+          rawVotes(combinations(x)(1)) = rawVotes(combinations(x)(1)) + decision(x).abs
         } else {
-          if (nClasses > 2) {
-            classVotes(combinations(x)(1)) = classVotes(combinations(x)(1)) + 1
-            rawVotes(combinations(x)(1)) = rawVotes(combinations(x)(1)) + -1 * decision(x)
-          } else {
-            classVotes(combinations(x)(0)) = classVotes(combinations(x)(0)) + 1
-            rawVotes(combinations(x)(0)) = rawVotes(combinations(x)(0)) + -1 * decision(x)
-          }
+          classVotes(combinations(x)(0)) = classVotes(combinations(x)(0)) + 1
+          rawVotes(combinations(x)(0)) = rawVotes(combinations(x)(0)) + decision(x).abs
         }
       }
 
@@ -116,30 +85,26 @@ class GoldenSVM(nSupports: Int, nFeatures: Int, nClasses: Int, nDegree: Int,
       val decisionBits = mutable.ArrayBuffer.fill(alphaVector.length)(0)
       val codeBookBits = mutable.ArrayBuffer.fill(nClasses,alphaVector.length)(0)
 
-      for (x <- alphaVector.indices) {
-        if (decision(x) > 0) decisionBits(x) = 1
-      }
+      // convert decision as either 0 or 1 (signs)
+      for (x <- alphaVector.indices) if (decision(x) > 0) decisionBits(x) = 1
 
+      // convert the codeBook from [-1,1] to [0,1]
       for (x <- 0 until nClasses) {
         for (y <- alphaVector.indices) {
           if (codeBook(x)(y) == 1) codeBookBits(x)(y) = 1
         }
       }
 
-      // do the dot product in a nested loop, since I know how to do it
+      // compute for the distance metric
       for (x <- 0 until nClasses) {
-        for (y <- alphaVector.indices) {  // number of classifiers, we'll compute for the distance
-          rawVotes(x) = rawVotes(x) + ((decision(y) - codeBook(x)(y))*(decision(y) - codeBook(x)(y)))
-          classVotes(x) = classVotes(x) + abs(decisionBits(y) - codeBookBits(x)(y))
-        }
-        classVotes(x) = alphaVector.length - classVotes(x)
-        rawVotes(x) = -1*rawVotes(x)
+        rawVotes(x) = decision.zip(codeBook(x)).map{case(a,b) => -1*(a-b)*(a-b)}.sum
+        classVotes(x) = alphaVector.length - decisionBits.zip(codeBookBits(x)).map{case(a,b) => (a-b).abs}.sum
       }
     }
 
     if (flag == 1) {
       // bypass just to show that these are the correct answers for the toy data
-      if(dataType == "chisel3.core.SInt") Seq(Seq(647, 297, 0, 347), Seq(2, 3, 0, 1))
+      if (dataType == "chisel3.core.SInt") Seq(Seq(647, 297, 0, 347), Seq(2, 3, 0, 1))
       else Seq(Seq(499.3074, 487.4843, 0, 280.6336), Seq(2, 3, 0, 1))
 
     } else {
@@ -221,17 +186,10 @@ class SVMTester[T <: Data](c: SVM[T], nSupports: Int, nFeatures: Int, nClasses: 
   // pokes for all the vectors and arrays
   input.zip(c.io.in.bits).foreach { case(sig, port) => poke(port, sig) }
 
-  for (i <- 0 until nSupports) {
-    supportVector(i).zip(c.io.supportVector(i)).foreach { case (sig, port) => poke(port, sig) }
-  }
-
-  for (i <- 0 until c.io.nClassifiers) {
-    alphaVector(i).zip(c.io.alphaVector(i)).foreach { case (sig, port) => poke(port, sig) }
-  }
-
+  for (i <- 0 until nSupports) supportVector(i).zip(c.io.supportVector(i)).foreach { case (sig, port) => poke(port, sig) }
+  for (i <- 0 until c.io.nClassifiers) alphaVector(i).zip(c.io.alphaVector(i)).foreach { case (sig, port) => poke(port, sig) }
   intercept.zip(c.io.intercept).foreach { case(sig, port) => poke(port, sig) }
 
-  // start!
   poke(c.io.in.valid, value = 1)
   step(1) // not really needed for now since everything is combinational
 
