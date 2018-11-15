@@ -5,51 +5,86 @@ import chisel3._
 import dsptools.numbers._
 import dsptools.DspTester
 import scala.collection._
+import chisel3.core.FixedPoint
 
-class GoldenIntPCA(params: PCAParams[SInt]) {
-  def poke(input: Seq[Int], PCAVector: Seq[Seq[Int]]): Seq[Int] = {
-    val answer = mutable.ArrayBuffer[Int]()
-    var dotProduct = 0
+class GoldenIntPCA(nDimensions: Int, nFeatures: Int) {
+  def poke(input: Seq[Double], PCAVector: Seq[Seq[Double]]): Seq[Double] = {
+    val answer = mutable.ArrayBuffer.fill(nFeatures)(0D)
 
-    for (x <- PCAVector.indices) { // number of input dimension (nDimensions)
-      dotProduct = 0
-      for (y <- input.indices) {   // number of output dimension (nFeatures)
-        dotProduct = dotProduct + (input(y) * PCAVector(x)(y))
-      }
-      answer += dotProduct
+    for (x <- 0 until nFeatures) {
+      answer(x) = input.zip(PCAVector(x)).map{ case(a, b) => a * b }.sum
     }
     answer
   }
 }
 
-class PCATester[T <: Data](c: PCA[T], params: PCAParams[SInt]) extends DspTester(c) {
-  val PCA = new GoldenIntPCA(params)
+class PCATester[T <: Data](c: PCA[T], nDimensions: Int, nFeatures: Int) extends DspTester(c) {
+  val PCA = new GoldenIntPCA(nDimensions,nFeatures)
 
-  // initialize test vectors/arrays with random ints
-  val input = Seq.fill(params.nDimensions)(scala.util.Random.nextInt(16)-8)
-  val PCAVector = Seq.fill(params.nFeatures,params.nDimensions)(scala.util.Random.nextInt(16)-8)
-  val goldenModelResult = PCA.poke(input, PCAVector)
+  var input = Seq.fill(nDimensions)(0D)
+  var PCAVector = Seq.fill(nFeatures, nDimensions)(0D)
+
+  if (c.params.protoData.getClass.getTypeName == "chisel3.core.SInt") {
+    // initialize test vectors/arrays with random ints
+    input = Seq.fill(nDimensions)(scala.util.Random.nextInt(16) - 8)
+    PCAVector = Seq.fill(nFeatures, nDimensions)(scala.util.Random.nextInt(16) - 8)
+  } else {
+    // initialize test vectors/arrays with random floats
+    input = Seq.fill(nDimensions)(scala.util.Random.nextDouble*16 - 8)
+    PCAVector = Seq.fill(nFeatures, nDimensions)(scala.util.Random.nextDouble*16 - 8)
+  }
+
+  // the IDE is saying that _.toDouble is redundant, don't believe it!
+  // these vectors are being dynamically assigned as either double or int, due to test case flexibility
+  // the _.toDouble mapping is required for Ints, the IDE doesn't see it.
+  val goldenModelResult = PCA.poke(input.map(_.toDouble), PCAVector.map(_.map(_.toDouble)))
 
   // pokes for all the vectors and arrays
   input.zip(c.io.in.bits).foreach { case(sig, port) => poke(port, sig) }
 
-  for (i <- 0 until params.nFeatures) {
+  for (i <- 0 until nFeatures) {
     PCAVector(i).zip(c.io.PCAVector(i)).foreach { case (sig, port) => poke(port, sig) }
   }
 
   poke(c.io.in.valid, value = 1)
   step(1)
 
-  for (i <- 0 until params.nFeatures) {
-    expect(c.io.out.bits(i), goldenModelResult(i))
+  for (i <- 0 until nFeatures) {
+    if (c.params.protoData.getClass.getTypeName == "chisel3.core.SInt") {
+      expect(c.io.out.bits(i), goldenModelResult(i))
+    } else {
+      // due to the series of multiply and accumulates, error actually blows up, let's be lenient
+      fixTolLSBs.withValue(16) { // at least the integer part must match
+        expect(c.io.out.bits(i), goldenModelResult(i))
+      }
+    }
   }
 }
 
-object PCATester {
-  def apply(params: PCAParams[SInt]): Boolean = {
-    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new PCA(params)) {
-    dsptools.Driver.execute(() => new PCA(params), TestSetup.dspTesterOptions) {
-      c => new PCATester(c, params)
+object IntPCATester {
+  def apply(params: PCAParams[SInt], debug: Int): Boolean = {
+    if (debug == 1) {
+      chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new PCA(params)) {
+        c => new PCATester(c, params.nDimensions, params.nFeatures)
+      }
+    } else {
+      dsptools.Driver.execute(() => new PCA(params), TestSetup.dspTesterOptions) {
+        c => new PCATester(c, params.nDimensions, params.nFeatures)
+      }
+    }
+  }
+}
+
+object FixedPointPCATester {
+  def apply(params: PCAParams[FixedPoint], debug: Int): Boolean = {
+    if (debug == 1) {
+      chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new PCA(params)) {
+        c => new PCATester(c, params.nDimensions, params.nFeatures)
+      }
+    } else {
+      dsptools.Driver.execute(() => new PCA(params), TestSetup.dspTesterOptions) {
+        c => new PCATester(c, params.nDimensions, params.nFeatures)
+      }
     }
   }
 }

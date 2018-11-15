@@ -16,7 +16,7 @@ from sklearn.multiclass import OutputCodeClassifier
 #########################################
 
 # pick a dataset to represent the classes: 2, 3, 4
-classes = 3
+classes = 2
 
 # should I do PCA or not?
 do_pca = 1
@@ -31,7 +31,7 @@ degree = 1
 coef = 0
 
 # set the classifier type: ovr, ovo, ecoc
-class_type = 'ecoc'
+class_type = 'ovr'
 
 #########################################
 # Load the dataset
@@ -280,8 +280,8 @@ print_array_to_file(f,intercept)
 f.close()
 
 # the codebook for ECOC, to be passed as a Scala parameter
-f = open("Scala_codebook.txt","w")
 if (class_type == "ecoc"):
+    f = open("Scala_codebook.txt","w")
     f.write("val codeBook = ")
     array_container = repr(codes)
     array_container = array_container.replace('array','').replace('(','').replace(')','')

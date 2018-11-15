@@ -11,3 +11,4 @@ verilator/
 simulator-*
 *.vcd
 .DS_Store
+data/
