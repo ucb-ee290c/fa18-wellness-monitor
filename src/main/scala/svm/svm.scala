@@ -51,15 +51,18 @@ object SVMIO {
 
 class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
   require(params.nSupports > 1, "Must have more than 1 support vector")
-  require(params.nFeatures > 0, "Must have at least 1 feature")
+  require(params.nFeatures >= 1, "Must have at least 1 feature")
   require(params.nClasses >= 2, "Must have at least 2 classes")
-  require(params.nDegree >= 1, "Polynomial degree must be at least 1")
   require(params.kernelType == "poly" || params.kernelType == "rbf", "Kernel type must be either poly or rbf")
+  require(!(params.kernelType == "poly" && params.nDegree < 1), "Polynomial degree must be at least 1")
   require(params.classifierType == "ovr" || params.classifierType == "ovo" || params.classifierType == "ecoc",
                 "Classifier type must be either ovr (one vs rest), ovo (one vs one), ecoc (error correct)")
-  require(params.codeBook.length == params.nClasses,
-                "Number of rows for codeBook should be the number of classes (nClasses)")
-  require(params.codeBook.map(_.forall(a => (a == 1) || (a == -1))).forall(_ == true))
+  require(!(params.classifierType == "ecoc" && params.codeBook.length != params.nClasses),
+                "Number of rows for codeBook should be the number of classes (nClasses) for ECOC classification")
+  require(!(params.classifierType == "ecoc" && params.codeBook.head.length < params.codeBook.length),
+                "Number of classifiers should be at least the number of classes for ECOC classification")
+  require(params.codeBook.map(_.forall(a => (a == 1) || (a == -1))).forall(_ == true),
+                "Code book array should only contain +1 and -1 elements")
 
   val io = IO(new SVMIO[T](params))
 
