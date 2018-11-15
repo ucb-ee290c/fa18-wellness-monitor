@@ -1,17 +1,28 @@
+import numpy as np
+import pandas as pd  
+import itertools as it
+
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 from sklearn import datasets
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn.svm import SVC
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.multiclass import OutputCodeClassifier
-from sklearn.metrics.pairwise import euclidean_distances
 
-import numpy as np
-import pandas as pd  
-import itertools as it
+#########################################
+# Setting of the parameters
+#########################################
 
 # pick a dataset to represent the classes: 2, 3, 4
-classes = 2
+classes = 3
+
+# should I do PCA or not?
+do_pca = 1
+
+# number of final features after dimensionality reduction
+dimensions = 3
 
 # set the kernel here: poly, rbf, linear is basically poly at degree 1
 kernel = 'poly'
@@ -20,17 +31,20 @@ degree = 1
 coef = 0
 
 # set the classifier type: ovr, ovo, ecoc
-class_type = 'ovr'
+class_type = 'ecoc'
 
 #########################################
-# Prepare the dataset to use and perform training
+# Load the dataset
 #########################################
+
+# Replace this block with your data
+# Make sure that the data is a 2D array of size nSamples x nFeatures
 
 if classes == 2:
     #Load dataset
     cancer = datasets.load_breast_cancer()
-    # Split dataset into training set and test set
-    X_train, X_test, y_train, y_test = train_test_split(cancer.data, cancer.target, test_size=0.3,random_state=109) # 70% training and 30% test
+    X = cancer.data
+    y = cancer.target
 
 elif classes == 3 or classes == 4:
     url = "https://archive.ics.uci.edu/ml/machine-learning-databases/iris/iris.data"
@@ -43,9 +57,65 @@ elif classes == 3 or classes == 4:
     y = np.array(pd.Categorical(pd.factorize(y)[0]))
     if classes == 4:
         y[120:129] = [3,3,3,3,3,3,3,3,3] # just messing around to check my algo for 4 classes
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.3, random_state=109) 
+
+#########################################
+# Splitting of the dataset
+#########################################
+
+# Split dataset into training set and test set
+# 70% training and 30% test
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.3, random_state=109) 
+
+#########################################
+# Normalization of the training dataset
+#########################################
+
+# we must transform the data to 0 mean and 1 std
+# for conventional machine learning algorithms to work
+params = StandardScaler().fit(X_train)
+X_train_mean = params.mean_
+X_train_var = params.var_
+
+# normalization is basically (x - mean) / std
+X_train = (X_train - X_train_mean)/np.sqrt(X_train_var)
+
+#########################################
+# Perform PCA on the training set
+#########################################
+
+if do_pca == 1:
+
+    # pick the number of components to retain, top 3 in this case
+    pca = PCA(n_components=dimensions)
     
+    # perform the transformation to the new dimension
+    # use this to verify that you got the correct dot product
+    principalComponents = pca.fit_transform(X_train)
+    
+    # this gives you the weights per feature for the new transformed space
+    # principal components x number of features
+    # this is what will be provided for the system
+    # this is a p x f matrix:
+    # p = number of principal components you select (reduced dimension target)
+    # f = number of original features (the original dimension)
+    pca.components_
+    
+    ##############################################################
+    # mapping the new sample to the new set of dimensions is simply a dot product
+    # the only thing that you have to do in chisel?
+    # x is the data that needs to be projected, s x f matrix:
+    # s = number of samples to be projected
+    # f = number of original features
+    # s x f dot product with f x p, gives us s x p, the samples in the reduced dimension space
+    X_train = np.matmul(X_train,pca.components_.T)
+
+    # you can compare principalComponents and transformed,
+    # they should be approximately equal
+
+#########################################
 # Create a SVM Classifier
+#########################################
+
 # for more information, check out this link: http://scikit-learn.org/stable/modules/multiclass.html
 if class_type == 'ovr':
     clf = OneVsRestClassifier(SVC(kernel=kernel, gamma=1, coef0=coef, degree=degree), n_jobs=-1)
@@ -56,7 +126,22 @@ elif class_type == 'ecoc':
 
 # Train the model using the training sets
 clf.fit(X_train, y_train)
+
+#########################################
+# Normalization of the testing dataset
+#########################################
+
+# Before projecting the test set, it must also be normalized
+# However, it should be normalized using the training set data
+# This avoids future data leaking into the algorithm
 X_test = np.array(X_test)   # we're using numpy here
+X_test = (X_test - X_train_mean)/np.sqrt(X_train_var)
+
+#########################################
+# Projection of the test set to the new principal axes
+#########################################
+if do_pca == 1:
+    X_test = np.matmul(X_test,pca.components_.T)
 
 #########################################
 # Now do the classification. 
@@ -134,9 +219,8 @@ elif class_type == 'ovr':
 # this is because classification is performed by calculating the hamming distances
 # setup if almost similar to the one vs rest, where we just combine all support vectors and corresponding alphas
 elif class_type == 'ecoc':
-    codes = clf.code_book_ # the generated table by the algorithm, must be passed as parameter to Chisel generator
-    codes[codes == -1] = 0 # just to make it 0 and 1
-    
+    codes = clf.code_book_ # the generated table by the algorithm, pass this as a parameter to the generator
+    #codes[codes == -1] = 0 # just to make it 0 and 1
     num_classifiers = codes.shape[1]
     
     # ok, we will assume that there's no constant predictor, else it will mess up with the logic
@@ -159,11 +243,52 @@ elif class_type == 'ecoc':
 
 ########################################################################################
 # Here's what will be passed to the generator
+# pca.components_ = the transformation matrix to reduce the dimensions (PCA)
 # supports = the support vectors s x f, s=number of vectors, f=features
 # intercept = the training intercept 1 x c, c=number of classifiers to create
 # alpha_vector = the support vector weights c x f
-# must also pass the code book if we're doing error correcting output code
+# must also pass the clf.code_book_ as an argument
 ########################################################################################
+
+# function to translate the array to string, then format it to be compatible with C code
+def print_array_to_file(f,array_name):
+    array_container = repr(array_name)
+    array_container = array_container.replace('array','').replace('(','').replace(')','')
+    array_container = array_container.replace('[','{').replace(']','}')
+    array_container = array_container.replace('. ','')
+    f.write(array_container)
+    f.write(";\n\n")
+
+f = open("C_arrays.txt","w")
+
+# the PCA transformation matrix
+f.write("double PCAComponents[][] = ")
+print_array_to_file(f,pca.components_)
+
+# the support vector weights, the alpha vector
+f.write("double SVMAlphaVector[][] = ")
+print_array_to_file(f,alpha_vector)
+
+# the actual support vectors
+f.write("double SVMSupportVector[][] = ")
+print_array_to_file(f,supports)
+
+# the SVM intercept
+f.write("double SVMIntercept[] = ")
+print_array_to_file(f,intercept)
+
+f.close()
+
+# the codebook for ECOC, to be passed as a Scala parameter
+f = open("Scala_codebook.txt","w")
+if (class_type == "ecoc"):
+    f.write("val codeBook = ")
+    array_container = repr(codes)
+    array_container = array_container.replace('array','').replace('(','').replace(')','')
+    array_container = array_container.replace('[','Seq(').replace(']',')')
+    array_container = array_container.replace('.,',',').replace('.)',')')
+    f.write(array_container)
+    f.close()
 
 ########################################################################################
 # This is the part that will be implemented in Chisel
@@ -215,7 +340,7 @@ if class_type == 'ovo':
 
 elif class_type == 'ovr':
     for i in range(len(X_test)):  # number of test data
-        if classes != 1:
+        if classes != 1:    # classes has been updated to -1 earlier (determines the # of classifiers)
             y_manual[i] = decision2[i].argmax(axis=0)   # check actual values since there might be a tie
         else:
             y_manual[i] = decision2[i] > 0  # special case for 2 classes
@@ -234,13 +359,11 @@ elif class_type == 'ecoc':
     # OK, apparently we shouldn't clip the value before getting the distance
     # the distance is apparently defined as the euclidean distance to [-1,1], using the raw decision function value
     # this is a little problematic since that is computationally expensive
-
-    codes[codes == 0] = -1  # when getting the distance, apparently we need to get distance to [-1,1]
     
     # let's try creating a pseudo euclidean distance metric
     for i in range(len(X_test)): # number of test data
         for j in range(classes):
-            tempvote[i][j] = sum(abs(decision2[i] - codes[j])) # sum of absolute values, instead of euclidean
+            tempvote[i][j] = sum(abs(decision2[i] - clf.code_book_[j])) # sum of absolute values, instead of euclidean
             
         y_manual[i] = tempvote[i].argmin(axis=0) # pick the minimum distance, using this distance metric
     
