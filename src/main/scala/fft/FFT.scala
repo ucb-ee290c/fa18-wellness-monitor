@@ -288,11 +288,11 @@ class FFT[T<:Data:Real](val config: FFTConfig[T])(implicit val p: Parameters) ex
             DspComplex(FixedPoint(totalBits.W, (totalBits-2).BP), FixedPoint(totalBits.W, (totalBits-2).BP)).asInstanceOf[DspComplex[T]]
           case _ => throw new DspException("Error: unknown binary point when calculating FFT bitwdiths")
         }
-      case "sint" => {
+      case "SInt" => {
         val totalBits = config.genIn.asInstanceOf[DspComplex[T]].real.getWidth + growth
         DspComplex(SInt(totalBits.W), SInt(totalBits.W)).asInstanceOf[DspComplex[T]]
       }
-      case _ => throw new DspException("Error: unknown type when calculating FFT bitwidths")
+      case _ => throw new DspException(s"Error: unknown type when calculating FFT bitwidths: ${config.genIn.underlyingType().toString}")
     }
   }
 
@@ -306,7 +306,7 @@ class FFT[T<:Data:Real](val config: FFTConfig[T])(implicit val p: Parameters) ex
             DspComplex(FixedPoint(totalBits.W, (totalBits-2).BP), FixedPoint(totalBits.W, (totalBits-2).BP)).asInstanceOf[DspComplex[T]]
           case _ => throw new DspException("Error: unknown binary point when calculating FFT bitwdiths")
         }
-      case "sint" => {
+      case "SInt" => {
         val totalBits = config.genIn.asInstanceOf[DspComplex[T]].real.getWidth + growth
         DspComplex(SInt(totalBits.W), SInt(totalBits.W)).asInstanceOf[DspComplex[T]]
       }
@@ -328,7 +328,7 @@ class FFT[T<:Data:Real](val config: FFTConfig[T])(implicit val p: Parameters) ex
               DspComplex(FixedPoint(totalBits.W, binaryPoint.BP), FixedPoint(totalBits.W, binaryPoint.BP)).asInstanceOf[DspComplex[T]]
             case _ => throw new DspException("Error: unknown binary point when calculating FFT bitwdiths")
           }
-        case "sint" => {
+        case "SInt" => {
           val totalBits = config.genIn.asInstanceOf[DspComplex[T]].real.getWidth + growth
           DspComplex(SInt(totalBits.W), SInt(totalBits.W)).asInstanceOf[DspComplex[T]]
         }

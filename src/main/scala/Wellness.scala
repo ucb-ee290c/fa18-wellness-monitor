@@ -247,8 +247,11 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real]
     // FFT Buffers to FFTs
     fft.io.in.valid := fftBuffer.io.out.valid
     fft.io.in.sync := false.B
-    fft.io.in.bits.foreach(_.real := fftBuffer.io.out.bits)
-    fft.io.in.bits.foreach(_.imag := DspComplex(Ring[T].zero, Ring[T].zero))
+    for (i <- fft.io.in.bits.indices) {
+      fft.io.in.bits(i).real := fftBuffer.io.out.bits(i)
+    }
+    fft.io.in.bits.foreach(_.imag := Ring[T].zero)
+    fft.io.data_set_end_clear := false.B
 
     // FFTs to Bandpowers
     bandpower1.io.in.valid := fft.io.out.valid
@@ -353,7 +356,7 @@ trait HasPeripheryWellness extends BaseSubsystem {
 
   val filter1Params = new FIRFilterParams[SInt] {
     override val protoData = SInt(32.W)
-    override val taps = Seq(0.S, 1.S, 2.S, 3.S, 4.S, 5.S)
+    override val taps = Seq(1.S, 0.S, 0.S, 0.S, 0.S, 0.S)
   }
 
   val filter2Params = new FIRFilterParams[SInt] {

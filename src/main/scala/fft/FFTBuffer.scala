@@ -31,8 +31,6 @@ class FFTBufferIO[T <: chisel3.Data : Ring](params: FFTBufferParams[T]) extends 
   val in = Flipped(ValidWithSync(params.protoData.cloneType))
   val out = ValidWithSync(Vec(params.lanes,params.protoData.cloneType))
 
-  val vectoring = Input(Bool())
-
   override def cloneType: this.type = FFTBufferIO(params).asInstanceOf[this.type]
 }
 object FFTBufferIO {
