@@ -1,3 +1,5 @@
+import java.io._
+
 //######################################
 // rawVotes is a Seq() containing the results
 // this block of code should be in the Golden model
