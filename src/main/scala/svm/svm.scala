@@ -59,7 +59,7 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
                 "Classifier type must be either ovr (one vs rest), ovo (one vs one), ecoc (error correct)")
   require(params.codeBook.length == params.nClasses,
                 "Number of rows for codeBook should be the number of classes (nClasses)")
-  //require(params.codeBook.forall(_ == 1) || params.codeBook.forall(_ == -1) )
+  require(params.codeBook.map(_.forall(a => (a == 1) || (a == -1))).forall(_ == true))
 
   val io = IO(new SVMIO[T](params))
 
