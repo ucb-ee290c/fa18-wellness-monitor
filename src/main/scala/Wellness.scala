@@ -158,12 +158,8 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real]
   val filter1Params: FIRFilterParams[T],
   val filter2Params: FIRFilterParams[T],
   val filter3Params: FIRFilterParams[T],
-  val fftBuffer1Params: FFTBufferParams[T],
-  val fftBuffer2Params: FFTBufferParams[T],
-  val fftBuffer3Params: FFTBufferParams[T],
-  val fft1Config: FFTConfig[T],
-  val fft2Config: FFTConfig[T],
-  val fft3Config: FFTConfig[T],
+  val fftBufferParams: FFTBufferParams[T],
+  val fftConfig: FFTConfig[T],
   val bandpower1Params: BandpowerParams[T],
   val bandpower2Params: BandpowerParams[T],
   val bandpower3Params: BandpowerParams[T],
@@ -185,12 +181,8 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real]
     val filter1 = Module(new ConstantCoefficientFIRFilter(filter1Params))
     val filter2 = Module(new ConstantCoefficientFIRFilter(filter2Params))
     val filter3 = Module(new ConstantCoefficientFIRFilter(filter3Params))
-    val fftBuffer1 = Module(new FFTBuffer(fftBuffer1Params))
-    val fftBuffer2 = Module(new FFTBuffer(fftBuffer2Params))
-    val fftBuffer3 = Module(new FFTBuffer(fftBuffer3Params))
-    val fft1 = Module(new FFT(fft1Config))
-    val fft2 = Module(new FFT(fft2Config))
-    val fft3 = Module(new FFT(fft3Config))
+    val fftBuffer = Module(new FFTBuffer(fftBufferParams))
+    val fft = Module(new FFT(fftConfig))
     val bandpower1 = Module(new Bandpower(bandpower1Params))
     val bandpower2 = Module(new Bandpower(bandpower2Params))
     val bandpower3 = Module(new Bandpower(bandpower3Params))
@@ -248,46 +240,31 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real]
     pca.io.in.valid := filter1.io.out.valid
 
     // FIR Filters to FFT Buffers
-    fftBuffer1.io.in.valid := filter1.io.out.valid
-    fftBuffer1.io.in.sync := false.B
-    fftBuffer1.io.in.bits := filter1.io.out.bits
-
-    fftBuffer2.io.in.valid := filter2.io.out.valid
-    fftBuffer2.io.in.sync := false.B
-    fftBuffer2.io.in.bits := filter2.io.out.bits
-
-    fftBuffer3.io.in.valid := filter3.io.out.valid
-    fftBuffer3.io.in.sync := false.B
-    fftBuffer3.io.in.bits := filter3.io.out.bits
+    fftBuffer.io.in.valid := filter1.io.out.valid
+    fftBuffer.io.in.sync := false.B
+    fftBuffer.io.in.bits := filter1.io.out.bits
 
     // FFT Buffers to FFTs
-    fft1.io.in.valid := fftBuffer1.io.out.valid
-    fft1.io.in.sync := false.B
-    fft1.io.in.bits.foreach(_.real := fftBuffer1.io.out.bits)
-    fft1.io.in.bits.foreach(_.imag := DspComplex(Ring[T].zero, Ring[T].zero))
-
-    fft2.io.in.valid := fftBuffer2.io.out.valid
-    fft2.io.in.sync := false.B
-    fft2.io.in.bits.foreach(_.real := fftBuffer2.io.out.bits)
-    fft2.io.in.bits.foreach(_.imag := DspComplex(Ring[T].zero, Ring[T].zero))
-
-    fft3.io.in.valid := fftBuffer3.io.out.valid
-    fft3.io.in.sync := false.B
-    fft3.io.in.bits.foreach(_.real := fftBuffer3.io.out.bits)
-    fft3.io.in.bits.foreach(_.imag := DspComplex(Ring[T].zero, Ring[T].zero))
+    fft.io.in.valid := fftBuffer.io.out.valid
+    fft.io.in.sync := false.B
+    for (i <- fft.io.in.bits.indices) {
+      fft.io.in.bits(i).real := fftBuffer.io.out.bits(i)
+    }
+    fft.io.in.bits.foreach(_.imag := Ring[T].zero)
+    fft.io.data_set_end_clear := false.B
 
     // FFTs to Bandpowers
-    bandpower1.io.in.valid := fft1.io.out.valid
+    bandpower1.io.in.valid := fft.io.out.valid
     bandpower1.io.in.sync := false.B
-    bandpower1.io.in.bits := fft1.io.out.bits
+    bandpower1.io.in.bits := fft.io.out.bits.map(_.real.asTypeOf(bandpower1.io.in.bits(0)))
 
-    bandpower2.io.in.valid := fft2.io.out.valid
+    bandpower2.io.in.valid := fft.io.out.valid
     bandpower2.io.in.sync := false.B
-    bandpower2.io.in.bits := fft2.io.out.bits
+    bandpower2.io.in.bits := fft.io.out.bits.map(_.real.asTypeOf(bandpower2.io.in.bits(0)))
 
-    bandpower3.io.in.valid := fft3.io.out.valid
+    bandpower3.io.in.valid := fft.io.out.valid
     bandpower3.io.in.sync := false.B
-    bandpower3.io.in.bits := fft3.io.out.bits
+    bandpower3.io.in.bits := fft.io.out.bits.map(_.real.asTypeOf(bandpower3.io.in.bits(0)))
 
     // TODO: Bandpowers to PCA
 
@@ -299,8 +276,8 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real]
     svm.io.alphaVector := SVMAlphaVector
     svm.io.intercept := SVMIntercept
     // SVM to Output
-    out.valid := svm.io.out.valid
-    out.bits.data := Cat(svm.io.rawVotes(0).asUInt(),svm.io.rawVotes(1).asUInt())
+    out.valid := fft.io.out.valid
+    out.bits.data := Cat(fft.io.out.bits(0).real.asUInt())
   }
 }
 
@@ -309,12 +286,8 @@ class TLWellnessDataPathBlock[T <: Data : Real]
   filter1Params: FIRFilterParams[T],
   filter2Params: FIRFilterParams[T],
   filter3Params: FIRFilterParams[T],
-  fftBuffer1Params: FFTBufferParams[T],
-  fftBuffer2Params: FFTBufferParams[T],
-  fftBuffer3Params: FFTBufferParams[T],
-  fft1Config: FFTConfig[T],
-  fft2Config: FFTConfig[T],
-  fft3Config: FFTConfig[T],
+  fftBufferParams: FFTBufferParams[T],
+  fftConfig: FFTConfig[T],
   bandpower1Params: BandpowerParams[T],
   bandpower2Params: BandpowerParams[T],
   bandpower3Params: BandpowerParams[T],
@@ -324,8 +297,8 @@ class TLWellnessDataPathBlock[T <: Data : Real]
 )(implicit p: Parameters) extends
   WellnessDataPathBlock[TLClientPortParameters, TLManagerPortParameters, TLEdgeOut, TLEdgeIn, TLBundle, T](
     filter1Params, filter2Params, filter3Params,
-    fftBuffer1Params, fftBuffer2Params, fftBuffer3Params,
-    fft1Config, fft2Config, fft3Config,
+    fftBufferParams,
+    fftConfig,
     bandpower1Params, bandpower2Params, bandpower3Params,
     pcaParams, svmParams, pcaVectorBufferParams)
   with TLDspBlock
@@ -348,12 +321,8 @@ class WellnessThing[T <: Data : Real]
   val filter1Params: FIRFilterParams[T],
   val filter2Params: FIRFilterParams[T],
   val filter3Params: FIRFilterParams[T],
-  val fftBuffer1Params: FFTBufferParams[T],
-  val fftBuffer2Params: FFTBufferParams[T],
-  val fftBuffer3Params: FFTBufferParams[T],
-  val fft1Config: FFTConfig[T],
-  val fft2Config: FFTConfig[T],
-  val fft3Config: FFTConfig[T],
+  val fftBufferParams: FFTBufferParams[T],
+  val fftConfig: FFTConfig[T],
   val bandpower1Params: BandpowerParams[T],
   val bandpower2Params: BandpowerParams[T],
   val bandpower3Params: BandpowerParams[T],
@@ -366,8 +335,8 @@ class WellnessThing[T <: Data : Real]
   val writeQueue = LazyModule(new TLWriteQueue(depth))
   val wellness = LazyModule(new TLWellnessDataPathBlock(
     filter1Params, filter2Params, filter3Params,
-    fftBuffer1Params, fftBuffer2Params, fftBuffer3Params,
-    fft1Config, fft2Config, fft3Config,
+    fftBufferParams,
+    fftConfig,
     bandpower1Params, bandpower2Params, bandpower3Params,
     pcaParams, svmParams, pcaVectorBufferParams))
   val readQueue = LazyModule(new TLReadQueue(depth))
@@ -383,11 +352,11 @@ class WellnessThing[T <: Data : Real]
   *
   */
 trait HasPeripheryWellness extends BaseSubsystem {
-  val nPts = 64
+  val nPts = 4
 
   val filter1Params = new FIRFilterParams[SInt] {
     override val protoData = SInt(32.W)
-    override val taps = Seq(0.S, 1.S, 2.S, 3.S, 4.S, 5.S)
+    override val taps = Seq(1.S, 0.S, 0.S, 0.S, 0.S, 0.S)
   }
 
   val filter2Params = new FIRFilterParams[SInt] {
@@ -401,37 +370,13 @@ trait HasPeripheryWellness extends BaseSubsystem {
   }
 
   // FFTBufferParams
-  val fftBuffer1Params = new FFTBufferParams[SInt] {
-    val protoData = SInt(32.W)
-    val lanes = nPts
-  }
-  val fftBuffer2Params = new FFTBufferParams[SInt] {
-    val protoData = SInt(32.W)
-    val lanes = nPts
-  }
-  val fftBuffer3Params = new FFTBufferParams[SInt] {
+  val fftBufferParams = new FFTBufferParams[SInt] {
     val protoData = SInt(32.W)
     val lanes = nPts
   }
 
   // FFTConfigs
-  val fft1Config = FFTConfig(
-    genIn = DspComplex(SInt(32.W), SInt(32.W)),
-    genOut = DspComplex(SInt(32.W), SInt(32.W)),
-    n = nPts,
-    lanes = nPts,
-    pipelineDepth = 0,
-    quadrature = false,
-  )
-  val fft2Config = FFTConfig(
-    genIn = DspComplex(SInt(32.W), SInt(32.W)),
-    genOut = DspComplex(SInt(32.W), SInt(32.W)),
-    n = nPts,
-    lanes = nPts,
-    pipelineDepth = 0,
-    quadrature = false,
-  )
-  val fft3Config = FFTConfig(
+  val fftConfig = FFTConfig(
     genIn = DspComplex(SInt(32.W), SInt(32.W)),
     genOut = DspComplex(SInt(32.W), SInt(32.W)),
     n = nPts,
@@ -486,8 +431,8 @@ trait HasPeripheryWellness extends BaseSubsystem {
   // Instantiate wellness monitor
   val wellness = LazyModule(new WellnessThing(
     filter1Params, filter2Params, filter3Params,
-    fftBuffer1Params, fftBuffer2Params, fftBuffer3Params,
-    fft1Config, fft2Config, fft3Config,
+    fftBufferParams,
+    fftConfig,
     bandpower1Params, bandpower2Params, bandpower3Params,
     pcaParams, svmParams, pcaVectorBufferParams))
   // Connect memory interfaces to pbus
