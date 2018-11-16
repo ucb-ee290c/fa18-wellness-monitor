@@ -308,7 +308,7 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   fft.io.in.valid := fftBuffer.io.out.valid
   fft.io.in.sync := false.B
   for (i <- fft.io.in.bits.indices) {
-    fft.io.in.bits(i).real := fftBuffer.io.out.bits(i)
+    fft.io.in.bits(i).real := fftBuffer.io.out.bits(i).asTypeOf(fft.io.in.bits(i).real)
   }
   fft.io.in.bits.foreach(_.imag := Ring[T].zero)
   fft.io.data_set_end_clear := false.B

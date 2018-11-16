@@ -1,6 +1,6 @@
 package wellness
 
-import chisel3._
+import chisel3.{UInt, _}
 import chisel3.core.FixedPoint
 import dsptools.numbers._
 import features._
@@ -76,7 +76,7 @@ class wellnessIntegrationParameterBundle {
 }
 
 class WellnessIntegrationSpec extends FlatSpec with Matchers {
-  behavior of "ConstantCoefficientFIRFilter"
+  behavior of "Wellness"
 
   it should "pass the input through filters, compute features, and classify (SInt)" in {
 
@@ -170,6 +170,104 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       pcaParams: PCAParams[SInt],
       svmParams: SVMParams[SInt],
       pcaVectorBufferParams: MemoryBufferParams[SInt],
+      goldenModelParameters: wellnessIntegrationParameterBundle) should be (true)
+  }
+
+  it should "pass the input through filters, compute features, and classify (FixedPoint)" in {
+
+    val nPts = 4
+
+    val dataWidth = 64
+    val dataBP = 16
+
+    val filter1Params = new FIRFilterParams[FixedPoint] {
+      override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+      override val taps = Seq(1,2,3,4,5,0).map(ConvertableTo[FixedPoint].fromDouble(_))
+    }
+
+    val filter2Params = new FIRFilterParams[FixedPoint] {
+      override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+      override val taps = Seq(5,4,3,2,1,0).map(ConvertableTo[FixedPoint].fromDouble(_))
+    }
+
+    val filter3Params = new FIRFilterParams[FixedPoint] {
+      override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+      override val taps = Seq(0,1,2,2,1,0).map(ConvertableTo[FixedPoint].fromDouble(_))
+    }
+
+    // FFTBufferParams
+    val fftBufferParams = new FFTBufferParams[FixedPoint] {
+      val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+      val lanes = nPts
+    }
+
+    // FFTConfigs
+    val fftConfig = FFTConfig(
+      genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP)),
+      genOut = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP)),
+      n = nPts,
+      lanes = nPts,
+      pipelineDepth = 0,
+      quadrature = false,
+    )
+
+    // BandpowerParams
+    val bandpower1Params = new BandpowerParams[FixedPoint] {
+      val idxStartBin = 0
+      val idxEndBin = nPts-1
+      val nBins = nPts
+      val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    }
+    val bandpower2Params = new BandpowerParams[FixedPoint] {
+      val idxStartBin = 0
+      val idxEndBin = nPts-1
+      val nBins = nPts
+      val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    }
+    val bandpower3Params = new BandpowerParams[FixedPoint] {
+      val idxStartBin = 0
+      val idxEndBin = nPts-1
+      val nBins = nPts
+      val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    }
+
+    val pcaParams = new PCAParams[FixedPoint] {
+      override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+      override val nDimensions = 3 // input dimension, minimum 1
+      override val nFeatures = 2   // output dimension to SVM, minimum 1
+    }
+
+    val svmParams = new SVMParams[FixedPoint] {
+      val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+      val nSupports = 2
+      val nFeatures = pcaParams.nFeatures
+      val nClasses = 2
+      val nDegree = 1
+      val kernelType = "poly"
+      val classifierType = "ovo"
+      val codeBook = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
+    }
+
+    val pcaVectorBufferParams = new MemoryBufferParams[FixedPoint] {
+      override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+      override val nRows:Int = pcaParams.nFeatures
+      override val nColumns:Int = pcaParams.nDimensions
+    }
+
+    val goldenModelParameters = new wellnessIntegrationParameterBundle
+
+
+    WellnessIntegrationTesterFP(filter1Params: FIRFilterParams[FixedPoint],
+      filter2Params: FIRFilterParams[FixedPoint],
+      filter3Params: FIRFilterParams[FixedPoint],
+      fftBufferParams: FFTBufferParams[FixedPoint],
+      fftConfig: FFTConfig[FixedPoint],
+      bandpower1Params: BandpowerParams[FixedPoint],
+      bandpower2Params: BandpowerParams[FixedPoint],
+      bandpower3Params: BandpowerParams[FixedPoint],
+      pcaParams: PCAParams[FixedPoint],
+      svmParams: SVMParams[FixedPoint],
+      pcaVectorBufferParams: MemoryBufferParams[FixedPoint],
       goldenModelParameters: wellnessIntegrationParameterBundle) should be (true)
   }
 

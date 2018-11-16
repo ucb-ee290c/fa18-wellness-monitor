@@ -23,7 +23,7 @@ import freechips.rocketchip.subsystem._
 import scala.collection.Seq
 import scala.collection.mutable
 
-class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParameters: wellnessIntegrationParameterBundle, testType: Int) extends DspTester(c) {
+class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParameters: wellnessIntegrationParameterBundle) extends DspTester(c) {
 
   //TODO: Instantiate Golden Models (FFT & BandPower remaining)
   val filter1 = new GoldenDoubleFIRFilter(goldenModelParameters.filter1Params.taps)
@@ -51,10 +51,13 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   val filter3Result = filter3.poke(0)
   val filterOutBundle = Seq(filter1Result, filter2Result, filter3Result)
 
-  for(i <- 0 until 100) {
+  for(i <- 0 until 1000) {
     var input = scala.util.Random.nextFloat*32
-    if (testType == 0) {
+    if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
       input = scala.util.Random.nextInt(32)
+    }
+    else if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
+      input = scala.util.Random.nextInt(64) - 32
     }
 
     //TODO: Poke inputs to golden models
@@ -75,7 +78,7 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
 
     //TODO: Expect Results
     for (i <- 0 until goldenModelParameters.svmParams.nClasses) {
-      if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
+      if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.SInt" || c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
         expect(c.io.rawVotes(i), svmResult(0)(i))
         expect(c.io.classVotes(i), svmResult(1)(i))
       } else {
@@ -118,7 +121,39 @@ object WellnessIntegrationTesterSInt {
       svmParams: SVMParams[SInt],
       pcaVectorBufferParams: MemoryBufferParams[SInt]),
       TestSetup.dspTesterOptions) {
-      c => new wellnessTester(c, goldenModelParameters, 0)
+      c => new wellnessTester(c, goldenModelParameters)
+    }
+  }
+}
+
+object WellnessIntegrationTesterFP {
+  implicit val p: Parameters = null
+  def apply(filter1Params: FIRFilterParams[FixedPoint],
+            filter2Params: FIRFilterParams[FixedPoint],
+            filter3Params: FIRFilterParams[FixedPoint],
+            fftBufferParams: FFTBufferParams[FixedPoint],
+            fftConfig: FFTConfig[FixedPoint],
+            bandpower1Params: BandpowerParams[FixedPoint],
+            bandpower2Params: BandpowerParams[FixedPoint],
+            bandpower3Params: BandpowerParams[FixedPoint],
+            pcaParams: PCAParams[FixedPoint],
+            svmParams: SVMParams[FixedPoint],
+            pcaVectorBufferParams: MemoryBufferParams[FixedPoint],
+            goldenModelParameters: wellnessIntegrationParameterBundle): Boolean = {
+    dsptools.Driver.execute(() => new WellnessModule(
+      filter1Params: FIRFilterParams[FixedPoint],
+      filter2Params: FIRFilterParams[FixedPoint],
+      filter3Params: FIRFilterParams[FixedPoint],
+      fftBufferParams: FFTBufferParams[FixedPoint],
+      fftConfig: FFTConfig[FixedPoint],
+      bandpower1Params: BandpowerParams[FixedPoint],
+      bandpower2Params: BandpowerParams[FixedPoint],
+      bandpower3Params: BandpowerParams[FixedPoint],
+      pcaParams: PCAParams[FixedPoint],
+      svmParams: SVMParams[FixedPoint],
+      pcaVectorBufferParams: MemoryBufferParams[FixedPoint]),
+      TestSetup.dspTesterOptions) {
+      c => new wellnessTester(c, goldenModelParameters)
     }
   }
 }
