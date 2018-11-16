@@ -111,7 +111,7 @@ int main(void)
   int32_t data_out_0;
   int32_t data_out_1;
   double data_out_double;
-  double in[24] = {1,1,2,3,4,1,1,1,1,4,3,2,1,2,2,2,2,1,2,3,4,1,1,1};
+  double in[24] = {1,1,2,3,4,5,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
   double ex[24] = {5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,4,3,2,1};
   double tol = 0.5;
 
@@ -123,7 +123,7 @@ int main(void)
   int SVMIntercept[CLASSIFIERS] = {4};
 
   // TODO: Feed the computed features here
-  int inputs[DIMENSIONS] = {35,45,21};
+  int inputs[DIMENSIONS] = {35,55,15};
 
   int PCAout[FEATURES];
   int SVMout[CLASSES];

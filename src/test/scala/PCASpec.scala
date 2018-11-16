@@ -21,7 +21,7 @@ class PCASpec extends FlatSpec with Matchers {
   }
 
   it should "work with random Floats" in {
-    val debug = 1
+    val debug = 0
 
     for (i <- 0 until 15) {
       val params = new PCAParams[FixedPoint] {
