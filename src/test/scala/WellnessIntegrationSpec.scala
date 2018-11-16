@@ -61,7 +61,7 @@ class wellnessIntegrationParameterBundle {
   }
   val svmParams:svmParamsTemplate = new svmParamsTemplate {
     override val nSupports = 2
-    override val nFeatures:Int = pcaParams.nFeatures
+    override val nFeatures:Int = 2
     override val nClasses = 2
     override val nDegree = 1
     override val kernelType = "poly"
@@ -69,8 +69,8 @@ class wellnessIntegrationParameterBundle {
     override val codeBook:Seq[Seq[Int]] = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
   }
   val pcaVectorBufferParams:pcaVectorBufferParamsTemplate = new pcaVectorBufferParamsTemplate {
-    override val nRows: Int = pcaParams.nFeatures
-    override val nColumns: Int = pcaParams.nDimensions
+    override val nRows: Int = 2
+    override val nColumns: Int = 3
   }
 
 }
@@ -80,21 +80,63 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
 
   it should "pass the input through filters, compute features, and classify (SInt)" in {
 
+    val tap_count = scala.util.Random.nextInt(50) + 1
+
+    val coefficients1 = mutable.ArrayBuffer[Int]()
+    val coefficients2 = mutable.ArrayBuffer[Int]()
+    val coefficients3 = mutable.ArrayBuffer[Int]()
+    for(j <- 0 until tap_count) {
+      coefficients1 += (-32 + scala.util.Random.nextInt(64))
+      coefficients2 += (-32 + scala.util.Random.nextInt(64))
+      coefficients3 += (-32 + scala.util.Random.nextInt(64)) }
+
+    //val numDimensions = scala.util.Random.nextInt(9) + 2
+    //val numFeatures = scala.util.Random.nextInt(numDimensions - 1) + 1
+
+    val goldenModelParameters = new wellnessIntegrationParameterBundle {
+      override val filter1Params: filterParamsTemplate = new filterParamsTemplate {
+        override val taps: Seq[Double] = coefficients1.map(_.toDouble)
+      }
+      override val filter2Params: filterParamsTemplate = new filterParamsTemplate {
+        override val taps: Seq[Double] = coefficients2.map(_.toDouble)
+      }
+      override val filter3Params: filterParamsTemplate = new filterParamsTemplate {
+        override val taps: Seq[Double] = coefficients3.map(_.toDouble)
+      }
+      override val pcaParams:pcaParamsTemplate = new pcaParamsTemplate {
+        override val nDimensions: Int = 3
+        override val nFeatures: Int = 2
+      }
+      override val svmParams:svmParamsTemplate = new svmParamsTemplate {
+        override val nSupports = 2
+        override val nFeatures:Int = pcaParams.nFeatures
+        override val nClasses = 2
+        override val nDegree = 1
+        override val kernelType = "poly"
+        override val classifierType = "ovo"
+        override val codeBook:Seq[Seq[Int]] = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
+      }
+      override val pcaVectorBufferParams:pcaVectorBufferParamsTemplate = new pcaVectorBufferParamsTemplate {
+        override val nRows: Int = pcaParams.nFeatures
+        override val nColumns: Int = pcaParams.nDimensions
+      }
+    }
+
     val nPts = 4
 
     val filter1Params = new FIRFilterParams[SInt] {
       override val protoData = SInt(32.W)
-      override val taps = Seq(1.S, 2.S, 3.S, 4.S, 5.S, 0.S)
+      override val taps = coefficients1.map(_.asSInt())
     }
 
     val filter2Params = new FIRFilterParams[SInt] {
       override val protoData = SInt(32.W)
-      override val taps = Seq(5.S, 4.S, 3.S, 2.S, 1.S, 0.S)
+      override val taps = coefficients2.map(_.asSInt())
     }
 
     val filter3Params = new FIRFilterParams[SInt] {
       override val protoData = SInt(32.W)
-      override val taps = Seq(0.S, 1.S, 2.S, 2.S, 1.S, 0.S)
+      override val taps = coefficients3.map(_.asSInt())
     }
 
     // FFTBufferParams
@@ -156,8 +198,6 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       override val nColumns:Int = pcaParams.nDimensions
     }
 
-    val goldenModelParameters = new wellnessIntegrationParameterBundle
-
 
     WellnessIntegrationTesterSInt(filter1Params: FIRFilterParams[SInt],
       filter2Params: FIRFilterParams[SInt],
@@ -180,19 +220,58 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
     val dataWidth = 64
     val dataBP = 16
 
+    val tap_count = scala.util.Random.nextInt(50) + 1
+    val coefficients1 = mutable.ArrayBuffer[Double]()
+    val coefficients2 = mutable.ArrayBuffer[Double]()
+    val coefficients3 = mutable.ArrayBuffer[Double]()
+    for(j <- 0 until tap_count) {
+      coefficients1 += (-32 + scala.util.Random.nextFloat * 64)
+      coefficients2 += (-32 + scala.util.Random.nextFloat * 64)
+      coefficients3 += (-32 + scala.util.Random.nextFloat * 64)
+    }
+
+    val goldenModelParameters = new wellnessIntegrationParameterBundle {
+      override val filter1Params: filterParamsTemplate = new filterParamsTemplate {
+        override val taps: Seq[Double] = coefficients1
+      }
+      override val filter2Params: filterParamsTemplate = new filterParamsTemplate {
+        override val taps: Seq[Double] = coefficients2
+      }
+      override val filter3Params: filterParamsTemplate = new filterParamsTemplate {
+        override val taps: Seq[Double] = coefficients3
+      }
+      override val pcaParams:pcaParamsTemplate = new pcaParamsTemplate {
+        override val nDimensions: Int = 3
+        override val nFeatures: Int = 2
+      }
+      override val svmParams:svmParamsTemplate = new svmParamsTemplate {
+        override val nSupports = 2
+        override val nFeatures:Int = pcaParams.nFeatures
+        override val nClasses = 2
+        override val nDegree = 1
+        override val kernelType = "poly"
+        override val classifierType = "ovo"
+        override val codeBook:Seq[Seq[Int]] = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
+      }
+      override val pcaVectorBufferParams:pcaVectorBufferParamsTemplate = new pcaVectorBufferParamsTemplate {
+        override val nRows: Int = pcaParams.nFeatures
+        override val nColumns: Int = pcaParams.nDimensions
+      }
+    }
+
     val filter1Params = new FIRFilterParams[FixedPoint] {
       override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
-      override val taps = Seq(1,2,3,4,5,0).map(ConvertableTo[FixedPoint].fromDouble(_))
+      override val taps = coefficients1.map(ConvertableTo[FixedPoint].fromDouble(_))
     }
 
     val filter2Params = new FIRFilterParams[FixedPoint] {
       override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
-      override val taps = Seq(5,4,3,2,1,0).map(ConvertableTo[FixedPoint].fromDouble(_))
+      override val taps = coefficients2.map(ConvertableTo[FixedPoint].fromDouble(_))
     }
 
     val filter3Params = new FIRFilterParams[FixedPoint] {
       override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
-      override val taps = Seq(0,1,2,2,1,0).map(ConvertableTo[FixedPoint].fromDouble(_))
+      override val taps = coefficients3.map(ConvertableTo[FixedPoint].fromDouble(_))
     }
 
     // FFTBufferParams
@@ -253,8 +332,6 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       override val nRows:Int = pcaParams.nFeatures
       override val nColumns:Int = pcaParams.nDimensions
     }
-
-    val goldenModelParameters = new wellnessIntegrationParameterBundle
 
 
     WellnessIntegrationTesterFP(filter1Params: FIRFilterParams[FixedPoint],
