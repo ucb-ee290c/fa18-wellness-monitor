@@ -22,8 +22,12 @@ class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt],
     val goldenModelResultSVMAlphaVector = SVMAlphaVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultSVMIntercept = SVMInterceptMemoryBuffer.idlePoke(input)
 
-    poke(c.io.in.bits.wrdata, input)
-    poke(c.io.in.bits.wraddr, addr)
+    val inputBundle = new ConfigurationMemoryBundle[SInt](params) {
+      override val wrdata: SInt = input.asSInt()
+      override val wraddr = addr.asUInt()
+    }
+    poke(c.io.in.bits.wrdata, inputBundle.wrdata)
+    poke(c.io.in.bits.wraddr, inputBundle.wraddr)
     poke(c.io.in.valid, true)
 
     step(1)
@@ -63,8 +67,12 @@ class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt],
     val goldenModelResultSVMAlphaVector = SVMAlphaVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultSVMIntercept = SVMInterceptMemoryBuffer.idlePoke(input)
 
-    poke(c.io.in.bits.wrdata, input)
-    poke(c.io.in.bits.wraddr, addr)
+    val inputBundle = new ConfigurationMemoryBundle[SInt](params) {
+      override val wrdata: SInt = input.asSInt()
+      override val wraddr = addr.asUInt()
+    }
+    poke(c.io.in.bits.wrdata, inputBundle.wrdata)
+    poke(c.io.in.bits.wraddr, inputBundle.wraddr)
     poke(c.io.in.valid, true)
 
     step(1)
@@ -101,11 +109,15 @@ class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt],
 
     val goldenModelResultPCAVector = PCAVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultSVMSupportVector = SVMSupportVectorMemoryBuffer.idlePoke(input)
-    val goldenModelResultSVMAlphaVector = SVMAlphaVectorMemoryBuffer.idlePoke(input)
-    val goldenModelResultSVMIntercept = SVMInterceptMemoryBuffer.poke(input)
+    val goldenModelResultSVMAlphaVector = SVMAlphaVectorMemoryBuffer.poke(input)
+    val goldenModelResultSVMIntercept = SVMInterceptMemoryBuffer.idlePoke(input)
 
-    poke(c.io.in.bits.wrdata, input)
-    poke(c.io.in.bits.wraddr, addr)
+    val inputBundle = new ConfigurationMemoryBundle[SInt](params) {
+      override val wrdata: SInt = input.asSInt()
+      override val wraddr = addr.asUInt()
+    }
+    poke(c.io.in.bits.wrdata, inputBundle.wrdata)
+    poke(c.io.in.bits.wraddr, inputBundle.wraddr)
     poke(c.io.in.valid, true)
 
     step(1)
@@ -142,11 +154,15 @@ class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt],
 
     val goldenModelResultPCAVector = PCAVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultSVMSupportVector = SVMSupportVectorMemoryBuffer.idlePoke(input)
-    val goldenModelResultSVMAlphaVector = SVMAlphaVectorMemoryBuffer.poke(input)
-    val goldenModelResultSVMIntercept = SVMInterceptMemoryBuffer.idlePoke(input)
+    val goldenModelResultSVMAlphaVector = SVMAlphaVectorMemoryBuffer.idlePoke(input)
+    val goldenModelResultSVMIntercept = SVMInterceptMemoryBuffer.poke(input)
 
-    poke(c.io.in.bits.wrdata, input)
-    poke(c.io.in.bits.wraddr, addr)
+    val inputBundle = new ConfigurationMemoryBundle[SInt](params) {
+      override val wrdata: SInt = input.asSInt()
+      override val wraddr = addr.asUInt()
+    }
+    poke(c.io.in.bits.wrdata, inputBundle.wrdata)
+    poke(c.io.in.bits.wraddr, inputBundle.wraddr)
     poke(c.io.in.valid, true)
 
     step(1)
