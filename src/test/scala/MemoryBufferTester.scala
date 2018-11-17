@@ -43,6 +43,22 @@ class GoldenIntMemoryBuffer(params: MemoryBufferParams[SInt]) {
     }
     out
   }
+  def idlePoke(value: Int): outBundle = {
+
+    for(x <- 0 until params.nColumns) {
+      for (y <- 0 until params.nRows) {
+        out.regs(x)(y) = pseudoRegisters((x * params.nRows) + y)
+      }
+    }
+
+    if(counter == totalSize) {
+      out.valid = true
+    }
+    else {
+      out.valid = false
+    }
+    out
+  }
 }
 
 class MemoryBufferTester[T <: chisel3.Data](c: MemoryBuffer[T], params: MemoryBufferParams[SInt]) extends DspTester(c) {

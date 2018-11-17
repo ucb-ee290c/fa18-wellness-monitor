@@ -358,28 +358,33 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real :
   val svmParams: SVMParams[T],
   val pcaVectorBufferParams: MemoryBufferParams[T]
 )(implicit p: Parameters) extends DspBlock[D, U, EO, EI, B] {
-  val streamNode = AXI4StreamIdentityNode()
+  val streamNode = AXI4StreamNexusNode(
+    masterFn = { seq => AXI4StreamMasterPortParameters()},
+    slaveFn  = { seq => AXI4StreamSlavePortParameters()}
+  )
   val mem = None
 
   lazy val module = new LazyModuleImp(this) {
-    require(streamNode.in.length == 1)
+    require(streamNode.in.length == 2)
     require(streamNode.out.length == 1)
 
     val in = streamNode.in.head._1
+    val inConf = streamNode.in(1)._1
     val out = streamNode.out.head._1
 
     // Block instantiation
-    val wellness = Module(new WellnessModule(filter1Params: FIRFilterParams[T],
-    filter2Params: FIRFilterParams[T],
-    filter3Params: FIRFilterParams[T],
-    fftBufferParams: FFTBufferParams[T],
-    fftConfig: FFTConfig[T],
-    bandpower1Params: BandpowerParams[T],
-    bandpower2Params: BandpowerParams[T],
-    bandpower3Params: BandpowerParams[T],
-    pcaParams: PCAParams[T],
-    svmParams: SVMParams[T],
-    pcaVectorBufferParams: MemoryBufferParams[T]))
+    val wellness = Module(new WellnessModule(filter1Params:
+      FIRFilterParams[T],
+      filter2Params: FIRFilterParams[T],
+      filter3Params: FIRFilterParams[T],
+      fftBufferParams: FFTBufferParams[T],
+      fftConfig: FFTConfig[T],
+      bandpower1Params: BandpowerParams[T],
+      bandpower2Params: BandpowerParams[T],
+      bandpower3Params: BandpowerParams[T],
+      pcaParams: PCAParams[T],
+      svmParams: SVMParams[T],
+      pcaVectorBufferParams: MemoryBufferParams[T]))
 
     in.ready := wellness.io.in.ready
 
@@ -445,6 +450,8 @@ class WellnessThing[T <: Data : Real : Order : BinaryRepresentation]
 )(implicit p: Parameters) extends LazyModule {
   // Instantiate lazy modules
   val writeQueue = LazyModule(new TLWriteQueue(depth))
+  val configurationBaseAddr = AddressSet(0x2200, 0xff)
+  val writeConfigurationQueue = LazyModule(new TLWriteQueue(depth,configurationBaseAddr))
   val wellness = LazyModule(new TLWellnessDataPathBlock(
     filter1Params, filter2Params, filter3Params,
     fftBufferParams,
@@ -455,6 +462,7 @@ class WellnessThing[T <: Data : Real : Order : BinaryRepresentation]
 
   // Connect streamNodes of queues and wellness monitor
   readQueue.streamNode := wellness.streamNode := writeQueue.streamNode
+  wellness.streamNode := writeConfigurationQueue.streamNode
 
   lazy val module = new LazyModuleImp(this)
 }
@@ -549,5 +557,6 @@ trait HasPeripheryWellness extends BaseSubsystem {
     pcaParams, svmParams, pcaVectorBufferParams))
   // Connect memory interfaces to pbus
   pbus.toVariableWidthSlave(Some("wellnessWrite")) { wellness.writeQueue.mem.get }
+  pbus.toVariableWidthSlave(Some("wellnessConfigurationWrite")) { wellness.writeConfigurationQueue.mem.get }
   pbus.toVariableWidthSlave(Some("wellnessRead")) { wellness.readQueue.mem.get }
 }
