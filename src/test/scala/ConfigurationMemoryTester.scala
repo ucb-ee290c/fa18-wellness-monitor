@@ -15,13 +15,15 @@ class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt],
 
   for(i <- 0 until ( (c.pcaVectorMemoryParams.nRows*c.pcaVectorMemoryParams.nColumns)*10 + 1)) {
     val input = scala.util.Random.nextInt(20)
+    val addr = 0
 
     val goldenModelResultPCAVector = PCAVectorMemoryBuffer.poke(input)
     val goldenModelResultSVMSupportVector = SVMSupportVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultSVMAlphaVector = SVMAlphaVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultSVMIntercept = SVMInterceptMemoryBuffer.idlePoke(input)
 
-    poke(c.io.in.bits, input)
+    poke(c.io.in.bits.wrdata, input)
+    poke(c.io.in.bits.wraddr, addr)
     poke(c.io.in.valid, true)
 
     step(1)
@@ -53,14 +55,16 @@ class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt],
   }
 
   for(i <- 0 until ( (c.svmSupportVectorMemoryParams.nRows*c.svmSupportVectorMemoryParams.nColumns)*10 + 1)) {
-    val input = scala.util.Random.nextInt(20) + (1 * pow(2,30))
+    val input = scala.util.Random.nextInt(20) - 10
+    val addr = 1
 
     val goldenModelResultPCAVector = PCAVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultSVMSupportVector = SVMSupportVectorMemoryBuffer.poke(input)
     val goldenModelResultSVMAlphaVector = SVMAlphaVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultSVMIntercept = SVMInterceptMemoryBuffer.idlePoke(input)
 
-    poke(c.io.in.bits, input)
+    poke(c.io.in.bits.wrdata, input)
+    poke(c.io.in.bits.wraddr, addr)
     poke(c.io.in.valid, true)
 
     step(1)
@@ -92,14 +96,16 @@ class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt],
   }
 
   for(i <- 0 until ( (c.svmInterceptMemoryParams.nRows*c.svmInterceptMemoryParams.nColumns)*10 + 1)) {
-    val input = scala.util.Random.nextInt(20) + (3 * pow(2,30))
+    val input = scala.util.Random.nextInt(20) - 10
+    val addr = 2
 
     val goldenModelResultPCAVector = PCAVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultSVMSupportVector = SVMSupportVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultSVMAlphaVector = SVMAlphaVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultSVMIntercept = SVMInterceptMemoryBuffer.poke(input)
 
-    poke(c.io.in.bits, input)
+    poke(c.io.in.bits.wrdata, input)
+    poke(c.io.in.bits.wraddr, addr)
     poke(c.io.in.valid, true)
 
     step(1)
@@ -131,14 +137,16 @@ class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt],
   }
 
   for(i <- 0 until ( (c.svmAlphaVectorMemoryParams.nRows*c.svmAlphaVectorMemoryParams.nColumns)*10 + 1)) {
-    val input = scala.util.Random.nextInt(20) + (2 * pow(2,30))
+    val input = scala.util.Random.nextInt(20) - 10
+    val addr = 3
 
     val goldenModelResultPCAVector = PCAVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultSVMSupportVector = SVMSupportVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultSVMAlphaVector = SVMAlphaVectorMemoryBuffer.poke(input)
     val goldenModelResultSVMIntercept = SVMInterceptMemoryBuffer.idlePoke(input)
 
-    poke(c.io.in.bits, input)
+    poke(c.io.in.bits.wrdata, input)
+    poke(c.io.in.bits.wraddr, addr)
     poke(c.io.in.valid, true)
 
     step(1)
