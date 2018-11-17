@@ -196,8 +196,8 @@ class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt],
 
 object ConfigurationMemoryTester {
   def apply(params: ConfigurationMemoryParams[SInt]): Boolean = {
-    chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new ConfigurationMemory(params)) {
-    //dsptools.Driver.execute(() => new ConfigurationMemory(params), TestSetup.dspTesterOptions) {
+    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new ConfigurationMemory(params)) {
+    dsptools.Driver.execute(() => new ConfigurationMemory(params), TestSetup.dspTesterOptions) {
       c => new ConfigurationMemoryTester(c, params)
     }
   }
