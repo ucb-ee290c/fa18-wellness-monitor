@@ -44,6 +44,75 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   val referenceSVMSupportVector = Seq(Seq(1, 2), Seq(3, 4))
   val referenceSVMAlphaVector = Seq(Seq(7, 3))
   val referenceSVMIntercept = Seq(4)
+  /*val referencePCAVector = Seq(Seq(5, 0, -2), Seq(1, 2, 3))
+  val PCAVector = Wire(Vec(2, Vec(3, pcaParams.protoData)))
+  for(i <- 0 until 2) {
+    PCAVector(i) := VecInit(referencePCAVector(i).map(ConvertableTo[T].fromInt(_)))
+  }
+
+  val referenceSVMSupportVector = Seq(Seq(1, 2), Seq(3, 4))
+  val SVMSupportVector = Wire(Vec(2, Vec(2, svmParams.protoData)))
+  for(i <- 0 until 2) {
+    SVMSupportVector(i) := VecInit(referenceSVMSupportVector(i).map(ConvertableTo[T].fromInt(_)))
+  }
+
+  val referenceSVMAlphaVector = Seq(Seq(7, 3))
+  val SVMAlphaVector = Wire(Vec(1, Vec(2, svmParams.protoData)))
+  for(i <- 0 until 1) {
+    SVMAlphaVector(i) := VecInit(referenceSVMAlphaVector(i).map(ConvertableTo[T].fromInt(_)))
+  }
+
+  val referenceSVMIntercept = Seq(4)
+  val SVMIntercept = VecInit(referenceSVMIntercept.map(ConvertableTo[T].fromInt(_)))
+  //for(i <- 0 until 1) {
+  //  SVMIntercept(i) := VecInit(ConvertableTo[T].fromInt(referenceSVMIntercept(i)))
+  //} */
+
+  //poke(c.io.inConf.bits.confSVMIntercept, referenceSVMIntercept)
+
+  val pcaVectorMemoryParams = new MemoryBufferParams[T] {
+    override val protoData: T = c.configurationMemoryParams.protoData.cloneType
+    override val nRows: Int = c.configurationMemoryParams.nDimensions
+    override val nColumns: Int = c.configurationMemoryParams.nFeatures
+  }
+
+  val svmSupportVectorMemoryParams = new MemoryBufferParams[T] {
+    override val protoData: T = c.configurationMemoryParams.protoData.cloneType
+    override val nRows: Int = c.configurationMemoryParams.nFeatures
+    override val nColumns: Int = c.configurationMemoryParams.nSupports
+  }
+
+  val svmAlphaVectorMemoryParams = new MemoryBufferParams[T] {
+    override val protoData: T = c.configurationMemoryParams.protoData.cloneType
+    override val nRows: Int = c.configurationMemoryParams.nSupports
+    override val nColumns: Int = c.configurationMemoryParams.nClassifiers
+  }
+
+  val svmInterceptMemoryParams = new MemoryBufferParams[T] {
+    override val protoData: T = c.configurationMemoryParams.protoData.cloneType
+    override val nRows: Int = c.configurationMemoryParams.nClassifiers
+    override val nColumns: Int = 1
+  }
+
+  for(x <- 0 until pcaVectorMemoryParams.nColumns) {
+    for (y <- 0 until pcaVectorMemoryParams.nRows) {
+      poke(c.io.inConf.bits.confPCAVector(x)(y), referencePCAVector(x)(y))
+    }
+  }
+  for(x <- 0 until svmSupportVectorMemoryParams.nColumns) {
+    for (y <- 0 until svmSupportVectorMemoryParams.nRows) {
+      poke(c.io.inConf.bits.confSVMSupportVector(x)(y), referenceSVMSupportVector(x)(y))
+    }
+  }
+  for(x <- 0 until svmAlphaVectorMemoryParams.nColumns) {
+    for (y <- 0 until svmAlphaVectorMemoryParams.nRows) {
+      poke(c.io.inConf.bits.confSVMAlphaVector(x)(y), referenceSVMAlphaVector(x)(y))
+    }
+  }
+  for (y <- 0 until svmInterceptMemoryParams.nRows) {
+    poke(c.io.inConf.bits.confSVMIntercept(y), referenceSVMIntercept(y))
+  }
+
 
   val pcaResult = PCA.poke(Seq(0,0,0),referencePCAVector.map(_.map(_.toDouble)))
   val filter1Result = filter1.poke(0)
@@ -107,6 +176,7 @@ object WellnessIntegrationTesterSInt {
             pcaParams: PCAParams[SInt],
             svmParams: SVMParams[SInt],
             pcaVectorBufferParams: MemoryBufferParams[SInt],
+            configurationMemoryParams: ConfigurationMemoryParams[SInt],
             goldenModelParameters: wellnessIntegrationParameterBundle): Boolean = {
     dsptools.Driver.execute(() => new WellnessModule(
       filter1Params: FIRFilterParams[SInt],
@@ -119,7 +189,8 @@ object WellnessIntegrationTesterSInt {
       bandpower3Params: BandpowerParams[SInt],
       pcaParams: PCAParams[SInt],
       svmParams: SVMParams[SInt],
-      pcaVectorBufferParams: MemoryBufferParams[SInt]),
+      pcaVectorBufferParams: MemoryBufferParams[SInt],
+      configurationMemoryParams: ConfigurationMemoryParams[SInt]),
       TestSetup.dspTesterOptions) {
       c => new wellnessTester(c, goldenModelParameters)
     }
@@ -139,6 +210,7 @@ object WellnessIntegrationTesterFP {
             pcaParams: PCAParams[FixedPoint],
             svmParams: SVMParams[FixedPoint],
             pcaVectorBufferParams: MemoryBufferParams[FixedPoint],
+            configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
             goldenModelParameters: wellnessIntegrationParameterBundle): Boolean = {
     dsptools.Driver.execute(() => new WellnessModule(
       filter1Params: FIRFilterParams[FixedPoint],
@@ -151,7 +223,8 @@ object WellnessIntegrationTesterFP {
       bandpower3Params: BandpowerParams[FixedPoint],
       pcaParams: PCAParams[FixedPoint],
       svmParams: SVMParams[FixedPoint],
-      pcaVectorBufferParams: MemoryBufferParams[FixedPoint]),
+      pcaVectorBufferParams: MemoryBufferParams[FixedPoint],
+      configurationMemoryParams: ConfigurationMemoryParams[FixedPoint]),
       TestSetup.dspTesterOptions) {
       c => new wellnessTester(c, goldenModelParameters)
     }

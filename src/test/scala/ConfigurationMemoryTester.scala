@@ -32,28 +32,24 @@ class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt],
 
     step(1)
 
-    expect(c.io.memOutPCAVector.valid, goldenModelResultPCAVector.valid)
     for(x <- 0 until c.pcaVectorMemoryParams.nColumns) {
       for (y <- 0 until c.pcaVectorMemoryParams.nRows) {
-        expect(c.io.memOutPCAVector.bits(x)(y), goldenModelResultPCAVector.regs(x)(y))
+        expect(c.io.out.bits.confPCAVector(x)(y), goldenModelResultPCAVector.regs(x)(y))
       }
     }
-    expect(c.io.memOutSVMSupportVector.valid, goldenModelResultSVMSupportVector.valid)
     for(x <- 0 until c.svmSupportVectorMemoryParams.nColumns) {
       for (y <- 0 until c.svmSupportVectorMemoryParams.nRows) {
-        expect(c.io.memOutSVMSupportVector.bits(x)(y), goldenModelResultSVMSupportVector.regs(x)(y))
+        expect(c.io.out.bits.confSVMSupportVector(x)(y), goldenModelResultSVMSupportVector.regs(x)(y))
       }
     }
-    expect(c.io.memOutSVMAlphaVector.valid, goldenModelResultSVMAlphaVector.valid)
     for(x <- 0 until c.svmAlphaVectorMemoryParams.nColumns) {
       for (y <- 0 until c.svmAlphaVectorMemoryParams.nRows) {
-        expect(c.io.memOutSVMAlphaVector.bits(x)(y), goldenModelResultSVMAlphaVector.regs(x)(y))
+        expect(c.io.out.bits.confSVMAlphaVector(x)(y), goldenModelResultSVMAlphaVector.regs(x)(y))
       }
     }
-    //expect(c.io.memOutSVMIntercept.valid, goldenModelResultSVMIntercept.valid)
     for(x <- 0 until c.svmInterceptMemoryParams.nColumns) {
       for (y <- 0 until c.svmInterceptMemoryParams.nRows) {
-        expect(c.io.memOutSVMIntercept.bits(y), goldenModelResultSVMIntercept.regs(x)(y))
+        expect(c.io.out.bits.confSVMIntercept(y), goldenModelResultSVMIntercept.regs(x)(y))
       }
     }
   }
@@ -77,28 +73,24 @@ class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt],
 
     step(1)
 
-    expect(c.io.memOutPCAVector.valid, goldenModelResultPCAVector.valid)
     for(x <- 0 until c.pcaVectorMemoryParams.nColumns) {
       for (y <- 0 until c.pcaVectorMemoryParams.nRows) {
-        expect(c.io.memOutPCAVector.bits(x)(y), goldenModelResultPCAVector.regs(x)(y))
+        expect(c.io.out.bits.confPCAVector(x)(y), goldenModelResultPCAVector.regs(x)(y))
       }
     }
-    expect(c.io.memOutSVMSupportVector.valid, goldenModelResultSVMSupportVector.valid)
     for(x <- 0 until c.svmSupportVectorMemoryParams.nColumns) {
       for (y <- 0 until c.svmSupportVectorMemoryParams.nRows) {
-        expect(c.io.memOutSVMSupportVector.bits(x)(y), goldenModelResultSVMSupportVector.regs(x)(y))
+        expect(c.io.out.bits.confSVMSupportVector(x)(y), goldenModelResultSVMSupportVector.regs(x)(y))
       }
     }
-    expect(c.io.memOutSVMAlphaVector.valid, goldenModelResultSVMAlphaVector.valid)
     for(x <- 0 until c.svmAlphaVectorMemoryParams.nColumns) {
       for (y <- 0 until c.svmAlphaVectorMemoryParams.nRows) {
-        expect(c.io.memOutSVMAlphaVector.bits(x)(y), goldenModelResultSVMAlphaVector.regs(x)(y))
+        expect(c.io.out.bits.confSVMAlphaVector(x)(y), goldenModelResultSVMAlphaVector.regs(x)(y))
       }
     }
-    //expect(c.io.memOutSVMIntercept.valid, goldenModelResultSVMIntercept.valid)
     for(x <- 0 until c.svmInterceptMemoryParams.nColumns) {
       for (y <- 0 until c.svmInterceptMemoryParams.nRows) {
-        expect(c.io.memOutSVMIntercept.bits(y), goldenModelResultSVMIntercept.regs(x)(y))
+        expect(c.io.out.bits.confSVMIntercept(y), goldenModelResultSVMIntercept.regs(x)(y))
       }
     }
   }
@@ -122,28 +114,24 @@ class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt],
 
     step(1)
 
-    expect(c.io.memOutPCAVector.valid, goldenModelResultPCAVector.valid)
     for(x <- 0 until c.pcaVectorMemoryParams.nColumns) {
       for (y <- 0 until c.pcaVectorMemoryParams.nRows) {
-        expect(c.io.memOutPCAVector.bits(x)(y), goldenModelResultPCAVector.regs(x)(y))
+        expect(c.io.out.bits.confPCAVector(x)(y), goldenModelResultPCAVector.regs(x)(y))
       }
     }
-    expect(c.io.memOutSVMSupportVector.valid, goldenModelResultSVMSupportVector.valid)
     for(x <- 0 until c.svmSupportVectorMemoryParams.nColumns) {
       for (y <- 0 until c.svmSupportVectorMemoryParams.nRows) {
-        expect(c.io.memOutSVMSupportVector.bits(x)(y), goldenModelResultSVMSupportVector.regs(x)(y))
+        expect(c.io.out.bits.confSVMSupportVector(x)(y), goldenModelResultSVMSupportVector.regs(x)(y))
       }
     }
-    expect(c.io.memOutSVMAlphaVector.valid, goldenModelResultSVMAlphaVector.valid)
     for(x <- 0 until c.svmAlphaVectorMemoryParams.nColumns) {
       for (y <- 0 until c.svmAlphaVectorMemoryParams.nRows) {
-        expect(c.io.memOutSVMAlphaVector.bits(x)(y), goldenModelResultSVMAlphaVector.regs(x)(y))
+        expect(c.io.out.bits.confSVMAlphaVector(x)(y), goldenModelResultSVMAlphaVector.regs(x)(y))
       }
     }
-    //expect(c.io.memOutSVMIntercept.valid, goldenModelResultSVMIntercept.valid)
     for(x <- 0 until c.svmInterceptMemoryParams.nColumns) {
       for (y <- 0 until c.svmInterceptMemoryParams.nRows) {
-        expect(c.io.memOutSVMIntercept.bits(y), goldenModelResultSVMIntercept.regs(x)(y))
+        expect(c.io.out.bits.confSVMIntercept(y), goldenModelResultSVMIntercept.regs(x)(y))
       }
     }
   }
@@ -167,28 +155,24 @@ class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt],
 
     step(1)
 
-    expect(c.io.memOutPCAVector.valid, goldenModelResultPCAVector.valid)
     for(x <- 0 until c.pcaVectorMemoryParams.nColumns) {
       for (y <- 0 until c.pcaVectorMemoryParams.nRows) {
-        expect(c.io.memOutPCAVector.bits(x)(y), goldenModelResultPCAVector.regs(x)(y))
+        expect(c.io.out.bits.confPCAVector(x)(y), goldenModelResultPCAVector.regs(x)(y))
       }
     }
-    expect(c.io.memOutSVMSupportVector.valid, goldenModelResultSVMSupportVector.valid)
     for(x <- 0 until c.svmSupportVectorMemoryParams.nColumns) {
       for (y <- 0 until c.svmSupportVectorMemoryParams.nRows) {
-        expect(c.io.memOutSVMSupportVector.bits(x)(y), goldenModelResultSVMSupportVector.regs(x)(y))
+        expect(c.io.out.bits.confSVMSupportVector(x)(y), goldenModelResultSVMSupportVector.regs(x)(y))
       }
     }
-    expect(c.io.memOutSVMAlphaVector.valid, goldenModelResultSVMAlphaVector.valid)
     for(x <- 0 until c.svmAlphaVectorMemoryParams.nColumns) {
       for (y <- 0 until c.svmAlphaVectorMemoryParams.nRows) {
-        expect(c.io.memOutSVMAlphaVector.bits(x)(y), goldenModelResultSVMAlphaVector.regs(x)(y))
+        expect(c.io.out.bits.confSVMAlphaVector(x)(y), goldenModelResultSVMAlphaVector.regs(x)(y))
       }
     }
-    //expect(c.io.memOutSVMIntercept.valid, goldenModelResultSVMIntercept.valid)
     for(x <- 0 until c.svmInterceptMemoryParams.nColumns) {
       for (y <- 0 until c.svmInterceptMemoryParams.nRows) {
-        expect(c.io.memOutSVMIntercept.bits(y), goldenModelResultSVMIntercept.regs(x)(y))
+        expect(c.io.out.bits.confSVMIntercept(y), goldenModelResultSVMIntercept.regs(x)(y))
       }
     }
   }

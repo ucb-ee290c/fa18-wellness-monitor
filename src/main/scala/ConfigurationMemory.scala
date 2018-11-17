@@ -29,11 +29,7 @@ object ConfigurationMemoryBundle {
 
 class ConfigurationMemoryIO[T <: Data](params: ConfigurationMemoryParams[T]) extends Bundle {
   val in = Flipped(ValidWithSync(ConfigurationMemoryBundle(params)))
-  val memOutPCAVector = ValidWithSync(Vec(params.nDimensions,Vec(params.nFeatures,params.protoData)))
-  val memOutSVMSupportVector = ValidWithSync(Vec(params.nSupports,Vec(params.nFeatures,params.protoData)))
-  val memOutSVMAlphaVector = ValidWithSync(Vec(params.nClassifiers,Vec(params.nSupports,params.protoData)))
-  val memOutSVMIntercept = ValidWithSync(Vec(params.nClassifiers,params.protoData))
-  // TODO: SVM Intercept "valid" does not work. Fix it from inside "MemoryBuffer.scala" (probably)
+  val out = ValidWithSync(WellnessConfigurationBundle(params))
 
   override def cloneType: this.type = ConfigurationMemoryIO(params).asInstanceOf[this.type]
 }
@@ -48,6 +44,8 @@ class ConfigurationMemory[T <: chisel3.Data : Real : Order : BinaryRepresentatio
   require(params.nSupports >= 1)
   require(params.nClassifiers >= 1)
   val io = IO(ConfigurationMemoryIO[T](params))
+  io.out.sync := false.B
+  io.out.valid := true.B
 
   val addr = io.in.bits.wraddr
   val pcaVectorMemoryAddr = 0.U
@@ -57,17 +55,15 @@ class ConfigurationMemory[T <: chisel3.Data : Real : Order : BinaryRepresentatio
 
   val pcaVectorMemoryParams = new MemoryBufferParams[T] {
     override val protoData: T = params.protoData.cloneType
-    override val nRows: Int = params.nFeatures
-    override val nColumns: Int = params.nDimensions
+    override val nRows: Int = params.nDimensions
+    override val nColumns: Int = params.nFeatures
   }
 
   val pcaVectorMemory = Module(new MemoryBuffer[T](pcaVectorMemoryParams))
   pcaVectorMemory.io.in.bits := io.in.bits.wrdata
   pcaVectorMemory.io.in.sync := false.B
   pcaVectorMemory.io.in.valid := io.in.valid && (addr === pcaVectorMemoryAddr)
-  io.memOutPCAVector.bits := pcaVectorMemory.io.out.bits
-  io.memOutPCAVector.sync := false.B
-  io.memOutPCAVector.valid := pcaVectorMemory.io.out.valid
+  io.out.bits.confPCAVector := pcaVectorMemory.io.out.bits
 
   val svmSupportVectorMemoryParams = new MemoryBufferParams[T] {
     override val protoData: T = params.protoData.cloneType
@@ -79,9 +75,7 @@ class ConfigurationMemory[T <: chisel3.Data : Real : Order : BinaryRepresentatio
   svmSupportVectorMemory.io.in.bits := io.in.bits.wrdata
   svmSupportVectorMemory.io.in.sync := false.B
   svmSupportVectorMemory.io.in.valid := io.in.valid && (addr === svmSupportVectorMemoryAddr)
-  io.memOutSVMSupportVector.bits := svmSupportVectorMemory.io.out.bits
-  io.memOutSVMSupportVector.sync := false.B
-  io.memOutSVMSupportVector.valid := svmSupportVectorMemory.io.out.valid
+  io.out.bits.confSVMSupportVector := svmSupportVectorMemory.io.out.bits
 
   val svmAlphaVectorMemoryParams = new MemoryBufferParams[T] {
     override val protoData: T = params.protoData.cloneType
@@ -93,9 +87,7 @@ class ConfigurationMemory[T <: chisel3.Data : Real : Order : BinaryRepresentatio
   svmAlphaVectorMemory.io.in.bits := io.in.bits.wrdata
   svmAlphaVectorMemory.io.in.sync := false.B
   svmAlphaVectorMemory.io.in.valid := io.in.valid && (addr === svmAlphaVectorMemoryAddr)
-  io.memOutSVMAlphaVector.bits := svmAlphaVectorMemory.io.out.bits
-  io.memOutSVMAlphaVector.sync := false.B
-  io.memOutSVMAlphaVector.valid := svmAlphaVectorMemory.io.out.valid
+  io.out.bits.confSVMAlphaVector := svmAlphaVectorMemory.io.out.bits
 
   val svmInterceptMemoryParams = new MemoryBufferParams[T] {
     override val protoData: T = params.protoData.cloneType
@@ -107,8 +99,6 @@ class ConfigurationMemory[T <: chisel3.Data : Real : Order : BinaryRepresentatio
   svmInterceptMemory.io.in.bits := io.in.bits.wrdata
   svmInterceptMemory.io.in.sync := false.B
   svmInterceptMemory.io.in.valid := io.in.valid && (addr === svmInterceptMemoryAddr)
-  io.memOutSVMIntercept.bits := svmInterceptMemory.io.out.bits.head
-  io.memOutSVMIntercept.sync := false.B
-  io.memOutSVMIntercept.valid := svmInterceptMemory.io.out.valid
+  io.out.bits.confSVMIntercept := svmInterceptMemory.io.out.bits.head
 
 }

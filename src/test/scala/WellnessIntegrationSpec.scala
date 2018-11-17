@@ -41,6 +41,13 @@ abstract class pcaVectorBufferParamsTemplate {
   val nColumns:Int
 }
 
+abstract class configurationMemoryParamsTemplate {
+  val nDimensions:Int
+  val nFeatures:Int
+  val nSupports:Int
+  val nClassifiers:Int
+}
+
 class wellnessIntegrationParameterBundle {
 
   val filter1Params:filterParamsTemplate = new filterParamsTemplate {
@@ -71,6 +78,12 @@ class wellnessIntegrationParameterBundle {
   val pcaVectorBufferParams:pcaVectorBufferParamsTemplate = new pcaVectorBufferParamsTemplate {
     override val nRows: Int = 2
     override val nColumns: Int = 3
+  }
+  val configurationMemoryParams:configurationMemoryParamsTemplate = new configurationMemoryParamsTemplate {
+    override val nDimensions: Int = 3
+    override val nFeatures: Int = 2
+    override val nSupports: Int = 2
+    override val nClassifiers: Int = 1
   }
 
 }
@@ -119,6 +132,30 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       override val pcaVectorBufferParams:pcaVectorBufferParamsTemplate = new pcaVectorBufferParamsTemplate {
         override val nRows: Int = pcaParams.nFeatures
         override val nColumns: Int = pcaParams.nDimensions
+      }
+      override val configurationMemoryParams: configurationMemoryParamsTemplate = new configurationMemoryParamsTemplate {
+        object computeNClassifiers {
+          def apply(params: svmParamsTemplate with Object {
+            val nClasses: Int
+            val codeBook: Seq[Seq[Int]]
+            val classifierType: String
+          }): Int =
+            if (params.classifierType == "ovr") {
+              if (params.nClasses == 2) params.nClasses - 1
+              else 1
+            }
+            else if (params.classifierType == "ovo") {
+              (params.nClasses*(params.nClasses - 1))/2
+            }
+            else if (params.classifierType == "ecoc") {
+              params.codeBook.head.length
+            }
+            else 1
+        }
+        override val nDimensions: Int = pcaParams.nDimensions
+        override val nFeatures: Int = pcaParams.nFeatures
+        override val nSupports: Int = svmParams.nSupports
+        override val nClassifiers: Int = computeNClassifiers(svmParams)
       }
     }
 
@@ -198,6 +235,32 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       override val nColumns:Int = pcaParams.nDimensions
     }
 
+    val configurationMemoryParams = new ConfigurationMemoryParams[SInt] {
+      object computeNClassifiers {
+        def apply(params: SVMParams[chisel3.SInt] with Object {
+          val nClasses: Int
+          val codeBook: Seq[Seq[Int]]
+          val classifierType: String
+        }): Int =
+          if (params.classifierType == "ovr") {
+            if (params.nClasses == 2) params.nClasses - 1
+            else 1
+          }
+          else if (params.classifierType == "ovo") {
+            (params.nClasses*(params.nClasses - 1))/2
+          }
+          else if (params.classifierType == "ecoc") {
+            params.codeBook.head.length
+          }
+          else 1
+      }
+      override val protoData = pcaParams.protoData.cloneType
+      override val nDimensions: Int = pcaParams.nDimensions
+      override val nFeatures: Int = pcaParams.nFeatures
+      override val nSupports: Int = svmParams.nSupports
+      override val nClassifiers: Int = computeNClassifiers(svmParams)
+    }
+
 
     WellnessIntegrationTesterSInt(filter1Params: FIRFilterParams[SInt],
       filter2Params: FIRFilterParams[SInt],
@@ -210,6 +273,7 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       pcaParams: PCAParams[SInt],
       svmParams: SVMParams[SInt],
       pcaVectorBufferParams: MemoryBufferParams[SInt],
+      configurationMemoryParams: ConfigurationMemoryParams[SInt],
       goldenModelParameters: wellnessIntegrationParameterBundle) should be (true)
   }
 
@@ -256,6 +320,30 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       override val pcaVectorBufferParams:pcaVectorBufferParamsTemplate = new pcaVectorBufferParamsTemplate {
         override val nRows: Int = pcaParams.nFeatures
         override val nColumns: Int = pcaParams.nDimensions
+      }
+      override val configurationMemoryParams: configurationMemoryParamsTemplate = new configurationMemoryParamsTemplate {
+        object computeNClassifiers {
+          def apply(params: svmParamsTemplate with Object {
+            val nClasses: Int
+            val codeBook: Seq[Seq[Int]]
+            val classifierType: String
+          }): Int =
+            if (params.classifierType == "ovr") {
+              if (params.nClasses == 2) params.nClasses - 1
+              else 1
+            }
+            else if (params.classifierType == "ovo") {
+              (params.nClasses*(params.nClasses - 1))/2
+            }
+            else if (params.classifierType == "ecoc") {
+              params.codeBook.head.length
+            }
+            else 1
+        }
+        override val nDimensions: Int = pcaParams.nDimensions
+        override val nFeatures: Int = pcaParams.nFeatures
+        override val nSupports: Int = svmParams.nSupports
+        override val nClassifiers: Int = computeNClassifiers(svmParams)
       }
     }
 
@@ -333,6 +421,32 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       override val nColumns:Int = pcaParams.nDimensions
     }
 
+    val configurationMemoryParams = new ConfigurationMemoryParams[FixedPoint] {
+      object computeNClassifiers {
+        def apply(params: SVMParams[FixedPoint] with Object {
+          val nClasses: Int
+          val codeBook: Seq[Seq[Int]]
+          val classifierType: String
+        }): Int =
+          if (params.classifierType == "ovr") {
+            if (params.nClasses == 2) params.nClasses - 1
+            else 1
+          }
+          else if (params.classifierType == "ovo") {
+            (params.nClasses*(params.nClasses - 1))/2
+          }
+          else if (params.classifierType == "ecoc") {
+            params.codeBook.head.length
+          }
+          else 1
+      }
+      override val protoData = pcaParams.protoData.cloneType
+      override val nDimensions: Int = pcaParams.nDimensions
+      override val nFeatures: Int = pcaParams.nFeatures
+      override val nSupports: Int = svmParams.nSupports
+      override val nClassifiers: Int = computeNClassifiers(svmParams)
+    }
+
 
     WellnessIntegrationTesterFP(filter1Params: FIRFilterParams[FixedPoint],
       filter2Params: FIRFilterParams[FixedPoint],
@@ -345,6 +459,7 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       pcaParams: PCAParams[FixedPoint],
       svmParams: SVMParams[FixedPoint],
       pcaVectorBufferParams: MemoryBufferParams[FixedPoint],
+      configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
       goldenModelParameters: wellnessIntegrationParameterBundle) should be (true)
   }
 

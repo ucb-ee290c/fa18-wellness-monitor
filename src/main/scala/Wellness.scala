@@ -152,6 +152,18 @@ class TLReadQueue
 
 }
 
+class WellnessConfigurationBundle[T <: Data](params: ConfigurationMemoryParams[T]) extends Bundle {
+  val confPCAVector = Vec(params.nFeatures,Vec(params.nDimensions,params.protoData))
+  val confSVMSupportVector = Vec(params.nSupports,Vec(params.nFeatures,params.protoData))
+  val confSVMAlphaVector = Vec(params.nClassifiers,Vec(params.nSupports,params.protoData))
+  val confSVMIntercept = Vec(params.nClassifiers,params.protoData)
+
+  override def cloneType: this.type = WellnessConfigurationBundle(params).asInstanceOf[this.type]
+}
+object WellnessConfigurationBundle {
+  def apply[T <: Data](params: ConfigurationMemoryParams[T]): WellnessConfigurationBundle[T] = new WellnessConfigurationBundle(params)
+}
+
 class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1Params: FIRFilterParams[T],
                                                  filter2Params: FIRFilterParams[T],
                                                  filter3Params: FIRFilterParams[T],
@@ -162,7 +174,8 @@ class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1P
                                                  bandpower3Params: BandpowerParams[T],
                                                  pcaParams: PCAParams[T],
                                                  svmParams: SVMParams[T],
-                                                 pcaVectorBufferParams: MemoryBufferParams[T]) extends Bundle {
+                                                 pcaVectorBufferParams: MemoryBufferParams[T],
+                                                 configurationMemoryParams: ConfigurationMemoryParams[T]) extends Bundle {
   var nClassifiers = svmParams.nClasses  // one vs rest default
   if (svmParams.classifierType == "ovr") {
     if (svmParams.nClasses == 2) nClassifiers = svmParams.nClasses - 1
@@ -172,6 +185,7 @@ class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1P
     nClassifiers = svmParams.codeBook.head.length // # columns = # classifiers
   }
   val in = Flipped(DecoupledIO(filter1Params.protoData.cloneType))
+  val inConf = Flipped(ValidWithSync(WellnessConfigurationBundle(configurationMemoryParams)))
   val out = ValidWithSync(Bool())
   val rawVotes = Output(Vec(svmParams.nClasses, svmParams.protoData))
   val classVotes = Output(Vec(svmParams.nClasses,UInt((log2Ceil(nClassifiers)+1).W)))
@@ -186,7 +200,8 @@ class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1P
                                                         bandpower3Params: BandpowerParams[T],
                                                         pcaParams: PCAParams[T],
                                                         svmParams: SVMParams[T],
-                                                        pcaVectorBufferParams: MemoryBufferParams[T]).asInstanceOf[this.type]
+                                                        pcaVectorBufferParams: MemoryBufferParams[T],
+                                                        configurationMemoryParams: ConfigurationMemoryParams[T]).asInstanceOf[this.type]
 }
 object WellnessModuleIO {
   def apply[T <: chisel3.Data : Real : Order : BinaryRepresentation](filter1Params: FIRFilterParams[T],
@@ -199,7 +214,8 @@ object WellnessModuleIO {
                                       bandpower3Params: BandpowerParams[T],
                                       pcaParams: PCAParams[T],
                                       svmParams: SVMParams[T],
-                                      pcaVectorBufferParams: MemoryBufferParams[T]): WellnessModuleIO[T] =
+                                      pcaVectorBufferParams: MemoryBufferParams[T],
+                                      configurationMemoryParams: ConfigurationMemoryParams[T]): WellnessModuleIO[T] =
     new WellnessModuleIO(filter1Params: FIRFilterParams[T],
       filter2Params: FIRFilterParams[T],
       filter3Params: FIRFilterParams[T],
@@ -210,7 +226,8 @@ object WellnessModuleIO {
       bandpower3Params: BandpowerParams[T],
       pcaParams: PCAParams[T],
       svmParams: SVMParams[T],
-      pcaVectorBufferParams: MemoryBufferParams[T])
+      pcaVectorBufferParams: MemoryBufferParams[T],
+      configurationMemoryParams: ConfigurationMemoryParams[T])
 }
 
 class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
@@ -224,7 +241,8 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   val bandpower3Params: BandpowerParams[T],
   val pcaParams: PCAParams[T],
   val svmParams: SVMParams[T],
-  val pcaVectorBufferParams: MemoryBufferParams[T])(implicit val p: Parameters) extends Module {
+  val pcaVectorBufferParams: MemoryBufferParams[T],
+  val configurationMemoryParams: ConfigurationMemoryParams[T])(implicit val p: Parameters) extends Module {
   val io = IO(WellnessModuleIO[T](  filter1Params: FIRFilterParams[T],
                                     filter2Params: FIRFilterParams[T],
                                     filter3Params: FIRFilterParams[T],
@@ -235,7 +253,8 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
                                     bandpower3Params: BandpowerParams[T],
                                     pcaParams: PCAParams[T],
                                     svmParams: SVMParams[T],
-                                    pcaVectorBufferParams: MemoryBufferParams[T]) )
+                                    pcaVectorBufferParams: MemoryBufferParams[T],
+                                    configurationMemoryParams: ConfigurationMemoryParams[T]) )
 
   // Block instantiation
   val filter1 = Module(new ConstantCoefficientFIRFilter(filter1Params))
@@ -249,30 +268,6 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   val pca = Module(new PCA(pcaParams))
   val svm = Module(new SVM(svmParams))
   //val pcaVectorBuffer = Module(new MemoryBuffer(pcaVectorBufferParams))
-
-  val referencePCAVector = Seq(Seq(5, 0, -2), Seq(1, 2, 3))
-  val PCAVector = Wire(Vec(2, Vec(3, pcaParams.protoData)))
-  for(i <- 0 until 2) {
-    PCAVector(i) := VecInit(referencePCAVector(i).map(ConvertableTo[T].fromInt(_)))
-  }
-
-  val referenceSVMSupportVector = Seq(Seq(1, 2), Seq(3, 4))
-  val SVMSupportVector = Wire(Vec(2, Vec(2, svmParams.protoData)))
-  for(i <- 0 until 2) {
-    SVMSupportVector(i) := VecInit(referenceSVMSupportVector(i).map(ConvertableTo[T].fromInt(_)))
-  }
-
-  val referenceSVMAlphaVector = Seq(Seq(7, 3))
-  val SVMAlphaVector = Wire(Vec(1, Vec(2, svmParams.protoData)))
-  for(i <- 0 until 1) {
-    SVMAlphaVector(i) := VecInit(referenceSVMAlphaVector(i).map(ConvertableTo[T].fromInt(_)))
-  }
-
-  val referenceSVMIntercept = Seq(4)
-  val SVMIntercept = VecInit(referenceSVMIntercept.map(ConvertableTo[T].fromInt(_)))
-  //for(i <- 0 until 1) {
-  //  SVMIntercept(i) := VecInit(ConvertableTo[T].fromInt(referenceSVMIntercept(i)))
-  //}
 
   io.in.ready := true.B
 
@@ -294,7 +289,7 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   pcaInVector(0) := filter1.io.out.bits
   pcaInVector(1) := filter2.io.out.bits
   pcaInVector(2) := filter3.io.out.bits
-  pca.io.PCAVector := PCAVector
+  pca.io.PCAVector := io.inConf.bits.confPCAVector
   pca.io.in.bits := pcaInVector
   pca.io.in.sync := false.B
   pca.io.in.valid := filter1.io.out.valid
@@ -332,9 +327,9 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   svm.io.in.valid := pca.io.out.valid
   svm.io.in.bits := pca.io.out.bits
   svm.io.in.sync := false.B
-  svm.io.supportVector := SVMSupportVector
-  svm.io.alphaVector := SVMAlphaVector
-  svm.io.intercept := SVMIntercept
+  svm.io.supportVector := io.inConf.bits.confSVMSupportVector
+  svm.io.alphaVector := io.inConf.bits.confSVMAlphaVector
+  svm.io.intercept := io.inConf.bits.confSVMIntercept
   // SVM to Output
   io.out.valid := svm.io.out.valid
   io.out.sync := svm.io.out.sync
@@ -356,7 +351,8 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real :
   val bandpower3Params: BandpowerParams[T],
   val pcaParams: PCAParams[T],
   val svmParams: SVMParams[T],
-  val pcaVectorBufferParams: MemoryBufferParams[T]
+  val pcaVectorBufferParams: MemoryBufferParams[T],
+  val configurationMemoryParams: ConfigurationMemoryParams[T]
 )(implicit p: Parameters) extends DspBlock[D, U, EO, EI, B] {
   val streamNode = AXI4StreamNexusNode(
     masterFn = { seq => AXI4StreamMasterPortParameters()},
@@ -384,17 +380,24 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real :
       bandpower3Params: BandpowerParams[T],
       pcaParams: PCAParams[T],
       svmParams: SVMParams[T],
-      pcaVectorBufferParams: MemoryBufferParams[T]))
+      pcaVectorBufferParams: MemoryBufferParams[T],
+      configurationMemoryParams: ConfigurationMemoryParams[T]))
+
+    val configurationMemory = Module(new ConfigurationMemory(configurationMemoryParams))
 
     in.ready := wellness.io.in.ready
-
     // Input to Wellness
     wellness.io.in.valid := in.valid
     wellness.io.in.bits := in.bits.data.asTypeOf(filter1Params.protoData)
-
     // Wellness to Output
     out.valid := wellness.io.out.valid
     out.bits.data := Cat(wellness.io.rawVotes(1).asUInt(),wellness.io.rawVotes(0).asUInt())
+
+    inConf.ready := true.B
+    configurationMemory.io.in.valid := inConf.valid
+    configurationMemory.io.in.bits.wrdata := inConf.bits.data.asUInt()(configurationMemory.io.in.bits.wrdata.getWidth-1,0)
+    configurationMemory.io.in.bits.wraddr := inConf.bits.data.asUInt()(configurationMemory.io.in.bits.wrdata.getWidth+1,configurationMemory.io.in.bits.wrdata.getWidth)
+    wellness.io.inConf := configurationMemory.io.out
   }
 }
 
@@ -410,14 +413,16 @@ class TLWellnessDataPathBlock[T <: Data : Real : Order : BinaryRepresentation]
   bandpower3Params: BandpowerParams[T],
   pcaParams: PCAParams[T],
   svmParams: SVMParams[T],
-  pcaVectorBufferParams: MemoryBufferParams[T]
+  pcaVectorBufferParams: MemoryBufferParams[T],
+  configurationMemoryParams: ConfigurationMemoryParams[T]
 )(implicit p: Parameters) extends
   WellnessDataPathBlock[TLClientPortParameters, TLManagerPortParameters, TLEdgeOut, TLEdgeIn, TLBundle, T](
     filter1Params, filter2Params, filter3Params,
     fftBufferParams,
     fftConfig,
     bandpower1Params, bandpower2Params, bandpower3Params,
-    pcaParams, svmParams, pcaVectorBufferParams)
+    pcaParams, svmParams, pcaVectorBufferParams,
+    configurationMemoryParams)
   with TLDspBlock
 
 /**
@@ -446,6 +451,7 @@ class WellnessThing[T <: Data : Real : Order : BinaryRepresentation]
   val pcaParams: PCAParams[T],
   val svmParams: SVMParams[T],
   val pcaVectorBufferParams: MemoryBufferParams[T],
+  val configurationMemoryParams: ConfigurationMemoryParams[T],
   val depth: Int = 32
 )(implicit p: Parameters) extends LazyModule {
   // Instantiate lazy modules
@@ -457,7 +463,8 @@ class WellnessThing[T <: Data : Real : Order : BinaryRepresentation]
     fftBufferParams,
     fftConfig,
     bandpower1Params, bandpower2Params, bandpower3Params,
-    pcaParams, svmParams, pcaVectorBufferParams))
+    pcaParams, svmParams, pcaVectorBufferParams,
+    configurationMemoryParams))
   val readQueue = LazyModule(new TLReadQueue(depth))
 
   // Connect streamNodes of queues and wellness monitor
@@ -532,7 +539,7 @@ trait HasPeripheryWellness extends BaseSubsystem {
   }
 
   val svmParams = new SVMParams[SInt] {
-    val protoData = SInt(32.W)
+    val protoData = pcaParams.protoData.cloneType
     val nSupports = 2
     val nFeatures = pcaParams.nFeatures
     val nClasses = 2
@@ -543,9 +550,34 @@ trait HasPeripheryWellness extends BaseSubsystem {
   }
 
   val pcaVectorBufferParams = new MemoryBufferParams[SInt] {
-    override val protoData = SInt(32.W)
+    override val protoData = pcaParams.protoData.cloneType
     override val nRows:Int = pcaParams.nFeatures
     override val nColumns:Int = pcaParams.nDimensions
+  }
+  val configurationMemoryParams = new ConfigurationMemoryParams[SInt] {
+    object computeNClassifiers {
+      def apply(params: SVMParams[chisel3.SInt] with Object {
+        val nClasses: Int
+        val codeBook: Seq[Seq[Int]]
+        val classifierType: String
+      }): Int =
+        if (params.classifierType == "ovr") {
+          if (params.nClasses == 2) params.nClasses - 1
+          else 1
+        }
+        else if (params.classifierType == "ovo") {
+          (params.nClasses*(params.nClasses - 1))/2
+        }
+        else if (params.classifierType == "ecoc") {
+          params.codeBook.head.length
+        }
+        else 1
+    }
+    override val protoData = pcaParams.protoData.cloneType
+    override val nDimensions: Int = pcaParams.nDimensions
+    override val nFeatures: Int = pcaParams.nFeatures
+    override val nSupports: Int = svmParams.nSupports
+    override val nClassifiers: Int = computeNClassifiers(svmParams)
   }
 
   // Instantiate wellness monitor
@@ -554,7 +586,8 @@ trait HasPeripheryWellness extends BaseSubsystem {
     fftBufferParams,
     fftConfig,
     bandpower1Params, bandpower2Params, bandpower3Params,
-    pcaParams, svmParams, pcaVectorBufferParams))
+    pcaParams, svmParams, pcaVectorBufferParams,
+    configurationMemoryParams))
   // Connect memory interfaces to pbus
   pbus.toVariableWidthSlave(Some("wellnessWrite")) { wellness.writeQueue.mem.get }
   pbus.toVariableWidthSlave(Some("wellnessConfigurationWrite")) { wellness.writeConfigurationQueue.mem.get }
