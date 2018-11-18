@@ -1,11 +1,8 @@
 package features
 
 import chisel3._
-import chisel3.util._
 import dsptools.numbers._
 import dspjunctions._
-import scala.collection._
-import scala.math.pow
 
 // Currently designed with a lane for each bin
 
