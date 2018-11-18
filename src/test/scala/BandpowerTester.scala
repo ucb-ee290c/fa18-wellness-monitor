@@ -7,6 +7,16 @@ import dsptools.numbers._
 import dsptools.DspTester
 import scala.math.pow
 
+class GoldenDoubleBandpower(params: BandpowerParams[UInt]) {
+  def poke(input: Seq[Double]): Double = {
+    val p2 = input.map(scala.math.abs(_))
+    val p1Scaled = p2.slice(1, params.nBins / 2 - 1).map(_ * 2)
+    val p1 = Seq(p2(0)) ++ p1Scaled ++ Seq(p2(params.nBins / 2))
+    val output = p1.slice(params.idxStartBin, params.idxEndBin).map{ case p => p * p}.reduce(_ + _)
+    output
+  }
+}
+
 class GoldenIntBandpower(params: BandpowerParams[UInt]) {
   def poke(input: Seq[Int]): Int = {
     val p2 = input.map(scala.math.abs(_))
@@ -19,7 +29,8 @@ class GoldenIntBandpower(params: BandpowerParams[UInt]) {
 
 class BandpowerTester[T <: Data](c: Bandpower[T], params: BandpowerParams[UInt]) extends DspTester(c) {
   val bandpower = new GoldenIntBandpower(params)
-  val input = Seq.fill(params.nBins)(scala.util.Random.nextInt(16))
+//  val input = Seq.fill(params.nBins)(scala.util.Random.nextInt(16))
+  val input = Seq.fill(params.nBins)(scala.util.Random.nextDouble(16))
   val goldenModelResult = bandpower.poke(input)
 
   input.zip(c.io.in.bits).foreach { case(sig, port) => poke(port, sig) }
