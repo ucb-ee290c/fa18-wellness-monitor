@@ -6,22 +6,25 @@ import chisel3.core.FixedPoint
 import dsptools.numbers._
 import dsptools.DspTester
 
-class GoldenDoubleBandpower[T <: Data](params: BandpowerParams[T]) {
+class GoldenDoubleBandpower(nBins: Int, idxStartBin: Int, idxEndBin: Int) {
   def poke(input: Seq[Double]): Double = {
     val p2 = input.map(scala.math.abs(_))
-    val p1Scaled = p2.slice(1, params.nBins / 2 - 1).map(_ * 2)
-    val p1 = Seq(p2(0)) ++ p1Scaled ++ Seq(p2(params.nBins / 2))
-    val output = p1.slice(params.idxStartBin, params.idxEndBin).map{ case p => p * p}.reduce(_ + _)
+    val p1Scaled = p2.slice(1, nBins / 2 - 1).map(_ * 2)
+    val p1 = Seq(p2(0)) ++ p1Scaled ++ Seq(p2(nBins / 2))
+    val output = p1.slice(idxStartBin, idxEndBin).map{ case p => p * p}.reduce(_ + _)
     output
   }
 }
 
 class BandpowerTester[T <: Data](c: Bandpower[T], params: BandpowerParams[T], testType: Int = 0) extends DspTester(c) {
-  val bandpower = new GoldenDoubleBandpower(params)
+  val nBins = params.nBins
+  val idxStartBin = params.idxStartBin
+  val idxEndBin = params.idxEndBin
+  val bandpower = new GoldenDoubleBandpower(nBins, idxStartBin, idxEndBin)
 
-  var input = Seq.fill(params.nBins)(scala.util.Random.nextDouble)
+  var input = Seq.fill(nBins)(scala.util.Random.nextDouble)
   if (testType == 1) { // UInt
-    input = Seq.fill(params.nBins)(scala.util.Random.nextInt(16))
+    input = Seq.fill(nBins)(scala.util.Random.nextInt(16))
   }
 
   val goldenModelResult = bandpower.poke(input)
