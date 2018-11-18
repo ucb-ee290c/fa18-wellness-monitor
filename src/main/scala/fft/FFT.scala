@@ -16,6 +16,8 @@ import dsptools.numbers.implicits._
 import dspjunctions._
 import dspblocks._
 import freechips.rocketchip.config.Parameters
+
+import scala.collection.mutable
 import scala.math._
 
 
@@ -56,7 +58,7 @@ class DirectFFT[T<:Data:Real](config: FFTConfig[T], genMid: DspComplex[T], genTw
 
   // p-point decimation-in-time direct form FFT with inputs in normal order
   // (outputs bit reversed)
-  if (config.quadrature) {
+  if (config.quadrature) { // TODO: unscrambling
     val stage_outputs_i = List.fill(log2Ceil(config.lanes_new)+1)(List.fill(config.lanes_new)(Wire(genOutFull)))
     val stage_outputs_q = List.fill(log2Ceil(config.lanes_new)+1)(List.fill(config.lanes_new)(Wire(genOutFull)))
 
@@ -110,9 +112,40 @@ class DirectFFT[T<:Data:Real](config: FFTConfig[T], genMid: DspComplex[T], genTw
 
       }
     }
+
     // wire up top-level outputs
     // note, truncation happens here!
-    io.out.bits := stage_outputs(log2Ceil(config.lanes))
+    def bit_reverse(in: Int, width: Int): Int = {
+      var test = in
+      var out = 0
+      for (i <- 0 until width) {
+        if (test / pow(2, width-i-1) >= 1) {
+          out += pow(2, i).toInt
+          test -= pow(2, width-i-1).toInt
+        }
+      }
+      out
+    }
+
+    val in = stage_outputs(log2Ceil(config.lanes))
+    val p = config.n
+    val n = in.size
+    val bp = n/p
+    val res = mutable.Seq.fill(n)(DspComplex(Ring[T].zero, Ring[T].zero))
+    in.grouped(p).zipWithIndex.foreach { case (set, sindex) =>
+      set.zipWithIndex.foreach { case (bin, bindex) =>
+        if (bp > 1) {
+          val p1 = if (sindex/(bp/2) >= 1) 1 else 0
+          val new_index = bit_reverse((sindex % (bp/2)) * 2 + p1, log2Ceil(bp)) + bit_reverse(bindex, log2Ceil(n))
+          res(new_index) = bin
+        } else {
+          val new_index = bit_reverse(bindex, log2Ceil(n))
+          res(new_index) = bin
+        }
+      }
+    }
+
+    io.out.bits := VecInit(res)
   }
 
 }
@@ -165,7 +198,7 @@ class BiplexFFT[T<:Data:Real](config: FFTConfig[T], genMid: DspComplex[T], genTw
 
   // bp-point decimation-in-time biplex pipelined FFT with outputs in bit-reversed order
   // up-scale to genMid immediately for simplicity
-  if (config.quadrature) {
+  if (config.quadrature) { // TODO: unscrambling
     val stage_outputs_i = List.fill(log2Ceil(config.bp)+2)(List.fill(config.lanes_new)(Wire(genMid)))
     val stage_outputs_q = List.fill(log2Ceil(config.bp)+2)(List.fill(config.lanes_new)(Wire(genMid)))
 
@@ -220,7 +253,37 @@ class BiplexFFT[T<:Data:Real](config: FFTConfig[T], genMid: DspComplex[T], genTw
       }
     }
     // wire up top-level outputs
-    io.out.bits := stage_outputs(log2Ceil(config.bp)+1)
+    def bit_reverse(in: Int, width: Int): Int = {
+      var test = in
+      var out = 0
+      for (i <- 0 until width) {
+        if (test / pow(2, width-i-1) >= 1) {
+          out += pow(2, i).toInt
+          test -= pow(2, width-i-1).toInt
+        }
+      }
+      out
+    }
+
+    val in = stage_outputs(log2Ceil(config.bp)+1)
+    val p = config.n
+    val n = in.size
+    val bp = n/p
+    val res = mutable.Seq.fill(n)(DspComplex(Ring[T].zero, Ring[T].zero))
+    in.grouped(p).zipWithIndex.foreach { case (set, sindex) =>
+      set.zipWithIndex.foreach { case (bin, bindex) =>
+        if (bp > 1) {
+          val p1 = if (sindex/(bp/2) >= 1) 1 else 0
+          val new_index = bit_reverse((sindex % (bp/2)) * 2 + p1, log2Ceil(bp)) + bit_reverse(bindex, log2Ceil(n))
+          res(new_index) = bin
+        } else {
+          val new_index = bit_reverse(bindex, log2Ceil(n))
+          res(new_index) = bin
+        }
+      }
+    }
+
+    io.out.bits := VecInit(res)
   }
 
 }

@@ -85,7 +85,8 @@ object spectrumTester {
     // return unscrambled output
     require(!retval.isEmpty, "Output queue is empty")
     require(retval.size == config.n, s"Output queue has the wrong number of values, got ${retval.size}, expected ${config.n}")
-    unscramble(retval.toSeq, config.lanes)
+//    unscramble(retval.toSeq, config.lanes)
+    retval.toSeq
   }
 
   // bit reverse a value
