@@ -2,7 +2,7 @@
 
 ## Overview
 
-The SVM block performs classification using the Support Vector Machine algorithm. [`svm_reference.py`](svm_reference.py) models the whole chain (from training all the way to inference/classification). This reference file already implements the final SVM algorithm to be implemented for this project (parameterizable number of classes, different kernel support, and variable number of features). Understanding what the script does requires some background on how to do inference using SVM. I have written some [`comprehensive tutorial`](svm_tutorial.md) regarding that. Please read that first.
+The SVM block performs classification using the Support Vector Machine algorithm. [`svm_reference.py`](../scripts/svm_reference.py) models the whole chain (from training all the way to inference/classification). This reference file already implements the final SVM algorithm to be implemented for this project (parameterizable number of classes, different kernel support, and variable number of features). Understanding what the script does requires some background on how to do inference using SVM. I have written a [`comprehensive tutorial`](svm_tutorial.md) regarding that. Please read that first.
 
 ## Parameters
 
