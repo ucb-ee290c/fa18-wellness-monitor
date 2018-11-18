@@ -26,7 +26,7 @@ import scala.collection.mutable
 
 class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParameters: wellnessIntegrationParameterBundle) extends DspTester(c) {
 
-  //TODO: Instantiate Golden Models (FFT & BandPower remaining)
+  // Instantiate golden models
   val filter1 = new GoldenDoubleFIRFilter(goldenModelParameters.filter1Params.taps)
   val filter2 = new GoldenDoubleFIRFilter(goldenModelParameters.filter2Params.taps)
   val filter3 = new GoldenDoubleFIRFilter(goldenModelParameters.filter3Params.taps)
@@ -142,32 +142,47 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   val filterOutBundle = Seq(filter1Result, filter2Result, filter3Result)
 
   for(i <- 0 until 1000) {
-    var input = scala.util.Random.nextFloat*32
-    if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
-      input = scala.util.Random.nextInt(32)
-    }
-    else if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
-      input = scala.util.Random.nextInt(64) - 32
-    }
 
-    //TODO: Poke inputs to golden models
+    val tEnd = 8
+    val inputList = mutable.ArrayBuffer[Float]()
+    val filter1ResultList = mutable.ArrayBuffer[Double]()
+    // Step through each point in time
+    for (t <- 0 until tEnd) {
+      // Generate each input in input time series
+      var input = scala.util.Random.nextFloat*32
+      if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
+        input = scala.util.Random.nextInt(32)
+      }
+      else if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
+        input = scala.util.Random.nextInt(64) - 32
+      }
+      // Input time series
+      inputList += input
 
-    val filter1Result = filter1.poke(input)
-    val filter2Result = filter2.poke(input)
-    val filter3Result = filter3.poke(input)
-    val filterOutBundle = Seq(filter1Result, filter2Result, filter3Result)
-    // TODO: FFT buffer...
-    val pcaResult = PCA.poke(filterOutBundle,referencePCAVector.map(_.map(_.toDouble)))
+      // Poke each input to filters and get result
+      val filter1Result = filter1.poke(input)
+      val filter2Result = filter2.poke(input)
+      val filter3Result = filter3.poke(input)
+      // Filter 1 output time series
+      filter1ResultList += filter1Result
+    }
+    val fftResult = fft.poke(filter1ResultList.map(x => Complex(x, 0.0)))
+    val bandpower1Result = bandpower1.poke(fftResult.map(_.real))
+    val bandpower2Result = bandpower2.poke(fftResult.map(_.real))
+    val bandpower3Result = bandpower3.poke(fftResult.map(_.real))
+    val bandpowerOutBundle = Seq(bandpower1Result, bandpower2Result, bandpower3Result)
+    val pcaResult = PCA.poke(bandpowerOutBundle,referencePCAVector.map(_.map(_.toDouble)))
     val svmResult = SVM.poke(pcaResult.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),
       referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
 
-    //TODO: Poke inputs to real thing
-    poke(c.io.in.bits, input)
-    poke(c.io.in.valid, 1)
+    // Poke inputs to real thing
+    for (t <- 0 until tEnd) {
+      poke(c.io.in.bits, inputList(i))
+      poke(c.io.in.valid, 1)
+      step(1)
+    }
 
-    step(1)
-
-    //TODO: Expect Results
+    // Expect results
     for (i <- 0 until goldenModelParameters.svmParams.nClasses) {
       if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.SInt" || c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
         expect(c.io.rawVotes(i), svmResult(0)(i))
