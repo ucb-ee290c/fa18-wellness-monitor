@@ -395,7 +395,8 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real :
 
     inConf.ready := true.B
     configurationMemory.io.in.valid := inConf.valid
-    configurationMemory.io.in.bits.wrdata := inConf.bits.data.asUInt()(configurationMemory.io.in.bits.wrdata.getWidth-1,0)
+    configurationMemory.io.in.sync := false.B
+    configurationMemory.io.in.bits.wrdata := inConf.bits.data.asUInt()(configurationMemory.io.in.bits.wrdata.getWidth-1,0).asSInt()
     configurationMemory.io.in.bits.wraddr := inConf.bits.data.asUInt()(configurationMemory.io.in.bits.wrdata.getWidth+1,configurationMemory.io.in.bits.wrdata.getWidth)
     wellness.io.inConf := configurationMemory.io.out
   }
