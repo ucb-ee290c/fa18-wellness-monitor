@@ -1,5 +1,6 @@
 package wellness
 
+import breeze.math.Complex
 import chisel3._
 import chisel3.util._
 import chisel3.experimental.FixedPoint
@@ -29,6 +30,22 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   val filter1 = new GoldenDoubleFIRFilter(goldenModelParameters.filter1Params.taps)
   val filter2 = new GoldenDoubleFIRFilter(goldenModelParameters.filter2Params.taps)
   val filter3 = new GoldenDoubleFIRFilter(goldenModelParameters.filter3Params.taps)
+  val fft = new GoldenDoubleFFT
+  val bandpower1 = new GoldenDoubleBandpower(
+    goldenModelParameters.bandpower1Params.nBins,
+    goldenModelParameters.bandpower1Params.idxStartBin,
+    goldenModelParameters.bandpower1Params.idxEndBin,
+    )
+  val bandpower2 = new GoldenDoubleBandpower(
+    goldenModelParameters.bandpower2Params.nBins,
+    goldenModelParameters.bandpower2Params.idxStartBin,
+    goldenModelParameters.bandpower2Params.idxEndBin,
+  )
+  val bandpower3 = new GoldenDoubleBandpower(
+    goldenModelParameters.bandpower3Params.nBins,
+    goldenModelParameters.bandpower3Params.idxStartBin,
+    goldenModelParameters.bandpower3Params.idxEndBin,
+  )
   val SVM = new GoldenSVM(
     goldenModelParameters.svmParams.nSupports,
     goldenModelParameters.svmParams.nFeatures,
@@ -115,6 +132,10 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
 
 
   val pcaResult = PCA.poke(Seq(0,0,0),referencePCAVector.map(_.map(_.toDouble)))
+  val bandpower1Result = bandpower1.poke(Seq.fill(goldenModelParameters.bandpower1Params.nBins)(0.0))
+  val bandpower2Result = bandpower2.poke(Seq.fill(goldenModelParameters.bandpower2Params.nBins)(0.0))
+  val bandpower3Result = bandpower3.poke(Seq.fill(goldenModelParameters.bandpower3Params.nBins)(0.0))
+  val fftResult = fft.poke(Seq.fill(goldenModelParameters.fftConfig.nPts)(Complex(0.0, 0.0)))
   val filter1Result = filter1.poke(0)
   val filter2Result = filter2.poke(0)
   val filter3Result = filter3.poke(0)
@@ -135,6 +156,7 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     val filter2Result = filter2.poke(input)
     val filter3Result = filter3.poke(input)
     val filterOutBundle = Seq(filter1Result, filter2Result, filter3Result)
+    // TODO: FFT buffer...
     val pcaResult = PCA.poke(filterOutBundle,referencePCAVector.map(_.map(_.toDouble)))
     val svmResult = SVM.poke(pcaResult.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),
       referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
