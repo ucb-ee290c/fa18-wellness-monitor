@@ -11,9 +11,17 @@ import breeze.math.Complex
 import breeze.signal.fourierTr
 import breeze.linalg.DenseVector
 
+class GoldenDoubleFFT {
+  def poke(tone: Seq[Complex]): Seq[Complex] = {
+    val expected = fourierTr(DenseVector(tone.toArray)).toArray
+    expected
+  }
+}
+
 class CustomFFTTester[T <: Data](c: FFT[T], config: FFTConfig[FixedPoint]) extends DspTester(c) {
   val tone = (0 until config.n).map(x => Complex(Random.nextDouble(), 0.0))
-  val expected = fourierTr(DenseVector(tone.toArray)).toArray
+  val fft = new GoldenDoubleFFT
+  val expected = fft.poke(tone)
 
   tone.zip(c.io.in.bits).foreach { case(sig, port) => poke(port, sig) }
   poke(c.io.in.valid, value = 1)
