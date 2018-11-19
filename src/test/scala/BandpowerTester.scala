@@ -48,17 +48,15 @@ class BandpowerTester[T <: Data](c: Bandpower[T], params: BandpowerParams[T], te
 }
 object UIntBandpowerTester {
   def apply(params: BandpowerParams[UInt]): Boolean = {
-    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new Bandpower(params)) {
     dsptools.Driver.execute(() => new Bandpower(params), TestSetup.dspTesterOptions) {
-      c => new BandpowerTester(c, params)
+      c => new BandpowerTester(c, params, 1)
     }
   }
 }
 object FixedPointBandpowerTester {
   def apply(params: BandpowerParams[FixedPoint]): Boolean = {
-    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new Bandpower(params)) {
     dsptools.Driver.execute(() => new Bandpower(params), TestSetup.dspTesterOptions) {
-      c => new BandpowerTester(c, params)
+      c => new BandpowerTester(c, params, 0)
     }
   }
 }

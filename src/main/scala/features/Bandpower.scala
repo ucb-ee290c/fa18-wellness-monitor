@@ -30,10 +30,9 @@ class Bandpower[T <: Data : Real](val params: BandpowerParams[T]) extends Module
   // Take mag squared of FFT output
   val p2 = io.in.bits.map(_.abssq())
   // Except for DC and sampling freq, 2x for 2-sided to 1-sided
-  val p1Scaled = io.in.bits.slice(1, params.nBins/2 - 1).map(_ * 2)
+  val p1Scaled = p2.slice(1, params.nBins/2 - 1).map(_ * 2)
   // Concatenate back in unscaled DC and sampling freq elems
   val p1 = VecInit(p2(0)) ++ p1Scaled ++ VecInit(p2(params.nBins/2))
-  // TODO: fix type mismatch error
   // Just sum because already squared
   io.out.bits := p1.slice(params.idxStartBin, params.idxEndBin).reduce(_ + _)
 
