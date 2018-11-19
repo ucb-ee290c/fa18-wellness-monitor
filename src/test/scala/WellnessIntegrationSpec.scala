@@ -226,19 +226,22 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       val idxStartBin = 0
       val idxEndBin = 3
       val nBins = nPts
-      val protoData = DspComplex(SInt(32.W), SInt(32.W))
+      val genIn = DspComplex(SInt(32.W), SInt(32.W))
+      val genOut = SInt(32.W)
     }
     val bandpower2Params = new BandpowerParams[SInt] {
       val idxStartBin = 0
       val idxEndBin = 1
       val nBins = nPts
-      val protoData = DspComplex(SInt(32.W), SInt(32.W))
+      val genIn = DspComplex(SInt(32.W), SInt(32.W))
+      val genOut = SInt(32.W)
     }
     val bandpower3Params = new BandpowerParams[SInt] {
       val idxStartBin = 2
       val idxEndBin = 3
       val nBins = nPts
-      val protoData = DspComplex(SInt(32.W), SInt(32.W))
+      val genIn = DspComplex(SInt(32.W), SInt(32.W))
+      val genOut = SInt(32.W)
     }
 
     val pcaParams = new PCAParams[SInt] {
@@ -412,19 +415,22 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       val idxStartBin = 0
       val idxEndBin = 3
       val nBins = nPts
-      val protoData = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP))
+      val genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP))
+      val genOut = FixedPoint(dataWidth.W,dataBP.BP)
     }
     val bandpower2Params = new BandpowerParams[FixedPoint] {
       val idxStartBin = 0
       val idxEndBin = 1
       val nBins = nPts
-      val protoData = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP))
+      val genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP))
+      val genOut = FixedPoint(dataWidth.W,dataBP.BP)
     }
     val bandpower3Params = new BandpowerParams[FixedPoint] {
       val idxStartBin = 2
       val idxEndBin = 3
       val nBins = nPts
-      val protoData = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP))
+      val genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP))
+      val genOut = FixedPoint(dataWidth.W,dataBP.BP)
     }
 
     val pcaParams = new PCAParams[FixedPoint] {

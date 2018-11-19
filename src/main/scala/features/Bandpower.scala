@@ -10,12 +10,13 @@ trait BandpowerParams[T <: Data] {
   val idxStartBin: Int
   val idxEndBin: Int
   val nBins: Int
-  val protoData: DspComplex[T]
+  val genIn: DspComplex[T]
+  val genOut: T
 }
 
 class BandpowerIO[T <: Data](params: BandpowerParams[T]) extends Bundle {
-  val in = Flipped(ValidWithSync(Vec(params.nBins, params.protoData.cloneType)))
-  val out = ValidWithSync(params.protoData.cloneType)
+  val in = Flipped(ValidWithSync(Vec(params.nBins, params.genIn.cloneType)))
+  val out = ValidWithSync(params.genOut.cloneType)
 
   override def cloneType: this.type = BandpowerIO(params).asInstanceOf[this.type]
 }
