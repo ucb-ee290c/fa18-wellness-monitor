@@ -192,6 +192,12 @@ class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1P
   val out = ValidWithSync(Bool())
   val rawVotes = Output(Vec(svmParams.nClasses, svmParams.protoData))
   val classVotes = Output(Vec(svmParams.nClasses,UInt((log2Ceil(nClassifiers)+1).W)))
+  val lineOut = Output(lineLength1Params.protoData)
+  val filterOut = Output(filter1Params.protoData)
+  val pcaOut = Output(Vec(pcaParams.nFeatures, pcaParams.protoData))
+
+  // val filterValid = Output(Bool())
+  val lineLengthValid = Output(Bool())
 
   override def cloneType: this.type = WellnessModuleIO( filter1Params: FIRFilterParams[T],
                                                         filter2Params: FIRFilterParams[T],
@@ -305,30 +311,30 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   filter3.io.in.sync := false.B
   filter3.io.in.bits := io.in.bits.asTypeOf(filter3Params.protoData)
 
-  lineLength1.io.in.valid := io.in.valid
-  lineLength1.io.in.sync := false.B
-  lineLength1.io.in.bits := io.in.bits.asTypeOf(lineLength1Params.protoData)
+  // lineLength1.io.in.valid := io.in.valid
+  // lineLength1.io.in.sync := false.B
+  // lineLength1.io.in.bits := io.in.bits.asTypeOf(lineLength1Params.protoData)
 
-  lineLength2.io.in.valid := io.in.valid
-  lineLength2.io.in.sync := false.B
-  lineLength2.io.in.bits := io.in.bits.asTypeOf(lineLength1Params.protoData)
+  // lineLength2.io.in.valid := io.in.valid
+  // lineLength2.io.in.sync := false.B
+  // lineLength2.io.in.bits := io.in.bits.asTypeOf(lineLength1Params.protoData)
 
-  lineLength3.io.in.valid := io.in.valid
-  lineLength3.io.in.sync := false.B
-  lineLength3.io.in.bits := io.in.bits.asTypeOf(lineLength1Params.protoData)
+  // lineLength3.io.in.valid := io.in.valid
+  // lineLength3.io.in.sync := false.B
+  // lineLength3.io.in.bits := io.in.bits.asTypeOf(lineLength1Params.protoData)
 
   // FIR Filters to Line length blocks
-  // lineLength1.io.in.valid := filter1.io.out.valid
-  // lineLength1.io.in.sync := false.B
-  // lineLength1.io.in.bits := filter1.io.out.bits.asTypeOf(lineLength1Params.protoData)
+  lineLength1.io.in.valid := filter1.io.out.valid
+  lineLength1.io.in.sync := false.B
+  lineLength1.io.in.bits := filter1.io.out.bits.asTypeOf(lineLength1Params.protoData)
 
-  // lineLength2.io.in.valid := filter2.io.out.valid
-  // lineLength2.io.in.sync := false.B
-  // lineLength2.io.in.bits := filter2.io.out.bits.asTypeOf(lineLength2Params.protoData)
+  lineLength2.io.in.valid := filter2.io.out.valid
+  lineLength2.io.in.sync := false.B
+  lineLength2.io.in.bits := filter2.io.out.bits.asTypeOf(lineLength2Params.protoData)
 
-  // lineLength3.io.in.valid := filter3.io.out.valid
-  // lineLength3.io.in.sync := false.B
-  // lineLength3.io.in.bits := filter3.io.out.bits.asTypeOf(lineLength3Params.protoData)
+  lineLength3.io.in.valid := filter3.io.out.valid
+  lineLength3.io.in.sync := false.B
+  lineLength3.io.in.bits := filter3.io.out.bits.asTypeOf(lineLength3Params.protoData)
 
   // TOP LEVEL INTEGRATION TRIALS
   val pcaInVector = Wire(Vec(3,pcaParams.protoData))
@@ -386,6 +392,13 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   io.out.bits := false.B
   io.rawVotes := svm.io.rawVotes
   io.classVotes := svm.io.classVotes
+
+  // pinned out outputs for debug purposes
+  io.filterOut := filter1.io.out.bits
+  io.lineOut := lineLength1.io.out.bits
+  io.pcaOut := pca.io.out.bits
+  io.lineLengthValid := lineLength1.io.out.valid
+
 }
 
 

@@ -146,19 +146,19 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     }
 
     //TODO: Poke inputs to golden models
-    //lineLength1Result = lineLength1.poke(value = filter1Result)
-    //lineLength2Result = lineLength2.poke(value = filter2Result)
-    //lineLength3Result = lineLength3.poke(value = filter3Result)
-    //lineLengthOutBundle = Seq(lineLength1Result, lineLength2Result, lineLength3Result)
-
-    lineLength1Result = lineLength1.poke(input)
-    lineLength2Result = lineLength2.poke(input)
-    lineLength3Result = lineLength3.poke(input)
+    lineLength1Result = lineLength1.poke(value = filter1Result)
+    lineLength2Result = lineLength2.poke(value = filter2Result)
+    lineLength3Result = lineLength3.poke(value = filter3Result)
     lineLengthOutBundle = Seq(lineLength1Result, lineLength2Result, lineLength3Result)
 
-    // filter1Result = filter1.poke(input)
-    // filter2Result = filter2.poke(input)
-    // filter3Result = filter3.poke(input)
+    // lineLength1Result = lineLength1.poke(input)
+    // lineLength2Result = lineLength2.poke(input)
+    // lineLength3Result = lineLength3.poke(input)
+    // lineLengthOutBundle = Seq(lineLength1Result, lineLength2Result, lineLength3Result)
+
+    filter1Result = filter1.poke(input)
+    filter2Result = filter2.poke(input)
+    filter3Result = filter3.poke(input)
     // filterOutBundle = Seq(filter1Result, filter2Result, filter3Result)
 
     // pcaResult = PCA.poke(filterOutBundle,referencePCAVector.map(_.map(_.toDouble)))
@@ -173,20 +173,38 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     step(1)
 
     //TODO: Expect Results
-    for (i <- 0 until goldenModelParameters.svmParams.nClasses) {
-      if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.SInt" || c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
-        expect(c.io.rawVotes(i), svmResult(0)(i))
-        expect(c.io.classVotes(i), svmResult(1)(i))
-      } else {
-        // due to the series of multiply and accumulates, error actually blows up, let's be lenient
-        fixTolLSBs.withValue(20) { // +-16, 4 extra bits after the binary point
-          expect(c.io.rawVotes(i), svmResult(0)(i))
+    if (c.io.lineLengthValid == 1) {
+      fixTolLSBs.withValue(16) {
+        expect(c.io.filterOut, filter1Result)
+        expect(c.io.lineOut, lineLength1Result)
+      }
+
+
+      for (i <- 0 until goldenModelParameters.pcaParams.nFeatures) {
+        if (c.pcaParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
+          expect(c.io.pcaOut(i), pcaResult(i))
+        } else {
+          // due to the series of multiply and accumulates, error actually blows up, let's be lenient
+          fixTolLSBs.withValue(16) { // at least the integer part must match
+            expect(c.io.pcaOut(i), pcaResult(i))
+          }
         }
-        // strict check for the class votes
-        expect(c.io.classVotes(i), svmResult(1)(i))
+      }
+
+      for (i <- 0 until goldenModelParameters.svmParams.nClasses) {
+        if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.SInt" || c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
+          expect(c.io.rawVotes(i), svmResult(0)(i))
+          expect(c.io.classVotes(i), svmResult(1)(i))
+        } else {
+          // due to the series of multiply and accumulates, error actually blows up, let's be lenient
+          fixTolLSBs.withValue(20) { // +-16, 4 extra bits after the binary point
+            expect(c.io.rawVotes(i), svmResult(0)(i))
+          }
+          // strict check for the class votes
+          expect(c.io.classVotes(i), svmResult(1)(i))
+        }
       }
     }
-
   }
 }
 
