@@ -311,15 +311,15 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   // FFTs to Bandpowers
   bandpower1.io.in.valid := fft.io.out.valid
   bandpower1.io.in.sync := false.B
-  bandpower1.io.in.bits := fft.io.out.bits.map(_.real.asTypeOf(bandpower1.io.in.bits(0)))
+  bandpower1.io.in.bits := fft.io.out.bits
 
   bandpower2.io.in.valid := fft.io.out.valid
   bandpower2.io.in.sync := false.B
-  bandpower2.io.in.bits := fft.io.out.bits.map(_.real.asTypeOf(bandpower2.io.in.bits(0)))
+  bandpower2.io.in.bits := fft.io.out.bits
 
   bandpower3.io.in.valid := fft.io.out.valid
   bandpower3.io.in.sync := false.B
-  bandpower3.io.in.bits := fft.io.out.bits.map(_.real.asTypeOf(bandpower3.io.in.bits(0)))
+  bandpower3.io.in.bits := fft.io.out.bits
 
   // TODO: Bandpowers to PCA
 
@@ -518,19 +518,19 @@ trait HasPeripheryWellness extends BaseSubsystem {
     val idxStartBin = 0
     val idxEndBin = nPts-1
     val nBins = nPts
-    val protoData = SInt(32.W)
+    val protoData = DspComplex(SInt(32.W), SInt(32.W))
   }
   val bandpower2Params = new BandpowerParams[SInt] {
     val idxStartBin = 0
     val idxEndBin = nPts-1
     val nBins = nPts
-    val protoData = SInt(32.W)
+    val protoData = DspComplex(SInt(32.W), SInt(32.W))
   }
   val bandpower3Params = new BandpowerParams[SInt] {
     val idxStartBin = 0
     val idxEndBin = nPts-1
     val nBins = nPts
-    val protoData = SInt(32.W)
+    val protoData = DspComplex(SInt(32.W), SInt(32.W))
   }
 
   val pcaParams = new PCAParams[SInt] {

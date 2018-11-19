@@ -132,9 +132,9 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
 
 
   val pcaResult = PCA.poke(Seq(0,0,0),referencePCAVector.map(_.map(_.toDouble)))
-  val bandpower1Result = bandpower1.poke(Seq.fill(goldenModelParameters.bandpower1Params.nBins)(0.0))
-  val bandpower2Result = bandpower2.poke(Seq.fill(goldenModelParameters.bandpower2Params.nBins)(0.0))
-  val bandpower3Result = bandpower3.poke(Seq.fill(goldenModelParameters.bandpower3Params.nBins)(0.0))
+  val bandpower1Result = bandpower1.poke(Seq.fill(goldenModelParameters.bandpower1Params.nBins)(Complex(0.0, 0.0)))
+  val bandpower2Result = bandpower2.poke(Seq.fill(goldenModelParameters.bandpower2Params.nBins)(Complex(0.0, 0.0)))
+  val bandpower3Result = bandpower3.poke(Seq.fill(goldenModelParameters.bandpower3Params.nBins)(Complex(0.0, 0.0)))
   val fftResult = fft.poke(Seq.fill(goldenModelParameters.fftConfig.nPts)(Complex(0.0, 0.0)))
   val filter1Result = filter1.poke(0)
   val filter2Result = filter2.poke(0)
@@ -167,9 +167,9 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
       filter1ResultList += filter1Result
     }
     val fftResult = fft.poke(filter1ResultList.map(x => Complex(x, 0.0)))
-    val bandpower1Result = bandpower1.poke(fftResult.map(_.real))
-    val bandpower2Result = bandpower2.poke(fftResult.map(_.real))
-    val bandpower3Result = bandpower3.poke(fftResult.map(_.real))
+    val bandpower1Result = bandpower1.poke(fftResult)
+    val bandpower2Result = bandpower2.poke(fftResult)
+    val bandpower3Result = bandpower3.poke(fftResult)
     val bandpowerOutBundle = Seq(bandpower1Result, bandpower2Result, bandpower3Result)
     val pcaResult = PCA.poke(bandpowerOutBundle,referencePCAVector.map(_.map(_.toDouble)))
     val svmResult = SVM.poke(pcaResult.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),

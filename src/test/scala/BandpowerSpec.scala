@@ -2,6 +2,7 @@ package features
 
 import chisel3._
 import chisel3.core.FixedPoint
+import dsptools.numbers.DspComplex
 import org.scalatest.{FlatSpec, Matchers}
 
 class BandpowerSpec extends FlatSpec with Matchers {
@@ -12,7 +13,7 @@ class BandpowerSpec extends FlatSpec with Matchers {
       val idxStartBin = 0
       val idxEndBin = 63
       val nBins = 64
-      val protoData = UInt(16.W)
+      val protoData = DspComplex(UInt(16.W), UInt(16.W))
     }
 
     UIntBandpowerTester(params) should be (true)
@@ -23,7 +24,7 @@ class BandpowerSpec extends FlatSpec with Matchers {
       val idxStartBin = 0
       val idxEndBin = 63
       val nBins = 64
-      val protoData = FixedPoint(35.W, 19.BP)
+      val protoData = DspComplex(FixedPoint(35.W, 19.BP), FixedPoint(35.W, 19.BP))
     }
 
     FixedPointBandpowerTester(params) should be (true)

@@ -5,13 +5,18 @@ import chisel3._
 import chisel3.core.FixedPoint
 import dsptools.numbers._
 import dsptools.DspTester
+import breeze.math.Complex
 
 class GoldenDoubleBandpower(nBins: Int, idxStartBin: Int, idxEndBin: Int) {
-  def poke(input: Seq[Double]): Double = {
-    val p2 = input.map(scala.math.abs(_))
+  def poke(input: Seq[Complex]): Double = {
+    // Take mag squared of FFT output
+    val p2 = input.map{ case x => x.abs * x.abs}
+    // Except for DC and sampling freq, 2x for 2-sided to 1-sided
     val p1Scaled = p2.slice(1, nBins / 2 - 1).map(_ * 2)
+    // Concatenate back in unscaled DC and sampling freq elems
     val p1 = Seq(p2(0)) ++ p1Scaled ++ Seq(p2(nBins / 2))
-    val output = p1.slice(idxStartBin, idxEndBin).map{ case p => p * p}.reduce(_ + _)
+    // Just sum because already squared
+    val output = p1.slice(idxStartBin, idxEndBin).sum
     output
   }
 }
@@ -22,9 +27,9 @@ class BandpowerTester[T <: Data](c: Bandpower[T], params: BandpowerParams[T], te
   val idxEndBin = params.idxEndBin
   val bandpower = new GoldenDoubleBandpower(nBins, idxStartBin, idxEndBin)
 
-  var input = Seq.fill(nBins)(scala.util.Random.nextDouble)
+  var input = Seq.fill(nBins)(Complex(scala.util.Random.nextDouble, scala.util.Random.nextDouble))
   if (testType == 1) { // UInt
-    input = Seq.fill(nBins)(scala.util.Random.nextInt(16))
+    input = Seq.fill(nBins)(Complex(scala.util.Random.nextInt(16), scala.util.Random.nextInt(16)))
   }
 
   val goldenModelResult = bandpower.poke(input)
