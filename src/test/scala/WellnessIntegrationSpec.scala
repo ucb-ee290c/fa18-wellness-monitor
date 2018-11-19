@@ -138,6 +138,23 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       override val lineLength1Params: lineLengthParamsTemplate = new lineLengthParamsTemplate {
         override val windowSize = 2
       }
+      override val fftBufferParams:fftBufferParamsTemplate = new fftBufferParamsTemplate {
+        override val lanes: Int = 4
+      }
+      override val fftConfig: fftConfigTemplate = new fftConfigTemplate {
+        override val nPts: Int = 4
+      }
+      // TODO: parameterize to match Chisel params below
+      override val bandpower1Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
+        override val idxStartBin: Int = 0
+        override val idxEndBin: Int = 3
+        override val nBins: Int = 4
+      }
+      override val bandpower2Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
+        override val idxStartBin: Int = 0
+        override val idxEndBin: Int = 1
+        override val nBins: Int = 4
+      }
       override val pcaParams:pcaParamsTemplate = new pcaParamsTemplate {
         override val nDimensions: Int = 3
         override val nFeatures: Int = 2
@@ -311,6 +328,23 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       }
       override val lineLength1Params: lineLengthParamsTemplate = new lineLengthParamsTemplate {
         override val windowSize = 2
+      }
+      override val fftBufferParams:fftBufferParamsTemplate = new fftBufferParamsTemplate {
+        override val lanes: Int = 4
+      }
+      override val fftConfig: fftConfigTemplate = new fftConfigTemplate {
+        override val nPts: Int = 4
+      }
+      // TODO: parameterize to match Chisel params below
+      override val bandpower1Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
+        override val idxStartBin: Int = 0
+        override val idxEndBin: Int = 3
+        override val nBins: Int = 4
+      }
+      override val bandpower2Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
+        override val idxStartBin: Int = 0
+        override val idxEndBin: Int = 1
+        override val nBins: Int = 4
       }
       override val pcaParams:pcaParamsTemplate = new pcaParamsTemplate {
         override val nDimensions: Int = 3

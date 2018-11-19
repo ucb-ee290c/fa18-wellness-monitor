@@ -35,7 +35,7 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   // Instantiate golden models
   val filter1 = new GoldenDoubleFIRFilter(goldenModelParameters.filter1Params.taps)
   val lineLength1 = new GoldenDoubleLineLength(goldenModelParameters.lineLength1Params.windowSize,testType)
-  // TODO: FFTBuffer
+  val fftBuffer = new GoldenDoubleFFTBuffer(goldenModelParameters.fftBufferParams.lanes)
   val fft = new GoldenDoubleFFT
   val bandpower1 = new GoldenDoubleBandpower(
     goldenModelParameters.bandpower1Params.nBins,
@@ -133,7 +133,7 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
 
   var filter1Result = filter1.poke(0)
   var lineLength1Result = lineLength1.poke(value = 0)
-  // TODO: FFTBuffer
+  var fftBufferResult = fftBuffer.poke(0.0)
   var fftResult = fft.poke(Seq.fill(goldenModelParameters.fftConfig.nPts)(Complex(0.0, 0.0)))
   var bandpower1Result = bandpower1.poke(Seq.fill(goldenModelParameters.bandpower1Params.nBins)(Complex(0.0, 0.0)))
   var bandpower2Result = bandpower2.poke(Seq.fill(goldenModelParameters.bandpower2Params.nBins)(Complex(0.0, 0.0)))
@@ -151,13 +151,12 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
       input = scala.util.Random.nextInt(64) - 32
     }
 
-    // TODO
     // Poke inputs to golden models
     lineLength1Result = lineLength1.poke(value = filter1Result)
     bandpower1Result = bandpower1.poke(fftResult)
     bandpower2Result = bandpower2.poke(fftResult)
-    fftResult = fft.poke((0 until goldenModelParameters.fftConfig.nPts).map(x => Complex(x, 0.0)))
-    // TODO: FFTBuffer
+    fftResult = fft.poke(fftBufferResult.regs.map(x => Complex(x, 0.0)))
+    fftBufferResult = fftBuffer.poke(filter1Result)
     filter1Result = filter1.poke(input)
 
     pcaInputBundle = Seq(lineLength1Result, bandpower1Result, bandpower2Result)
