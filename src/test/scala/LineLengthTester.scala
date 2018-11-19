@@ -8,7 +8,7 @@ import dsptools.numbers.ConvertableTo
 
 import scala.collection.mutable
 
-class GoldenDoubleLineLength(windowSize: Int) {
+class GoldenDoubleLineLength(windowSize: Int, testType: Int) {
   var pseudoRegisters : List[Double] = List.fill(windowSize)(0.toDouble)
   var lineLengths : mutable.ArrayBuffer[Double] = List.fill(windowSize-1)(0.toDouble).to[mutable.ArrayBuffer]
 
@@ -21,12 +21,13 @@ class GoldenDoubleLineLength(windowSize: Int) {
     for(i <- 0 until windowSize-1) {
       accumulator += lineLengths(i)
     }
-    floor(accumulator/windowSize)
+    if(testType == 0) floor(accumulator/windowSize)
+    else accumulator/windowSize
   }
 }
 
 class lineLengthFloatTester[T <: chisel3.Data](c: lineLength[T], windowSize: Int, testType: Int) extends DspTester(c) {
-  val filter = new GoldenDoubleLineLength(windowSize)
+  val filter = new GoldenDoubleLineLength(windowSize, testType)
 
   for(i <- 0 until 100) {
     var input = scala.util.Random.nextFloat*32
@@ -69,7 +70,8 @@ object SIntLineLengthTester {
 }
 object FixedPointLineLengthTester {
   def apply(params: lineLengthParams[FixedPoint], windowSize: Int): Boolean = {
-    dsptools.Driver.execute(() => new lineLength(params), TestSetup.dspTesterOptions) {
+    chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new lineLength(params)) {
+    //dsptools.Driver.execute(() => new lineLength(params), TestSetup.dspTesterOptions) {
       c => new lineLengthFloatTester(c, windowSize, 1)
     }
   }

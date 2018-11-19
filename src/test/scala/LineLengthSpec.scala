@@ -9,7 +9,7 @@ import org.scalatest.{FlatSpec, Matchers}
 import scala.collection.mutable
 
 class LineLengthSpec extends FlatSpec with Matchers {
-  behavior of "ConstantCoefficientFIRFilter"
+  behavior of "lineLength"
 
   it should "multiply its input stream with correct coefficients at correct timesteps (UInt)" in {
 

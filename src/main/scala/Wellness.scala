@@ -167,6 +167,9 @@ object WellnessConfigurationBundle {
 class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1Params: FIRFilterParams[T],
                                                  filter2Params: FIRFilterParams[T],
                                                  filter3Params: FIRFilterParams[T],
+                                                 lineLength1Params: lineLengthParams[T],
+                                                 lineLength2Params: lineLengthParams[T],
+                                                 lineLength3Params: lineLengthParams[T],
                                                  fftBufferParams: FFTBufferParams[T],
                                                  fftConfig: FFTConfig[T],
                                                  bandpower1Params: BandpowerParams[T],
@@ -189,10 +192,19 @@ class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1P
   val out = ValidWithSync(Bool())
   val rawVotes = Output(Vec(svmParams.nClasses, svmParams.protoData))
   val classVotes = Output(Vec(svmParams.nClasses,UInt((log2Ceil(nClassifiers)+1).W)))
+  val lineOut = Output(lineLength1Params.protoData)
+  val filterOut = Output(filter1Params.protoData)
+  val pcaOut = Output(Vec(pcaParams.nFeatures, pcaParams.protoData))
+
+  // val filterValid = Output(Bool())
+  val lineLengthValid = Output(Bool())
 
   override def cloneType: this.type = WellnessModuleIO( filter1Params: FIRFilterParams[T],
                                                         filter2Params: FIRFilterParams[T],
                                                         filter3Params: FIRFilterParams[T],
+                                                        lineLength1Params: lineLengthParams[T],
+                                                        lineLength2Params: lineLengthParams[T],
+                                                        lineLength3Params: lineLengthParams[T],
                                                         fftBufferParams: FFTBufferParams[T],
                                                         fftConfig: FFTConfig[T],
                                                         bandpower1Params: BandpowerParams[T],
@@ -207,6 +219,9 @@ object WellnessModuleIO {
   def apply[T <: chisel3.Data : Real : Order : BinaryRepresentation](filter1Params: FIRFilterParams[T],
                                       filter2Params: FIRFilterParams[T],
                                       filter3Params: FIRFilterParams[T],
+                                      lineLength1Params: lineLengthParams[T],
+                                      lineLength2Params: lineLengthParams[T],
+                                      lineLength3Params: lineLengthParams[T],
                                       fftBufferParams: FFTBufferParams[T],
                                       fftConfig: FFTConfig[T],
                                       bandpower1Params: BandpowerParams[T],
@@ -219,6 +234,9 @@ object WellnessModuleIO {
     new WellnessModuleIO(filter1Params: FIRFilterParams[T],
       filter2Params: FIRFilterParams[T],
       filter3Params: FIRFilterParams[T],
+      lineLength1Params: lineLengthParams[T],
+      lineLength2Params: lineLengthParams[T],
+      lineLength3Params: lineLengthParams[T],
       fftBufferParams: FFTBufferParams[T],
       fftConfig: FFTConfig[T],
       bandpower1Params: BandpowerParams[T],
@@ -234,6 +252,9 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
 ( val filter1Params: FIRFilterParams[T],
   val filter2Params: FIRFilterParams[T],
   val filter3Params: FIRFilterParams[T],
+  val lineLength1Params: lineLengthParams[T],
+  val lineLength2Params: lineLengthParams[T],
+  val lineLength3Params: lineLengthParams[T],
   val fftBufferParams: FFTBufferParams[T],
   val fftConfig: FFTConfig[T],
   val bandpower1Params: BandpowerParams[T],
@@ -246,6 +267,9 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   val io = IO(WellnessModuleIO[T](  filter1Params: FIRFilterParams[T],
                                     filter2Params: FIRFilterParams[T],
                                     filter3Params: FIRFilterParams[T],
+                                    lineLength1Params: lineLengthParams[T],
+                                    lineLength2Params: lineLengthParams[T],
+                                    lineLength3Params: lineLengthParams[T],
                                     fftBufferParams: FFTBufferParams[T],
                                     fftConfig: FFTConfig[T],
                                     bandpower1Params: BandpowerParams[T],
@@ -260,6 +284,9 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   val filter1 = Module(new ConstantCoefficientFIRFilter(filter1Params))
   val filter2 = Module(new ConstantCoefficientFIRFilter(filter2Params))
   val filter3 = Module(new ConstantCoefficientFIRFilter(filter3Params))
+  val lineLength1 = Module(new lineLength(lineLength1Params))
+  val lineLength2 = Module(new lineLength(lineLength2Params))
+  val lineLength3 = Module(new lineLength(lineLength3Params))
   val fftBuffer = Module(new FFTBuffer(fftBufferParams))
   val fft = Module(new FFT(fftConfig))
   val bandpower1 = Module(new Bandpower(bandpower1Params))
@@ -284,15 +311,44 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   filter3.io.in.sync := false.B
   filter3.io.in.bits := io.in.bits.asTypeOf(filter3Params.protoData)
 
+  // lineLength1.io.in.valid := io.in.valid
+  // lineLength1.io.in.sync := false.B
+  // lineLength1.io.in.bits := io.in.bits.asTypeOf(lineLength1Params.protoData)
+
+  // lineLength2.io.in.valid := io.in.valid
+  // lineLength2.io.in.sync := false.B
+  // lineLength2.io.in.bits := io.in.bits.asTypeOf(lineLength1Params.protoData)
+
+  // lineLength3.io.in.valid := io.in.valid
+  // lineLength3.io.in.sync := false.B
+  // lineLength3.io.in.bits := io.in.bits.asTypeOf(lineLength1Params.protoData)
+
+  // FIR Filters to Line length blocks
+  lineLength1.io.in.valid := filter1.io.out.valid
+  lineLength1.io.in.sync := false.B
+  lineLength1.io.in.bits := filter1.io.out.bits.asTypeOf(lineLength1Params.protoData)
+
+  lineLength2.io.in.valid := filter2.io.out.valid
+  lineLength2.io.in.sync := false.B
+  lineLength2.io.in.bits := filter2.io.out.bits.asTypeOf(lineLength2Params.protoData)
+
+  lineLength3.io.in.valid := filter3.io.out.valid
+  lineLength3.io.in.sync := false.B
+  lineLength3.io.in.bits := filter3.io.out.bits.asTypeOf(lineLength3Params.protoData)
+
   // TOP LEVEL INTEGRATION TRIALS
   val pcaInVector = Wire(Vec(3,pcaParams.protoData))
-  pcaInVector(0) := filter1.io.out.bits
-  pcaInVector(1) := filter2.io.out.bits
-  pcaInVector(2) := filter3.io.out.bits
+  // pcaInVector(0) := filter1.io.out.bits
+  // pcaInVector(1) := filter2.io.out.bits
+  // pcaInVector(2) := filter3.io.out.bits
+  pcaInVector(0) := lineLength1.io.out.bits.asTypeOf(pcaParams.protoData)
+  pcaInVector(1) := lineLength2.io.out.bits.asTypeOf(pcaParams.protoData)
+  pcaInVector(2) := lineLength3.io.out.bits.asTypeOf(pcaParams.protoData)
   pca.io.PCAVector := io.inConf.bits.confPCAVector
   pca.io.in.bits := pcaInVector
   pca.io.in.sync := false.B
-  pca.io.in.valid := filter1.io.out.valid
+  // pca.io.in.valid := filter1.io.out.valid
+  pca.io.in.valid := lineLength1.io.out.valid
 
   // FIR Filters to FFT Buffers
   fftBuffer.io.in.valid := filter1.io.out.valid
@@ -336,6 +392,13 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   io.out.bits := false.B
   io.rawVotes := svm.io.rawVotes
   io.classVotes := svm.io.classVotes
+
+  // pinned out outputs for debug purposes
+  io.filterOut := filter1.io.out.bits
+  io.lineOut := lineLength1.io.out.bits
+  io.pcaOut := pca.io.out.bits
+  io.lineLengthValid := lineLength1.io.out.valid
+
 }
 
 
@@ -344,6 +407,9 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real :
   val filter1Params: FIRFilterParams[T],
   val filter2Params: FIRFilterParams[T],
   val filter3Params: FIRFilterParams[T],
+  val lineLength1Params: lineLengthParams[T],
+  val lineLength2Params: lineLengthParams[T],
+  val lineLength3Params: lineLengthParams[T],
   val fftBufferParams: FFTBufferParams[T],
   val fftConfig: FFTConfig[T],
   val bandpower1Params: BandpowerParams[T],
@@ -373,6 +439,9 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real :
       FIRFilterParams[T],
       filter2Params: FIRFilterParams[T],
       filter3Params: FIRFilterParams[T],
+      lineLength1Params: lineLengthParams[T],
+      lineLength2Params: lineLengthParams[T],
+      lineLength3Params: lineLengthParams[T],
       fftBufferParams: FFTBufferParams[T],
       fftConfig: FFTConfig[T],
       bandpower1Params: BandpowerParams[T],
@@ -407,6 +476,9 @@ class TLWellnessDataPathBlock[T <: Data : Real : Order : BinaryRepresentation]
   filter1Params: FIRFilterParams[T],
   filter2Params: FIRFilterParams[T],
   filter3Params: FIRFilterParams[T],
+  lineLength1Params: lineLengthParams[T],
+  lineLength2Params: lineLengthParams[T],
+  lineLength3Params: lineLengthParams[T],
   fftBufferParams: FFTBufferParams[T],
   fftConfig: FFTConfig[T],
   bandpower1Params: BandpowerParams[T],
@@ -419,6 +491,7 @@ class TLWellnessDataPathBlock[T <: Data : Real : Order : BinaryRepresentation]
 )(implicit p: Parameters) extends
   WellnessDataPathBlock[TLClientPortParameters, TLManagerPortParameters, TLEdgeOut, TLEdgeIn, TLBundle, T](
     filter1Params, filter2Params, filter3Params,
+    lineLength1Params, lineLength2Params, lineLength3Params,
     fftBufferParams,
     fftConfig,
     bandpower1Params, bandpower2Params, bandpower3Params,
@@ -444,6 +517,9 @@ class WellnessThing[T <: Data : Real : Order : BinaryRepresentation]
   val filter1Params: FIRFilterParams[T],
   val filter2Params: FIRFilterParams[T],
   val filter3Params: FIRFilterParams[T],
+  val lineLength1Params: lineLengthParams[T],
+  val lineLength2Params: lineLengthParams[T],
+  val lineLength3Params: lineLengthParams[T],
   val fftBufferParams: FFTBufferParams[T],
   val fftConfig: FFTConfig[T],
   val bandpower1Params: BandpowerParams[T],
@@ -461,6 +537,7 @@ class WellnessThing[T <: Data : Real : Order : BinaryRepresentation]
   val writeConfigurationQueue = LazyModule(new TLWriteQueue(depth,configurationBaseAddr))
   val wellness = LazyModule(new TLWellnessDataPathBlock(
     filter1Params, filter2Params, filter3Params,
+    lineLength1Params, lineLength2Params, lineLength3Params,
     fftBufferParams,
     fftConfig,
     bandpower1Params, bandpower2Params, bandpower3Params,
@@ -495,6 +572,22 @@ trait HasPeripheryWellness extends BaseSubsystem {
   val filter3Params = new FIRFilterParams[SInt] {
     override val protoData = SInt(32.W)
     override val taps = Seq(0.S, 1.S, 2.S, 2.S, 1.S, 0.S)
+  }
+
+  // lineLength params
+  val lineLength1Params = new lineLengthParams[SInt] {
+    override val protoData = SInt(32.W)
+    override val windowSize = 2
+  }
+
+  val lineLength2Params = new lineLengthParams[SInt] {
+    override val protoData = SInt(32.W)
+    override val windowSize = 2
+  }
+
+  val lineLength3Params = new lineLengthParams[SInt] {
+    override val protoData = SInt(32.W)
+    override val windowSize = 2
   }
 
   // FFTBufferParams
@@ -584,6 +677,7 @@ trait HasPeripheryWellness extends BaseSubsystem {
   // Instantiate wellness monitor
   val wellness = LazyModule(new WellnessThing(
     filter1Params, filter2Params, filter3Params,
+    lineLength1Params, lineLength2Params, lineLength3Params,
     fftBufferParams,
     fftConfig,
     bandpower1Params, bandpower2Params, bandpower3Params,
