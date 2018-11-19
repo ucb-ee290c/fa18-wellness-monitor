@@ -17,6 +17,10 @@ abstract class filterParamsTemplate {
   val taps:Seq[Double]
 }
 
+abstract class lineLengthParamsTemplate {
+  val windowSize:Int
+}
+
 abstract class fftBufferParamsTemplate {
   val lanes:Int
 }
@@ -34,10 +38,6 @@ abstract class svmParamsTemplate {
   val kernelType:String
   val classifierType:String
   val codeBook:Seq[Seq[Int]]
-}
-
-abstract class lineLengthParamsTemplate {
-  val windowSize:Int
 }
 
 abstract class pcaVectorBufferParamsTemplate {
@@ -64,13 +64,13 @@ class wellnessIntegrationParameterBundle {
     override val taps = Seq(0.toDouble,1.toDouble,2.toDouble,2.toDouble,1.toDouble,0.toDouble)
   }
   val lineLength1Params:lineLengthParamsTemplate = new lineLengthParamsTemplate {
-    override val windowSize: Int = 4
+    override val windowSize = 2
   }
   val lineLength2Params:lineLengthParamsTemplate = new lineLengthParamsTemplate {
-    override val windowSize: Int = 4
+    override val windowSize = 2
   }
   val lineLength3Params:lineLengthParamsTemplate = new lineLengthParamsTemplate {
-    override val windowSize: Int = 4
+    override val windowSize = 2
   }
   val fftBufferParams:fftBufferParamsTemplate = new fftBufferParamsTemplate {
     override val lanes: Int = 4
@@ -130,13 +130,13 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
         override val taps: Seq[Double] = coefficients3.map(_.toDouble)
       }
       override val lineLength1Params: lineLengthParamsTemplate = new lineLengthParamsTemplate {
-        override val windowSize: Int = 4
+        override val windowSize = 2
       }
       override val lineLength2Params: lineLengthParamsTemplate = new lineLengthParamsTemplate {
-        override val windowSize: Int = 4
+        override val windowSize = 2
       }
       override val lineLength3Params: lineLengthParamsTemplate = new lineLengthParamsTemplate {
-        override val windowSize: Int = 4
+        override val windowSize = 2
       }
       override val pcaParams:pcaParamsTemplate = new pcaParamsTemplate {
         override val nDimensions: Int = 3
@@ -200,17 +200,17 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
 
     val lineLength1Params = new lineLengthParams[SInt] {
       override val protoData = SInt(32.W)
-      override val windowSize = 4
+      override val windowSize = 2
     }
 
     val lineLength2Params = new lineLengthParams[SInt] {
       override val protoData = SInt(32.W)
-      override val windowSize = 4
+      override val windowSize = 2
     }
 
     val lineLength3Params = new lineLengthParams[SInt] {
       override val protoData = SInt(32.W)
-      override val windowSize = 4
+      override val windowSize = 2
     }
 
     // FFTBufferParams
@@ -345,13 +345,13 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
         override val taps: Seq[Double] = coefficients3
       }
       override val lineLength1Params: lineLengthParamsTemplate = new lineLengthParamsTemplate {
-        override val windowSize: Int = 4
+        override val windowSize = 2
       }
       override val lineLength2Params: lineLengthParamsTemplate = new lineLengthParamsTemplate {
-        override val windowSize: Int = 4
+        override val windowSize = 2
       }
       override val lineLength3Params: lineLengthParamsTemplate = new lineLengthParamsTemplate {
-        override val windowSize: Int = 4
+        override val windowSize = 2
       }
       override val pcaParams:pcaParamsTemplate = new pcaParamsTemplate {
         override val nDimensions: Int = 3
@@ -411,16 +411,16 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       override val taps = coefficients3.map(ConvertableTo[FixedPoint].fromDouble(_))
     }
     val lineLength1Params = new lineLengthParams[FixedPoint] {
-      override val protoData = FixedPoint(dataWidth.W, dataBP.BP)
-      override val windowSize = 4
+      override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+      override val windowSize = 2
     }
     val lineLength2Params = new lineLengthParams[FixedPoint] {
-      override val protoData = FixedPoint(dataWidth.W, dataBP.BP)
-      override val windowSize = 4
+      override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+      override val windowSize = 2
     }
     val lineLength3Params = new lineLengthParams[FixedPoint] {
-      override val protoData = FixedPoint(dataWidth.W, dataBP.BP)
-      override val windowSize = 4
+      override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+      override val windowSize = 2
     }
 
     // FFTBufferParams

@@ -139,17 +139,22 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     }
 
     //TODO: Poke inputs to golden models
-    lineLength1Result = lineLength1.poke(value = filter1Result)
-    lineLength2Result = lineLength2.poke(value = filter2Result)
-    lineLength3Result = lineLength3.poke(value = filter3Result)
+    //lineLength1Result = lineLength1.poke(value = filter1Result)
+    //lineLength2Result = lineLength2.poke(value = filter2Result)
+    //lineLength3Result = lineLength3.poke(value = filter3Result)
+    //lineLengthOutBundle = Seq(lineLength1Result, lineLength2Result, lineLength3Result)
+
+    lineLength1Result = lineLength1.poke(input)
+    lineLength2Result = lineLength2.poke(input)
+    lineLength3Result = lineLength3.poke(input)
     lineLengthOutBundle = Seq(lineLength1Result, lineLength2Result, lineLength3Result)
 
-    filter1Result = filter1.poke(input)
-    filter2Result = filter2.poke(input)
-    filter3Result = filter3.poke(input)
-    //filterOutBundle = Seq(filter1Result, filter2Result, filter3Result)
+    // filter1Result = filter1.poke(input)
+    // filter2Result = filter2.poke(input)
+    // filter3Result = filter3.poke(input)
+    // filterOutBundle = Seq(filter1Result, filter2Result, filter3Result)
 
-    //pcaResult = PCA.poke(filterOutBundle,referencePCAVector.map(_.map(_.toDouble)))
+    // pcaResult = PCA.poke(filterOutBundle,referencePCAVector.map(_.map(_.toDouble)))
     pcaResult = PCA.poke(lineLengthOutBundle,referencePCAVector.map(_.map(_.toDouble)))
     svmResult = SVM.poke(pcaResult.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),
       referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
