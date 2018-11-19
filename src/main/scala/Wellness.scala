@@ -287,11 +287,11 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   val lineLength1 = Module(new lineLength(lineLength1Params))
   val lineLength2 = Module(new lineLength(lineLength2Params))
   val lineLength3 = Module(new lineLength(lineLength3Params))
-  val fftBuffer = Module(new FFTBuffer(fftBufferParams))
-  val fft = Module(new FFT(fftConfig))
-  val bandpower1 = Module(new Bandpower(bandpower1Params))
-  val bandpower2 = Module(new Bandpower(bandpower2Params))
-  val bandpower3 = Module(new Bandpower(bandpower3Params))
+//  val fftBuffer = Module(new FFTBuffer(fftBufferParams))
+//  val fft = Module(new FFT(fftConfig))
+//  val bandpower1 = Module(new Bandpower(bandpower1Params))
+//  val bandpower2 = Module(new Bandpower(bandpower2Params))
+//  val bandpower3 = Module(new Bandpower(bandpower3Params))
   val pca = Module(new PCA(pcaParams))
   val svm = Module(new SVM(svmParams))
   //val pcaVectorBuffer = Module(new MemoryBuffer(pcaVectorBufferParams))
@@ -351,31 +351,31 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   pca.io.in.valid := lineLength1.io.out.valid
 
   // FIR Filters to FFT Buffers
-  fftBuffer.io.in.valid := filter1.io.out.valid
-  fftBuffer.io.in.sync := false.B
-  fftBuffer.io.in.bits := filter1.io.out.bits
+//  fftBuffer.io.in.valid := filter1.io.out.valid
+//  fftBuffer.io.in.sync := false.B
+//  fftBuffer.io.in.bits := filter1.io.out.bits
 
   // FFT Buffers to FFTs
-  fft.io.in.valid := fftBuffer.io.out.valid
-  fft.io.in.sync := false.B
-  for (i <- fft.io.in.bits.indices) {
-    fft.io.in.bits(i).real := fftBuffer.io.out.bits(i).asTypeOf(fft.io.in.bits(i).real)
-  }
-  fft.io.in.bits.foreach(_.imag := Ring[T].zero)
-  fft.io.data_set_end_clear := false.B
+//  fft.io.in.valid := fftBuffer.io.out.valid
+//  fft.io.in.sync := false.B
+//  for (i <- fft.io.in.bits.indices) {
+//    fft.io.in.bits(i).real := fftBuffer.io.out.bits(i).asTypeOf(fft.io.in.bits(i).real)
+//  }
+//  fft.io.in.bits.foreach(_.imag := Ring[T].zero)
+//  fft.io.data_set_end_clear := false.B
 
   // FFTs to Bandpowers
-  bandpower1.io.in.valid := fft.io.out.valid
-  bandpower1.io.in.sync := false.B
-  bandpower1.io.in.bits := fft.io.out.bits.map(_.real.asTypeOf(bandpower1.io.in.bits(0)))
-
-  bandpower2.io.in.valid := fft.io.out.valid
-  bandpower2.io.in.sync := false.B
-  bandpower2.io.in.bits := fft.io.out.bits.map(_.real.asTypeOf(bandpower2.io.in.bits(0)))
-
-  bandpower3.io.in.valid := fft.io.out.valid
-  bandpower3.io.in.sync := false.B
-  bandpower3.io.in.bits := fft.io.out.bits.map(_.real.asTypeOf(bandpower3.io.in.bits(0)))
+//  bandpower1.io.in.valid := fft.io.out.valid
+//  bandpower1.io.in.sync := false.B
+//  bandpower1.io.in.bits := fft.io.out.bits
+//
+//  bandpower2.io.in.valid := fft.io.out.valid
+//  bandpower2.io.in.sync := false.B
+//  bandpower2.io.in.bits := fft.io.out.bits
+//
+//  bandpower3.io.in.valid := fft.io.out.valid
+//  bandpower3.io.in.sync := false.B
+//  bandpower3.io.in.bits := fft.io.out.bits
 
   // TODO: Bandpowers to PCA
 
@@ -611,19 +611,22 @@ trait HasPeripheryWellness extends BaseSubsystem {
     val idxStartBin = 0
     val idxEndBin = nPts-1
     val nBins = nPts
-    val protoData = SInt(32.W)
+    val genIn = DspComplex(SInt(32.W), SInt(32.W))
+    val genOut = SInt(32.W)
   }
   val bandpower2Params = new BandpowerParams[SInt] {
     val idxStartBin = 0
     val idxEndBin = nPts-1
     val nBins = nPts
-    val protoData = SInt(32.W)
+    val genIn = DspComplex(SInt(32.W), SInt(32.W))
+    val genOut = SInt(32.W)
   }
   val bandpower3Params = new BandpowerParams[SInt] {
     val idxStartBin = 0
     val idxEndBin = nPts-1
     val nBins = nPts
-    val protoData = SInt(32.W)
+    val genIn = DspComplex(SInt(32.W), SInt(32.W))
+    val genOut = SInt(32.W)
   }
 
   val pcaParams = new PCAParams[SInt] {
