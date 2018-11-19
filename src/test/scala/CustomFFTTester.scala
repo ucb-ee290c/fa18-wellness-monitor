@@ -26,7 +26,7 @@ class CustomFFTTester[T <: Data](c: FFT[T], config: FFTConfig[FixedPoint]) exten
   tone.zip(c.io.in.bits).foreach { case(sig, port) => poke(port, sig) }
   poke(c.io.in.valid, value = 1)
   step(1)
-  for (i <- 0 until c.io.out.bits.size) {
+  for (i <- c.io.out.bits.indices) {
     fixTolLSBs.withValue(19) {
       expect(c.io.out.bits(i), expected(i), msg = s"Input: $tone, Expected: ${expected(i)}, ${peek(c.io.out.bits(i))}")
     }

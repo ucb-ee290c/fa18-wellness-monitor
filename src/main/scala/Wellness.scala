@@ -518,19 +518,22 @@ trait HasPeripheryWellness extends BaseSubsystem {
     val idxStartBin = 0
     val idxEndBin = nPts-1
     val nBins = nPts
-    val protoData = DspComplex(SInt(32.W), SInt(32.W))
+    val genIn = DspComplex(SInt(32.W), SInt(32.W))
+    val genOut = SInt(32.W)
   }
   val bandpower2Params = new BandpowerParams[SInt] {
     val idxStartBin = 0
     val idxEndBin = nPts-1
     val nBins = nPts
-    val protoData = DspComplex(SInt(32.W), SInt(32.W))
+    val genIn = DspComplex(SInt(32.W), SInt(32.W))
+    val genOut = SInt(32.W)
   }
   val bandpower3Params = new BandpowerParams[SInt] {
     val idxStartBin = 0
     val idxEndBin = nPts-1
     val nBins = nPts
-    val protoData = DspComplex(SInt(32.W), SInt(32.W))
+    val genIn = DspComplex(SInt(32.W), SInt(32.W))
+    val genOut = SInt(32.W)
   }
 
   val pcaParams = new PCAParams[SInt] {
