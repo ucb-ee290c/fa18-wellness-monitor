@@ -25,13 +25,20 @@ import scala.collection.mutable
 
 class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParameters: wellnessIntegrationParameterBundle) extends DspTester(c) {
 
+  val testType =
+    if ( (c.filter1Params.protoData.getClass.getTypeName == "chisel3.core.SInt") || (c.filter1Params.protoData.getClass.getTypeName == "chisel3.core.UInt") )
+      0
+    else
+      1
+
+
   //TODO: Instantiate Golden Models (FFT & BandPower remaining)
   val filter1 = new GoldenDoubleFIRFilter(goldenModelParameters.filter1Params.taps)
   val filter2 = new GoldenDoubleFIRFilter(goldenModelParameters.filter2Params.taps)
   val filter3 = new GoldenDoubleFIRFilter(goldenModelParameters.filter3Params.taps)
-  val lineLength1 = new GoldenDoubleLineLength(goldenModelParameters.lineLength1Params.windowSize)
-  val lineLength2 = new GoldenDoubleLineLength(goldenModelParameters.lineLength2Params.windowSize)
-  val lineLength3 = new GoldenDoubleLineLength(goldenModelParameters.lineLength3Params.windowSize)
+  val lineLength1 = new GoldenDoubleLineLength(goldenModelParameters.lineLength1Params.windowSize,testType)
+  val lineLength2 = new GoldenDoubleLineLength(goldenModelParameters.lineLength2Params.windowSize,testType)
+  val lineLength3 = new GoldenDoubleLineLength(goldenModelParameters.lineLength3Params.windowSize,testType)
   val SVM = new GoldenSVM(
     goldenModelParameters.svmParams.nSupports,
     goldenModelParameters.svmParams.nFeatures,
