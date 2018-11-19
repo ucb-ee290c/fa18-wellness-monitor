@@ -539,10 +539,10 @@ class WellnessThing[T <: Data : Real : Order : BinaryRepresentation]
   lazy val module = new LazyModuleImp(this)
 }
 
-/**
-  * Mixin for top-level rocket to add a PWM
-  *
-  */
+case class SIntWellnessParams(
+
+                             )
+
 trait HasPeripheryWellness extends BaseSubsystem {
   val nPts = 4
 
