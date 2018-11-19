@@ -13,14 +13,14 @@ trait BandpowerParams[T <: Data] {
   val protoData: DspComplex[T]
 }
 
-class BandpowerIO[T <: Data : Real](params: BandpowerParams[T]) extends Bundle {
+class BandpowerIO[T <: Data](params: BandpowerParams[T]) extends Bundle {
   val in = Flipped(ValidWithSync(Vec(params.nBins, params.protoData.cloneType)))
   val out = ValidWithSync(params.protoData.cloneType)
 
   override def cloneType: this.type = BandpowerIO(params).asInstanceOf[this.type]
 }
 object BandpowerIO {
-  def apply[T <: Data : Real](params: BandpowerParams[T]): BandpowerIO[T] = new BandpowerIO(params)
+  def apply[T <: Data](params: BandpowerParams[T]): BandpowerIO[T] = new BandpowerIO(params)
 }
 
 class Bandpower[T <: Data : Real](val params: BandpowerParams[T]) extends Module {
@@ -34,10 +34,8 @@ class Bandpower[T <: Data : Real](val params: BandpowerParams[T]) extends Module
   // Concatenate back in unscaled DC and sampling freq elems
   val p1 = VecInit(p2(0)) ++ p1Scaled ++ VecInit(p2(params.nBins/2))
   // TODO: fix type mismatch error
-  // Square and sum elems in band of interest
-//  io.out.bits := p1.slice(params.idxStartBin, params.idxEndBin).map{ case x => x * x}.reduce(_ + _)
   // Just sum because already squared
-  io.out.bits := p1.slice(params.idxStartBin, params.idxEndBin).sum
+  io.out.bits := p1.slice(params.idxStartBin, params.idxEndBin).reduce(_ + _)
 
   io.out.valid := io.in.valid
   io.out.sync := io.in.sync
