@@ -1,23 +1,23 @@
 package fft
 
 import wellness._
-import chisel3.core.UInt
+import chisel3.core._
 import dsptools.DspTester
 
 import scala.collection.mutable
 
 class outBundle(lanes: Int) {
-  val regs = mutable.Buffer.fill(lanes)(0)
+  val regs = mutable.Buffer.fill(lanes)(0D)
   var valid : Boolean = false
 }
 
-class GoldenIntFFTBuffer(lanes: Int) {
-  var pseudoRegisters = List.fill(lanes)(0)
+class GoldenDoubleFFTBuffer(lanes: Int) {
+  var pseudoRegisters = List.fill(lanes)(0D)
 
   val out = new outBundle(lanes)
 
   var counter = 0
-  def poke(value: Int): outBundle = {
+  def poke(value: Double): outBundle = {
     pseudoRegisters = value :: pseudoRegisters.take(lanes - 1)
 
     for(i <- 0 until lanes) {
@@ -40,12 +40,15 @@ class GoldenIntFFTBuffer(lanes: Int) {
 }
 
 class FFTBufferTester[T <: chisel3.Data](c: FFTBuffer[T], lanes: Int) extends DspTester(c) {
-  val fftBuffer = new GoldenIntFFTBuffer(lanes)
+  val fftBuffer = new GoldenDoubleFFTBuffer(lanes)
 
   for(i <- 0 until 50) {
-    val input = scala.util.Random.nextInt(8)
+    var input = scala.util.Random.nextDouble
+    if (c.params.protoData.getClass.getTypeName == "chisel3.core.SInt") {
+      input = scala.util.Random.nextInt(8)
+    }
 
-    val goldenModelResult = fftBuffer.poke(input)
+    val goldenModelResult = fftBuffer.poke(input.toDouble)
 
     poke(c.io.in.bits, input)
     poke(c.io.in.valid, true)
@@ -54,12 +57,27 @@ class FFTBufferTester[T <: chisel3.Data](c: FFTBuffer[T], lanes: Int) extends Ds
 
     expect(c.io.out.valid, goldenModelResult.valid, s"i $i, input $input, gm ${goldenModelResult.valid}, ${peek(c.io.out.valid)}")
     for(i <- 0 until lanes) {
-      expect(c.io.out.bits(i), goldenModelResult.regs(i), s"i $i, input $input, gm ${goldenModelResult.regs}, ${peek(c.io.out.bits)}")
+      if (c.params.protoData.getClass.getTypeName == "chisel3.core.SInt") {
+        expect(c.io.out.bits(i), goldenModelResult.regs(i), s"i $i, input $input, gm ${goldenModelResult.regs}, ${peek(c.io.out.bits)}")
+      } else {
+        // due to the series of multiply and accumulates, error actually blows up, let's be lenient
+        fixTolLSBs.withValue(16) { // at least the integer part must match
+          expect(c.io.out.bits(i), goldenModelResult.regs(i), s"i $i, input $input, gm ${goldenModelResult.regs}, ${peek(c.io.out.bits)}")
+        }
+      }
     }
   }
 }
-object UIntFFTBufferTester {
-  def apply(params: FFTBufferParams[UInt], lanes: Int): Boolean = {
+object SIntFFTBufferTester {
+  def apply(params: FFTBufferParams[SInt], lanes: Int): Boolean = {
+    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new FFTBuffer(params)) {
+    dsptools.Driver.execute(() => new FFTBuffer(params), TestSetup.dspTesterOptions) {
+      c => new FFTBufferTester(c, lanes)
+    }
+  }
+}
+object FixedPointFFTBufferTester {
+  def apply(params: FFTBufferParams[FixedPoint], lanes: Int): Boolean = {
     //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new FFTBuffer(params)) {
     dsptools.Driver.execute(() => new FFTBuffer(params), TestSetup.dspTesterOptions) {
       c => new FFTBufferTester(c, lanes)

@@ -156,7 +156,7 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     lineLength1Result = lineLength1.poke(value = filter1Result)
     bandpower1Result = bandpower1.poke(fftResult)
     bandpower2Result = bandpower2.poke(fftResult)
-    fftResult = fft.poke(fftInQueue.map(x => Complex(x, 0.0)))
+    fftResult = fft.poke((0 until goldenModelParameters.fftConfig.nPts).map(x => Complex(x, 0.0)))
     // TODO: FFTBuffer
     filter1Result = filter1.poke(input)
 
