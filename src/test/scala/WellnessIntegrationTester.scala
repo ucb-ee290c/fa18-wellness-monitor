@@ -136,37 +136,31 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   val bandpower2Result = bandpower2.poke(Seq.fill(goldenModelParameters.bandpower2Params.nBins)(Complex(0.0, 0.0)))
   val bandpower3Result = bandpower3.poke(Seq.fill(goldenModelParameters.bandpower3Params.nBins)(Complex(0.0, 0.0)))
   val fftResult = fft.poke(Seq.fill(goldenModelParameters.fftConfig.nPts)(Complex(0.0, 0.0)))
+  val fftInQueue: scala.collection.immutable.Queue[Double] = scala.collection.immutable.Queue(Seq.fill(goldenModelParameters.fftConfig.nPts)(0.0): _*)
   val filter1Result = filter1.poke(0)
   val filter2Result = filter2.poke(0)
   val filter3Result = filter3.poke(0)
   val filterOutBundle = Seq(filter1Result, filter2Result, filter3Result)
 
   for(i <- 0 until 1000) {
-
-    val tEnd = 8
-    val inputList = mutable.ArrayBuffer[Float]()
-    val filter1ResultList = mutable.ArrayBuffer[Double]()
-    // Step through each point in time
-    for (t <- 0 until tEnd) {
-      // Generate each input in input time series
-      var input = scala.util.Random.nextFloat*32
-      if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
-        input = scala.util.Random.nextInt(32)
-      }
-      else if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
-        input = scala.util.Random.nextInt(64) - 32
-      }
-      // Input time series
-      inputList += input
-
-      // Poke each input to filters and get result
-      val filter1Result = filter1.poke(input)
-      val filter2Result = filter2.poke(input)
-      val filter3Result = filter3.poke(input)
-      // Filter 1 output time series
-      filter1ResultList += filter1Result
+    var input = scala.util.Random.nextFloat*32
+    if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
+      input = scala.util.Random.nextInt(32)
     }
-    val fftResult = fft.poke(filter1ResultList.map(x => Complex(x, 0.0)))
+    else if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
+      input = scala.util.Random.nextInt(64) - 32
+    }
+
+    // Poke each input to filters and get result
+    val filter1Result = filter1.poke(input)
+    val filter2Result = filter2.poke(input)
+    val filter3Result = filter3.poke(input)
+
+    // Filter 1 output time series (FFT input queue)
+    fftInQueue.dequeue
+    fftInQueue.enqueue(filter1Result)
+
+    val fftResult = fft.poke(fftInQueue.map(x => Complex(x, 0.0)))
     val bandpower1Result = bandpower1.poke(fftResult)
     val bandpower2Result = bandpower2.poke(fftResult)
     val bandpower3Result = bandpower3.poke(fftResult)
@@ -176,11 +170,9 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
       referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
 
     // Poke inputs to real thing
-    for (t <- 0 until tEnd) {
-      poke(c.io.in.bits, inputList(i))
-      poke(c.io.in.valid, 1)
-      step(1)
-    }
+    poke(c.io.in.bits, input)
+    poke(c.io.in.valid, 1)
+    step(1)
 
     // Expect results
     for (i <- 0 until goldenModelParameters.svmParams.nClasses) {
