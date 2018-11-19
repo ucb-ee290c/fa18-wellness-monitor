@@ -71,14 +71,64 @@ train = train[-2*round(np.asscalar(sum(labels))):,:]
 labels = labels[-2*round(np.asscalar(sum(labels))):,:]
 
 #########################################
+# Printing the input data to a file
+# OMG THIS IS SO LARGE
+#########################################
+
+f = open("generated_files/input_matrix.txt","w")
+for i in range(len(channel_num)):
+    f.write("double input%d[] = {" % i)
+    for j in range(math.floor(len(train[:,i]) / 1000)):
+        array_container = repr(train[j*1000:((j+1)*1000)-1,i])
+        array_container = array_container.replace('array','').replace('(','').replace(')','')
+        array_container = array_container.replace('[','').replace(']',',')
+        array_container = array_container.replace('. ','')
+        f.write(array_container)
+        f.write("\n        ")
+    array_container = repr(train[(j+1)*1000:,i])
+    array_container = array_container.replace('array','').replace('(','').replace(')','')
+    array_container = array_container.replace('[','').replace(']','}')
+    array_container = array_container.replace('. ','')
+    f.write(array_container)
+    f.write(";\n\n")
+f.close()
+
+f = open("generated_files/labels.txt","w")
+f.write("int labels[] = {")
+for j in range(math.floor(len(labels[:,0]) / 1000)):
+    array_container = repr(labels[j*1000:((j+1)*1000)-1,0])
+    array_container = array_container.replace('array','').replace('(','').replace(')','')
+    array_container = array_container.replace('[','').replace(']',',')
+    array_container = array_container.replace('.,',',')
+    f.write(array_container)
+    f.write("\n        ")
+array_container = repr(labels[(j+1)*1000:,0])
+array_container = array_container.replace('array','').replace('(','').replace(')','')
+array_container = array_container.replace('[','').replace('.]','}')
+array_container = array_container.replace('.,',',')
+f.write(array_container)
+f.write(";\n\n")
+f.close()
+
+#########################################
 # Signal conditioning filter design
 #########################################
     
-# filter specs
+# Set filter specs
 lpf = remez(numtaps=numtaps, bands=[0, 150, 200, 250], desired=[1.0, 0.0], Hz=fs)
 #lpf = remez(numtaps=numtaps, bands=[0, 50, 100, 150, 200, 250], desired=[0.0, 1.0, 0.0], Hz=fs) 
 
-# plot filter frequency response
+# Write out the filter tap coefficients to a file
+f = open("generated_files/filter_taps.txt","w")
+f.write("taps = ")
+array_container = repr(lpf)
+array_container = array_container.replace('array','').replace('(','').replace(')','')
+array_container = array_container.replace('[','Seq(').replace(']',')')
+array_container = array_container.replace('.,',',').replace('.)',')')
+f.write(array_container)
+f.close()
+
+# Plot filter frequency response
 w, h = freqz(lpf)
 pl.plot(w/(2*np.pi)*fs, 20*np.log10(abs(h)))
 pl.show()

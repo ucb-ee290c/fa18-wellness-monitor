@@ -268,7 +268,7 @@ def print_array_to_file(f,array_name):
     f.write(array_container)
     f.write(";\n\n")
 
-f = open("C_arrays.txt","w")
+f = open("generated_files/C_arrays.txt","w")
 
 # the PCA transformation matrix
 f.write("double PCAComponents[][] = ")
@@ -290,7 +290,7 @@ f.close()
 
 # the codebook for ECOC, to be passed as a Scala parameter
 if (class_type == "ecoc"):
-    f = open("Scala_codebook.txt","w")
+    f = open("generated_files/Scala_codebook.txt","w")
     f.write("val codeBook = ")
     array_container = repr(codes)
     array_container = array_container.replace('array','').replace('(','').replace(')','')
