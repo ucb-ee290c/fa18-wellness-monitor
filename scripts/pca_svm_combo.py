@@ -33,6 +33,9 @@ coef = 0
 # set the classifier type: ovr, ovo, ecoc
 class_type = 'ovr'
 
+# test using the train data?
+cheat_test = 0
+
 #########################################
 # Load the dataset
 #########################################
@@ -62,9 +65,15 @@ elif classes == 3 or classes == 4:
 # Splitting of the dataset
 #########################################
 
-# Split dataset into training set and test set
-# 70% training and 30% test
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.3, random_state=109) 
+if cheat_test == 1:
+    # Split dataset into training set and test set
+    # 70% training and 30% test
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.3, random_state=109) 
+else:
+    X_train = X
+    X_test = X
+    y_train = y
+    y_test = y
 
 #########################################
 # Normalization of the training dataset
