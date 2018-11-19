@@ -34,11 +34,8 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
 
   // Instantiate golden models
   val filter1 = new GoldenDoubleFIRFilter(goldenModelParameters.filter1Params.taps)
-  val filter2 = new GoldenDoubleFIRFilter(goldenModelParameters.filter2Params.taps)
-  val filter3 = new GoldenDoubleFIRFilter(goldenModelParameters.filter3Params.taps)
   val lineLength1 = new GoldenDoubleLineLength(goldenModelParameters.lineLength1Params.windowSize,testType)
-  val lineLength2 = new GoldenDoubleLineLength(goldenModelParameters.lineLength2Params.windowSize,testType)
-  val lineLength3 = new GoldenDoubleLineLength(goldenModelParameters.lineLength3Params.windowSize,testType)
+  // TODO: FFTBuffer
   val fft = new GoldenDoubleFFT
   val bandpower1 = new GoldenDoubleBandpower(
     goldenModelParameters.bandpower1Params.nBins,
@@ -49,11 +46,6 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     goldenModelParameters.bandpower2Params.nBins,
     goldenModelParameters.bandpower2Params.idxStartBin,
     goldenModelParameters.bandpower2Params.idxEndBin,
-  )
-  val bandpower3 = new GoldenDoubleBandpower(
-    goldenModelParameters.bandpower3Params.nBins,
-    goldenModelParameters.bandpower3Params.idxStartBin,
-    goldenModelParameters.bandpower3Params.idxEndBin,
   )
   val SVM = new GoldenSVM(
     goldenModelParameters.svmParams.nSupports,
@@ -139,23 +131,14 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     poke(c.io.inConf.bits.confSVMIntercept(y), referenceSVMIntercept(y))
   }
 
-  // TODO
-//  val bandpower1Result = bandpower1.poke(Seq.fill(goldenModelParameters.bandpower1Params.nBins)(Complex(0.0, 0.0)))
-//  val bandpower2Result = bandpower2.poke(Seq.fill(goldenModelParameters.bandpower2Params.nBins)(Complex(0.0, 0.0)))
-//  val bandpower3Result = bandpower3.poke(Seq.fill(goldenModelParameters.bandpower3Params.nBins)(Complex(0.0, 0.0)))
-//  val fftResult = fft.poke(Seq.fill(goldenModelParameters.fftConfig.nPts)(Complex(0.0, 0.0)))
-//  val fftInQueue: scala.collection.immutable.Queue[Double] = scala.collection.immutable.Queue(Seq.fill(goldenModelParameters.fftConfig.nPts)(0.0): _*)
-
-
-  var pcaResult = PCA.poke(Seq(0,0,0),referencePCAVector.map(_.map(_.toDouble)))
   var filter1Result = filter1.poke(0)
-  var filter2Result = filter2.poke(0)
-  var filter3Result = filter3.poke(0)
   var lineLength1Result = lineLength1.poke(value = 0)
-  var lineLength2Result = lineLength2.poke(value = 0)
-  var lineLength3Result = lineLength3.poke(value = 0)
-  var filterOutBundle = Seq(filter1Result, filter2Result, filter3Result)
-  var lineLengthOutBundle = Seq(lineLength1Result, lineLength2Result, lineLength3Result)
+  // TODO: FFTBuffer
+  var fftResult = fft.poke(Seq.fill(goldenModelParameters.fftConfig.nPts)(Complex(0.0, 0.0)))
+  var bandpower1Result = bandpower1.poke(Seq.fill(goldenModelParameters.bandpower1Params.nBins)(Complex(0.0, 0.0)))
+  var bandpower2Result = bandpower2.poke(Seq.fill(goldenModelParameters.bandpower2Params.nBins)(Complex(0.0, 0.0)))
+  var pcaInputBundle = Seq(lineLength1Result, bandpower1Result, bandpower2Result)
+  var pcaResult = PCA.poke(Seq(0,0,0),referencePCAVector.map(_.map(_.toDouble)))
   var svmResult = SVM.poke(pcaResult.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),
     referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
 
@@ -169,28 +152,16 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     }
 
     // TODO
-    // Filter 1 output time series (FFT input queue)
-//    fftInQueue.dequeue
-//    fftInQueue.enqueue(filter1Result)
-//
-//    val fftResult = fft.poke(fftInQueue.map(x => Complex(x, 0.0)))
-//    val bandpower1Result = bandpower1.poke(fftResult)
-//    val bandpower2Result = bandpower2.poke(fftResult)
-//    val bandpower3Result = bandpower3.poke(fftResult)
-//    val bandpowerOutBundle = Seq(bandpower1Result, bandpower2Result, bandpower3Result)
-    //
-
     // Poke inputs to golden models
     lineLength1Result = lineLength1.poke(value = filter1Result)
-    lineLength2Result = lineLength2.poke(value = filter2Result)
-    lineLength3Result = lineLength3.poke(value = filter3Result)
-    lineLengthOutBundle = Seq(lineLength1Result, lineLength2Result, lineLength3Result)
-
+    bandpower1Result = bandpower1.poke(fftResult)
+    bandpower2Result = bandpower2.poke(fftResult)
+    fftResult = fft.poke(fftInQueue.map(x => Complex(x, 0.0)))
+    // TODO: FFTBuffer
     filter1Result = filter1.poke(input)
-    filter2Result = filter2.poke(input)
-    filter3Result = filter3.poke(input)
 
-    pcaResult = PCA.poke(lineLengthOutBundle,referencePCAVector.map(_.map(_.toDouble)))
+    pcaInputBundle = Seq(lineLength1Result, bandpower1Result, bandpower2Result)
+    pcaResult = PCA.poke(pcaInputBundle, referencePCAVector.map(_.map(_.toDouble)))
     svmResult = SVM.poke(pcaResult.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),
       referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
 
@@ -238,16 +209,11 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
 object WellnessIntegrationTesterSInt {
   implicit val p: Parameters = null
   def apply(filter1Params: FIRFilterParams[SInt],
-            filter2Params: FIRFilterParams[SInt],
-            filter3Params: FIRFilterParams[SInt],
             lineLength1Params: lineLengthParams[SInt],
-            lineLength2Params: lineLengthParams[SInt],
-            lineLength3Params: lineLengthParams[SInt],
             fftBufferParams: FFTBufferParams[SInt],
             fftConfig: FFTConfig[SInt],
             bandpower1Params: BandpowerParams[SInt],
             bandpower2Params: BandpowerParams[SInt],
-            bandpower3Params: BandpowerParams[SInt],
             pcaParams: PCAParams[SInt],
             svmParams: SVMParams[SInt],
             pcaVectorBufferParams: MemoryBufferParams[SInt],
@@ -255,16 +221,11 @@ object WellnessIntegrationTesterSInt {
             goldenModelParameters: wellnessIntegrationParameterBundle): Boolean = {
     dsptools.Driver.execute(() => new WellnessModule(
       filter1Params: FIRFilterParams[SInt],
-      filter2Params: FIRFilterParams[SInt],
-      filter3Params: FIRFilterParams[SInt],
       lineLength1Params: lineLengthParams[SInt],
-      lineLength2Params: lineLengthParams[SInt],
-      lineLength3Params: lineLengthParams[SInt],
       fftBufferParams: FFTBufferParams[SInt],
       fftConfig: FFTConfig[SInt],
       bandpower1Params: BandpowerParams[SInt],
       bandpower2Params: BandpowerParams[SInt],
-      bandpower3Params: BandpowerParams[SInt],
       pcaParams: PCAParams[SInt],
       svmParams: SVMParams[SInt],
       pcaVectorBufferParams: MemoryBufferParams[SInt],
@@ -278,16 +239,11 @@ object WellnessIntegrationTesterSInt {
 object WellnessIntegrationTesterFP {
   implicit val p: Parameters = null
   def apply(filter1Params: FIRFilterParams[FixedPoint],
-            filter2Params: FIRFilterParams[FixedPoint],
-            filter3Params: FIRFilterParams[FixedPoint],
             lineLength1Params: lineLengthParams[FixedPoint],
-            lineLength2Params: lineLengthParams[FixedPoint],
-            lineLength3Params: lineLengthParams[FixedPoint],
             fftBufferParams: FFTBufferParams[FixedPoint],
             fftConfig: FFTConfig[FixedPoint],
             bandpower1Params: BandpowerParams[FixedPoint],
             bandpower2Params: BandpowerParams[FixedPoint],
-            bandpower3Params: BandpowerParams[FixedPoint],
             pcaParams: PCAParams[FixedPoint],
             svmParams: SVMParams[FixedPoint],
             pcaVectorBufferParams: MemoryBufferParams[FixedPoint],
@@ -295,16 +251,11 @@ object WellnessIntegrationTesterFP {
             goldenModelParameters: wellnessIntegrationParameterBundle): Boolean = {
     dsptools.Driver.execute(() => new WellnessModule(
       filter1Params: FIRFilterParams[FixedPoint],
-      filter2Params: FIRFilterParams[FixedPoint],
-      filter3Params: FIRFilterParams[FixedPoint],
       lineLength1Params: lineLengthParams[FixedPoint],
-      lineLength2Params: lineLengthParams[FixedPoint],
-      lineLength3Params: lineLengthParams[FixedPoint],
       fftBufferParams: FFTBufferParams[FixedPoint],
       fftConfig: FFTConfig[FixedPoint],
       bandpower1Params: BandpowerParams[FixedPoint],
       bandpower2Params: BandpowerParams[FixedPoint],
-      bandpower3Params: BandpowerParams[FixedPoint],
       pcaParams: PCAParams[FixedPoint],
       svmParams: SVMParams[FixedPoint],
       pcaVectorBufferParams: MemoryBufferParams[FixedPoint],

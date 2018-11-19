@@ -165,16 +165,11 @@ object WellnessConfigurationBundle {
 }
 
 class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1Params: FIRFilterParams[T],
-                                                 filter2Params: FIRFilterParams[T],
-                                                 filter3Params: FIRFilterParams[T],
                                                  lineLength1Params: lineLengthParams[T],
-                                                 lineLength2Params: lineLengthParams[T],
-                                                 lineLength3Params: lineLengthParams[T],
                                                  fftBufferParams: FFTBufferParams[T],
                                                  fftConfig: FFTConfig[T],
                                                  bandpower1Params: BandpowerParams[T],
                                                  bandpower2Params: BandpowerParams[T],
-                                                 bandpower3Params: BandpowerParams[T],
                                                  pcaParams: PCAParams[T],
                                                  svmParams: SVMParams[T],
                                                  pcaVectorBufferParams: MemoryBufferParams[T],
@@ -198,18 +193,14 @@ class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1P
 
   // val filterValid = Output(Bool())
   val lineLengthValid = Output(Bool())
+  val bandpowerValid = Output(Bool())
 
   override def cloneType: this.type = WellnessModuleIO( filter1Params: FIRFilterParams[T],
-                                                        filter2Params: FIRFilterParams[T],
-                                                        filter3Params: FIRFilterParams[T],
                                                         lineLength1Params: lineLengthParams[T],
-                                                        lineLength2Params: lineLengthParams[T],
-                                                        lineLength3Params: lineLengthParams[T],
                                                         fftBufferParams: FFTBufferParams[T],
                                                         fftConfig: FFTConfig[T],
                                                         bandpower1Params: BandpowerParams[T],
                                                         bandpower2Params: BandpowerParams[T],
-                                                        bandpower3Params: BandpowerParams[T],
                                                         pcaParams: PCAParams[T],
                                                         svmParams: SVMParams[T],
                                                         pcaVectorBufferParams: MemoryBufferParams[T],
@@ -217,31 +208,21 @@ class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1P
 }
 object WellnessModuleIO {
   def apply[T <: chisel3.Data : Real : Order : BinaryRepresentation](filter1Params: FIRFilterParams[T],
-                                      filter2Params: FIRFilterParams[T],
-                                      filter3Params: FIRFilterParams[T],
                                       lineLength1Params: lineLengthParams[T],
-                                      lineLength2Params: lineLengthParams[T],
-                                      lineLength3Params: lineLengthParams[T],
                                       fftBufferParams: FFTBufferParams[T],
                                       fftConfig: FFTConfig[T],
                                       bandpower1Params: BandpowerParams[T],
                                       bandpower2Params: BandpowerParams[T],
-                                      bandpower3Params: BandpowerParams[T],
                                       pcaParams: PCAParams[T],
                                       svmParams: SVMParams[T],
                                       pcaVectorBufferParams: MemoryBufferParams[T],
                                       configurationMemoryParams: ConfigurationMemoryParams[T]): WellnessModuleIO[T] =
     new WellnessModuleIO(filter1Params: FIRFilterParams[T],
-      filter2Params: FIRFilterParams[T],
-      filter3Params: FIRFilterParams[T],
       lineLength1Params: lineLengthParams[T],
-      lineLength2Params: lineLengthParams[T],
-      lineLength3Params: lineLengthParams[T],
       fftBufferParams: FFTBufferParams[T],
       fftConfig: FFTConfig[T],
       bandpower1Params: BandpowerParams[T],
       bandpower2Params: BandpowerParams[T],
-      bandpower3Params: BandpowerParams[T],
       pcaParams: PCAParams[T],
       svmParams: SVMParams[T],
       pcaVectorBufferParams: MemoryBufferParams[T],
@@ -250,31 +231,21 @@ object WellnessModuleIO {
 
 class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
 ( val filter1Params: FIRFilterParams[T],
-  val filter2Params: FIRFilterParams[T],
-  val filter3Params: FIRFilterParams[T],
   val lineLength1Params: lineLengthParams[T],
-  val lineLength2Params: lineLengthParams[T],
-  val lineLength3Params: lineLengthParams[T],
   val fftBufferParams: FFTBufferParams[T],
   val fftConfig: FFTConfig[T],
   val bandpower1Params: BandpowerParams[T],
   val bandpower2Params: BandpowerParams[T],
-  val bandpower3Params: BandpowerParams[T],
   val pcaParams: PCAParams[T],
   val svmParams: SVMParams[T],
   val pcaVectorBufferParams: MemoryBufferParams[T],
   val configurationMemoryParams: ConfigurationMemoryParams[T])(implicit val p: Parameters) extends Module {
   val io = IO(WellnessModuleIO[T](  filter1Params: FIRFilterParams[T],
-                                    filter2Params: FIRFilterParams[T],
-                                    filter3Params: FIRFilterParams[T],
                                     lineLength1Params: lineLengthParams[T],
-                                    lineLength2Params: lineLengthParams[T],
-                                    lineLength3Params: lineLengthParams[T],
                                     fftBufferParams: FFTBufferParams[T],
                                     fftConfig: FFTConfig[T],
                                     bandpower1Params: BandpowerParams[T],
                                     bandpower2Params: BandpowerParams[T],
-                                    bandpower3Params: BandpowerParams[T],
                                     pcaParams: PCAParams[T],
                                     svmParams: SVMParams[T],
                                     pcaVectorBufferParams: MemoryBufferParams[T],
@@ -282,16 +253,11 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
 
   // Block instantiation
   val filter1 = Module(new ConstantCoefficientFIRFilter(filter1Params))
-  val filter2 = Module(new ConstantCoefficientFIRFilter(filter2Params))
-  val filter3 = Module(new ConstantCoefficientFIRFilter(filter3Params))
   val lineLength1 = Module(new lineLength(lineLength1Params))
-  val lineLength2 = Module(new lineLength(lineLength2Params))
-  val lineLength3 = Module(new lineLength(lineLength3Params))
-//  val fftBuffer = Module(new FFTBuffer(fftBufferParams))
-//  val fft = Module(new FFT(fftConfig))
-//  val bandpower1 = Module(new Bandpower(bandpower1Params))
-//  val bandpower2 = Module(new Bandpower(bandpower2Params))
-//  val bandpower3 = Module(new Bandpower(bandpower3Params))
+  val fftBuffer = Module(new FFTBuffer(fftBufferParams))
+  val fft = Module(new FFT(fftConfig))
+  val bandpower1 = Module(new Bandpower(bandpower1Params))
+  val bandpower2 = Module(new Bandpower(bandpower2Params))
   val pca = Module(new PCA(pcaParams))
   val svm = Module(new SVM(svmParams))
   //val pcaVectorBuffer = Module(new MemoryBuffer(pcaVectorBufferParams))
@@ -303,81 +269,43 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   filter1.io.in.sync := false.B
   filter1.io.in.bits := io.in.bits.asTypeOf(filter1Params.protoData)
 
-  filter2.io.in.valid := io.in.valid
-  filter2.io.in.sync := false.B
-  filter2.io.in.bits := io.in.bits.asTypeOf(filter2Params.protoData)
-
-  filter3.io.in.valid := io.in.valid
-  filter3.io.in.sync := false.B
-  filter3.io.in.bits := io.in.bits.asTypeOf(filter3Params.protoData)
-
-  // lineLength1.io.in.valid := io.in.valid
-  // lineLength1.io.in.sync := false.B
-  // lineLength1.io.in.bits := io.in.bits.asTypeOf(lineLength1Params.protoData)
-
-  // lineLength2.io.in.valid := io.in.valid
-  // lineLength2.io.in.sync := false.B
-  // lineLength2.io.in.bits := io.in.bits.asTypeOf(lineLength1Params.protoData)
-
-  // lineLength3.io.in.valid := io.in.valid
-  // lineLength3.io.in.sync := false.B
-  // lineLength3.io.in.bits := io.in.bits.asTypeOf(lineLength1Params.protoData)
-
   // FIR Filters to Line length blocks
   lineLength1.io.in.valid := filter1.io.out.valid
   lineLength1.io.in.sync := false.B
   lineLength1.io.in.bits := filter1.io.out.bits.asTypeOf(lineLength1Params.protoData)
 
-  lineLength2.io.in.valid := filter2.io.out.valid
-  lineLength2.io.in.sync := false.B
-  lineLength2.io.in.bits := filter2.io.out.bits.asTypeOf(lineLength2Params.protoData)
+  // FIR Filters to FFT Buffers
+  fftBuffer.io.in.valid := filter1.io.out.valid
+  fftBuffer.io.in.sync := false.B
+  fftBuffer.io.in.bits := filter1.io.out.bits.asTypeOf(fftBufferParams.protoData)
 
-  lineLength3.io.in.valid := filter3.io.out.valid
-  lineLength3.io.in.sync := false.B
-  lineLength3.io.in.bits := filter3.io.out.bits.asTypeOf(lineLength3Params.protoData)
+  // FFT Buffers to FFTs
+  fft.io.in.valid := fftBuffer.io.out.valid
+  fft.io.in.sync := false.B
+  for (i <- fft.io.in.bits.indices) {
+    fft.io.in.bits(i).real := fftBuffer.io.out.bits(i).asTypeOf(fft.io.in.bits(i).real)
+  }
+  fft.io.in.bits.foreach(_.imag := Ring[T].zero)
+  fft.io.data_set_end_clear := false.B
+
+  // FFTs to Bandpowers
+  bandpower1.io.in.valid := fft.io.out.valid
+  bandpower1.io.in.sync := false.B
+  bandpower1.io.in.bits := fft.io.out.bits
+
+  bandpower2.io.in.valid := fft.io.out.valid
+  bandpower2.io.in.sync := false.B
+  bandpower2.io.in.bits := fft.io.out.bits
 
   // TOP LEVEL INTEGRATION TRIALS
   val pcaInVector = Wire(Vec(3,pcaParams.protoData))
-  // pcaInVector(0) := filter1.io.out.bits
-  // pcaInVector(1) := filter2.io.out.bits
-  // pcaInVector(2) := filter3.io.out.bits
   pcaInVector(0) := lineLength1.io.out.bits.asTypeOf(pcaParams.protoData)
-  pcaInVector(1) := lineLength2.io.out.bits.asTypeOf(pcaParams.protoData)
-  pcaInVector(2) := lineLength3.io.out.bits.asTypeOf(pcaParams.protoData)
+  pcaInVector(1) := bandpower1.io.out.bits.asTypeOf(pcaParams.protoData)
+  pcaInVector(2) := bandpower2.io.out.bits.asTypeOf(pcaParams.protoData)
   pca.io.PCAVector := io.inConf.bits.confPCAVector
   pca.io.in.bits := pcaInVector
   pca.io.in.sync := false.B
-  // pca.io.in.valid := filter1.io.out.valid
   pca.io.in.valid := lineLength1.io.out.valid
-
-  // FIR Filters to FFT Buffers
-//  fftBuffer.io.in.valid := filter1.io.out.valid
-//  fftBuffer.io.in.sync := false.B
-//  fftBuffer.io.in.bits := filter1.io.out.bits
-
-  // FFT Buffers to FFTs
-//  fft.io.in.valid := fftBuffer.io.out.valid
-//  fft.io.in.sync := false.B
-//  for (i <- fft.io.in.bits.indices) {
-//    fft.io.in.bits(i).real := fftBuffer.io.out.bits(i).asTypeOf(fft.io.in.bits(i).real)
-//  }
-//  fft.io.in.bits.foreach(_.imag := Ring[T].zero)
-//  fft.io.data_set_end_clear := false.B
-
-  // FFTs to Bandpowers
-//  bandpower1.io.in.valid := fft.io.out.valid
-//  bandpower1.io.in.sync := false.B
-//  bandpower1.io.in.bits := fft.io.out.bits
-//
-//  bandpower2.io.in.valid := fft.io.out.valid
-//  bandpower2.io.in.sync := false.B
-//  bandpower2.io.in.bits := fft.io.out.bits
-//
-//  bandpower3.io.in.valid := fft.io.out.valid
-//  bandpower3.io.in.sync := false.B
-//  bandpower3.io.in.bits := fft.io.out.bits
-
-  // TODO: Bandpowers to PCA
 
   // PCA to SVM
   svm.io.in.valid := pca.io.out.valid
@@ -398,23 +326,18 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   io.lineOut := lineLength1.io.out.bits
   io.pcaOut := pca.io.out.bits
   io.lineLengthValid := lineLength1.io.out.valid
-
+  io.bandpowerValid := bandpower1.io.out.valid
 }
 
 
 abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real : Order : BinaryRepresentation]
 (
   val filter1Params: FIRFilterParams[T],
-  val filter2Params: FIRFilterParams[T],
-  val filter3Params: FIRFilterParams[T],
   val lineLength1Params: lineLengthParams[T],
-  val lineLength2Params: lineLengthParams[T],
-  val lineLength3Params: lineLengthParams[T],
   val fftBufferParams: FFTBufferParams[T],
   val fftConfig: FFTConfig[T],
   val bandpower1Params: BandpowerParams[T],
   val bandpower2Params: BandpowerParams[T],
-  val bandpower3Params: BandpowerParams[T],
   val pcaParams: PCAParams[T],
   val svmParams: SVMParams[T],
   val pcaVectorBufferParams: MemoryBufferParams[T],
@@ -437,16 +360,11 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real :
     // Block instantiation
     val wellness = Module(new WellnessModule(filter1Params:
       FIRFilterParams[T],
-      filter2Params: FIRFilterParams[T],
-      filter3Params: FIRFilterParams[T],
       lineLength1Params: lineLengthParams[T],
-      lineLength2Params: lineLengthParams[T],
-      lineLength3Params: lineLengthParams[T],
       fftBufferParams: FFTBufferParams[T],
       fftConfig: FFTConfig[T],
       bandpower1Params: BandpowerParams[T],
       bandpower2Params: BandpowerParams[T],
-      bandpower3Params: BandpowerParams[T],
       pcaParams: PCAParams[T],
       svmParams: SVMParams[T],
       pcaVectorBufferParams: MemoryBufferParams[T],
@@ -474,27 +392,22 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real :
 class TLWellnessDataPathBlock[T <: Data : Real : Order : BinaryRepresentation]
 (
   filter1Params: FIRFilterParams[T],
-  filter2Params: FIRFilterParams[T],
-  filter3Params: FIRFilterParams[T],
   lineLength1Params: lineLengthParams[T],
-  lineLength2Params: lineLengthParams[T],
-  lineLength3Params: lineLengthParams[T],
   fftBufferParams: FFTBufferParams[T],
   fftConfig: FFTConfig[T],
   bandpower1Params: BandpowerParams[T],
   bandpower2Params: BandpowerParams[T],
-  bandpower3Params: BandpowerParams[T],
   pcaParams: PCAParams[T],
   svmParams: SVMParams[T],
   pcaVectorBufferParams: MemoryBufferParams[T],
   configurationMemoryParams: ConfigurationMemoryParams[T]
 )(implicit p: Parameters) extends
   WellnessDataPathBlock[TLClientPortParameters, TLManagerPortParameters, TLEdgeOut, TLEdgeIn, TLBundle, T](
-    filter1Params, filter2Params, filter3Params,
-    lineLength1Params, lineLength2Params, lineLength3Params,
+    filter1Params,
+    lineLength1Params,
     fftBufferParams,
     fftConfig,
-    bandpower1Params, bandpower2Params, bandpower3Params,
+    bandpower1Params, bandpower2Params,
     pcaParams, svmParams, pcaVectorBufferParams,
     configurationMemoryParams)
   with TLDspBlock
@@ -515,16 +428,11 @@ class TLWellnessDataPathBlock[T <: Data : Real : Order : BinaryRepresentation]
 class WellnessThing[T <: Data : Real : Order : BinaryRepresentation]
 (
   val filter1Params: FIRFilterParams[T],
-  val filter2Params: FIRFilterParams[T],
-  val filter3Params: FIRFilterParams[T],
   val lineLength1Params: lineLengthParams[T],
-  val lineLength2Params: lineLengthParams[T],
-  val lineLength3Params: lineLengthParams[T],
   val fftBufferParams: FFTBufferParams[T],
   val fftConfig: FFTConfig[T],
   val bandpower1Params: BandpowerParams[T],
   val bandpower2Params: BandpowerParams[T],
-  val bandpower3Params: BandpowerParams[T],
   val pcaParams: PCAParams[T],
   val svmParams: SVMParams[T],
   val pcaVectorBufferParams: MemoryBufferParams[T],
@@ -536,11 +444,11 @@ class WellnessThing[T <: Data : Real : Order : BinaryRepresentation]
   val configurationBaseAddr = AddressSet(0x2200, 0xff)
   val writeConfigurationQueue = LazyModule(new TLWriteQueue(depth,configurationBaseAddr))
   val wellness = LazyModule(new TLWellnessDataPathBlock(
-    filter1Params, filter2Params, filter3Params,
-    lineLength1Params, lineLength2Params, lineLength3Params,
+    filter1Params,
+    lineLength1Params,
     fftBufferParams,
     fftConfig,
-    bandpower1Params, bandpower2Params, bandpower3Params,
+    bandpower1Params, bandpower2Params,
     pcaParams, svmParams, pcaVectorBufferParams,
     configurationMemoryParams))
   val readQueue = LazyModule(new TLReadQueue(depth))
@@ -564,28 +472,8 @@ trait HasPeripheryWellness extends BaseSubsystem {
     override val taps = Seq(1.S, 2.S, 3.S, 4.S, 5.S, 0.S)
   }
 
-  val filter2Params = new FIRFilterParams[SInt] {
-    override val protoData = SInt(32.W)
-    override val taps = Seq(5.S, 4.S, 3.S, 2.S, 1.S, 0.S)
-  }
-
-  val filter3Params = new FIRFilterParams[SInt] {
-    override val protoData = SInt(32.W)
-    override val taps = Seq(0.S, 1.S, 2.S, 2.S, 1.S, 0.S)
-  }
-
   // lineLength params
   val lineLength1Params = new lineLengthParams[SInt] {
-    override val protoData = SInt(32.W)
-    override val windowSize = 2
-  }
-
-  val lineLength2Params = new lineLengthParams[SInt] {
-    override val protoData = SInt(32.W)
-    override val windowSize = 2
-  }
-
-  val lineLength3Params = new lineLengthParams[SInt] {
     override val protoData = SInt(32.W)
     override val windowSize = 2
   }
@@ -615,13 +503,6 @@ trait HasPeripheryWellness extends BaseSubsystem {
     val genOut = SInt(32.W)
   }
   val bandpower2Params = new BandpowerParams[SInt] {
-    val idxStartBin = 0
-    val idxEndBin = nPts-1
-    val nBins = nPts
-    val genIn = DspComplex(SInt(32.W), SInt(32.W))
-    val genOut = SInt(32.W)
-  }
-  val bandpower3Params = new BandpowerParams[SInt] {
     val idxStartBin = 0
     val idxEndBin = nPts-1
     val nBins = nPts
@@ -679,11 +560,11 @@ trait HasPeripheryWellness extends BaseSubsystem {
 
   // Instantiate wellness monitor
   val wellness = LazyModule(new WellnessThing(
-    filter1Params, filter2Params, filter3Params,
-    lineLength1Params, lineLength2Params, lineLength3Params,
+    filter1Params,
+    lineLength1Params,
     fftBufferParams,
     fftConfig,
-    bandpower1Params, bandpower2Params, bandpower3Params,
+    bandpower1Params, bandpower2Params,
     pcaParams, svmParams, pcaVectorBufferParams,
     configurationMemoryParams))
   // Connect memory interfaces to pbus
