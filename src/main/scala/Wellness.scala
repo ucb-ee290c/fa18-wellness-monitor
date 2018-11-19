@@ -188,6 +188,10 @@ class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1P
   val rawVotes = Output(Vec(svmParams.nClasses, svmParams.protoData))
   val classVotes = Output(Vec(svmParams.nClasses,UInt((log2Ceil(nClassifiers)+1).W)))
   val lineOut = Output(lineLength1Params.protoData)
+  val fftBufferOut = Output(Vec(fftBufferParams.lanes, fftBufferParams.protoData))
+  val fftOut = Output(Vec(fftConfig.lanes, fftConfig.genOut))
+  val bandpower1Out = Output(bandpower1Params.genOut)
+  val bandpower2Out = Output(bandpower2Params.genOut)
   val filterOut = Output(filter1Params.protoData)
   val pcaOut = Output(Vec(pcaParams.nFeatures, pcaParams.protoData))
 
@@ -305,7 +309,7 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   pca.io.PCAVector := io.inConf.bits.confPCAVector
   pca.io.in.bits := pcaInVector
   pca.io.in.sync := false.B
-  pca.io.in.valid := lineLength1.io.out.valid
+  pca.io.in.valid := (lineLength1.io.out.valid && bandpower1.io.out.valid && bandpower2.io.out.valid)
 
   // PCA to SVM
   svm.io.in.valid := pca.io.out.valid
@@ -324,6 +328,10 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   // pinned out outputs for debug purposes
   io.filterOut := filter1.io.out.bits
   io.lineOut := lineLength1.io.out.bits
+  io.fftBufferOut := fftBuffer.io.out.bits
+  io.fftOut := fft.io.out.bits
+  io.bandpower1Out := bandpower1.io.out.bits
+  io.bandpower2Out := bandpower2.io.out.bits
   io.pcaOut := pca.io.out.bits
   io.lineLengthValid := lineLength1.io.out.valid
   io.bandpowerValid := bandpower1.io.out.valid

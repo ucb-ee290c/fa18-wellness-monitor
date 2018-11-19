@@ -170,12 +170,32 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     step(1)
 
     // Expect Results
-    if (c.io.lineLengthValid == 1) {
+    if ((c.io.lineLengthValid == 1) && (c.io.bandpowerValid == 1)) {
       fixTolLSBs.withValue(16) {
         expect(c.io.filterOut, filter1Result)
         expect(c.io.lineOut, lineLength1Result)
+        expect(c.io.bandpower1Out, bandpower1Result)
+        expect(c.io.bandpower2Out, bandpower2Result)
+      }
+      for (i <- 0 until goldenModelParameters.fftBufferParams.lanes) {
+        if (c.fftBufferParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
+          expect(c.io.fftBufferOut(i), fftBufferResult.regs(i))
+        } else {
+          fixTolLSBs.withValue(16) { // at least the integer part must match
+            expect(c.io.fftBufferOut(i), fftBufferResult.regs(i))
+          }
+        }
       }
 
+      for (i <- 0 until goldenModelParameters.fftConfig.nPts) {
+        if (c.fftConfig.genOut.real.getClass.getTypeName == "chisel3.core.SInt") {
+          expect(c.io.fftOut(i), fftResult(i))
+        } else {
+          fixTolLSBs.withValue(16) { // at least the integer part must match
+            expect(c.io.fftOut(i), fftResult(i))
+          }
+        }
+      }
 
       for (i <- 0 until goldenModelParameters.pcaParams.nFeatures) {
         if (c.pcaParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
@@ -218,7 +238,21 @@ object WellnessIntegrationTesterSInt {
             pcaVectorBufferParams: MemoryBufferParams[SInt],
             configurationMemoryParams: ConfigurationMemoryParams[SInt],
             goldenModelParameters: wellnessIntegrationParameterBundle): Boolean = {
-    dsptools.Driver.execute(() => new WellnessModule(
+//    dsptools.Driver.execute(() => new WellnessModule(
+//      filter1Params: FIRFilterParams[SInt],
+//      lineLength1Params: lineLengthParams[SInt],
+//      fftBufferParams: FFTBufferParams[SInt],
+//      fftConfig: FFTConfig[SInt],
+//      bandpower1Params: BandpowerParams[SInt],
+//      bandpower2Params: BandpowerParams[SInt],
+//      pcaParams: PCAParams[SInt],
+//      svmParams: SVMParams[SInt],
+//      pcaVectorBufferParams: MemoryBufferParams[SInt],
+//      configurationMemoryParams: ConfigurationMemoryParams[SInt]),
+//      TestSetup.dspTesterOptions) {
+//      c => new wellnessTester(c, goldenModelParameters)
+//    }
+    chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new WellnessModule(
       filter1Params: FIRFilterParams[SInt],
       lineLength1Params: lineLengthParams[SInt],
       fftBufferParams: FFTBufferParams[SInt],
@@ -228,8 +262,7 @@ object WellnessIntegrationTesterSInt {
       pcaParams: PCAParams[SInt],
       svmParams: SVMParams[SInt],
       pcaVectorBufferParams: MemoryBufferParams[SInt],
-      configurationMemoryParams: ConfigurationMemoryParams[SInt]),
-      TestSetup.dspTesterOptions) {
+      configurationMemoryParams: ConfigurationMemoryParams[SInt])) {
       c => new wellnessTester(c, goldenModelParameters)
     }
   }
@@ -248,7 +281,21 @@ object WellnessIntegrationTesterFP {
             pcaVectorBufferParams: MemoryBufferParams[FixedPoint],
             configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
             goldenModelParameters: wellnessIntegrationParameterBundle): Boolean = {
-    dsptools.Driver.execute(() => new WellnessModule(
+//    dsptools.Driver.execute(() => new WellnessModule(
+//      filter1Params: FIRFilterParams[FixedPoint],
+//      lineLength1Params: lineLengthParams[FixedPoint],
+//      fftBufferParams: FFTBufferParams[FixedPoint],
+//      fftConfig: FFTConfig[FixedPoint],
+//      bandpower1Params: BandpowerParams[FixedPoint],
+//      bandpower2Params: BandpowerParams[FixedPoint],
+//      pcaParams: PCAParams[FixedPoint],
+//      svmParams: SVMParams[FixedPoint],
+//      pcaVectorBufferParams: MemoryBufferParams[FixedPoint],
+//      configurationMemoryParams: ConfigurationMemoryParams[FixedPoint]),
+//      TestSetup.dspTesterOptions) {
+//      c => new wellnessTester(c, goldenModelParameters)
+//    }
+    chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new WellnessModule(
       filter1Params: FIRFilterParams[FixedPoint],
       lineLength1Params: lineLengthParams[FixedPoint],
       fftBufferParams: FFTBufferParams[FixedPoint],
@@ -258,8 +305,7 @@ object WellnessIntegrationTesterFP {
       pcaParams: PCAParams[FixedPoint],
       svmParams: SVMParams[FixedPoint],
       pcaVectorBufferParams: MemoryBufferParams[FixedPoint],
-      configurationMemoryParams: ConfigurationMemoryParams[FixedPoint]),
-      TestSetup.dspTesterOptions) {
+      configurationMemoryParams: ConfigurationMemoryParams[FixedPoint])) {
       c => new wellnessTester(c, goldenModelParameters)
     }
   }
