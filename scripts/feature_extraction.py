@@ -31,7 +31,14 @@ alpha_band = (8, 12)
 beta_band = (12, 30)
 gamma_band = (30, 100)
 
+# are we loading the data again? might take a while
 load_data = 1
+
+# are we printing out the matrices to a file?
+print_data = 1
+
+# how many points to keep for train/labels?
+keep_points = 100
 
 #########################################
 # Loading the dataset from the CSV files
@@ -62,7 +69,7 @@ if load_data == 1:
     labels = np.array(labels).T.astype(float)
 
 #########################################
-# Balancing of dataset
+# Trimmiing/Balancing of dataset
 #########################################
 
 # Trim the data such that sum(labels == 1) ~= sum(labels == 0)
@@ -70,45 +77,54 @@ if load_data == 1:
 train = train[-2*round(np.asscalar(sum(labels))):,:]
 labels = labels[-2*round(np.asscalar(sum(labels))):,:]
 
+# Trim the data again since there's just too many points, take the center point
+midpoint = np.where(abs(np.diff(labels[:,0])) == 1)[0]
+train = train[math.floor(midpoint-keep_points/2):math.floor(midpoint+keep_points/2),:]
+labels = labels[math.floor(midpoint-keep_points/2):math.floor(midpoint+keep_points/2),:]
 #########################################
 # Printing the input data to a file
 # OMG THIS IS SO LARGE
 #########################################
 
-f = open("generated_files/input_matrix.txt","w")
-for i in range(len(channel_num)):
-    f.write("double input%d[] = {" % i)
-    for j in range(math.floor(len(train[:,i]) / 1000)):
-        array_container = repr(train[j*1000:((j+1)*1000)-1,i])
+if print_data == 1:
+    f = open("generated_files/input_matrix.txt","w")
+    for i in range(len(channel_num)):
+        f.write("double input%d[] = {" % i)
+        if len(train[:,i]) >= 1000:
+            for j in range(math.floor(len(train[:,i]) / 1000)):
+                array_container = repr(train[j*1000:((j+1)*1000)-1,i])
+                array_container = array_container.replace('array','').replace('(','').replace(')','')
+                array_container = array_container.replace('[','').replace(']',',')
+                array_container = array_container.replace('. ','')
+                f.write(array_container)
+                f.write("\n        ")
+        else: j = -1
+        array_container = repr(train[(j+1)*1000:,i])
         array_container = array_container.replace('array','').replace('(','').replace(')','')
-        array_container = array_container.replace('[','').replace(']',',')
+        array_container = array_container.replace('[','').replace(']','}')
         array_container = array_container.replace('. ','')
         f.write(array_container)
-        f.write("\n        ")
-    array_container = repr(train[(j+1)*1000:,i])
+        f.write(";\n\n")
+    f.close()
+    
+    f = open("generated_files/labels.txt","w")
+    f.write("int labels[] = {")
+    if len(labels[:,0]) >= 1000:
+        for j in range(math.floor(len(labels[:,0]) / 1000)):
+            array_container = repr(labels[j*1000:((j+1)*1000)-1,0])
+            array_container = array_container.replace('array','').replace('(','').replace(')','')
+            array_container = array_container.replace('[','').replace(']',',')
+            array_container = array_container.replace('.,',',')
+            f.write(array_container)
+            f.write("\n        ")
+    else: j = -1
+    array_container = repr(labels[(j+1)*1000:,0])
     array_container = array_container.replace('array','').replace('(','').replace(')','')
-    array_container = array_container.replace('[','').replace(']','}')
-    array_container = array_container.replace('. ','')
-    f.write(array_container)
-    f.write(";\n\n")
-f.close()
-
-f = open("generated_files/labels.txt","w")
-f.write("int labels[] = {")
-for j in range(math.floor(len(labels[:,0]) / 1000)):
-    array_container = repr(labels[j*1000:((j+1)*1000)-1,0])
-    array_container = array_container.replace('array','').replace('(','').replace(')','')
-    array_container = array_container.replace('[','').replace(']',',')
+    array_container = array_container.replace('[','').replace('.]','}')
     array_container = array_container.replace('.,',',')
     f.write(array_container)
-    f.write("\n        ")
-array_container = repr(labels[(j+1)*1000:,0])
-array_container = array_container.replace('array','').replace('(','').replace(')','')
-array_container = array_container.replace('[','').replace('.]','}')
-array_container = array_container.replace('.,',',')
-f.write(array_container)
-f.write(";\n\n")
-f.close()
+    f.write(";\n\n")
+    f.close()
 
 #########################################
 # Signal conditioning filter design
@@ -119,14 +135,15 @@ lpf = remez(numtaps=numtaps, bands=[0, 150, 200, 250], desired=[1.0, 0.0], Hz=fs
 #lpf = remez(numtaps=numtaps, bands=[0, 50, 100, 150, 200, 250], desired=[0.0, 1.0, 0.0], Hz=fs) 
 
 # Write out the filter tap coefficients to a file
-f = open("generated_files/filter_taps.txt","w")
-f.write("taps = ")
-array_container = repr(lpf)
-array_container = array_container.replace('array','').replace('(','').replace(')','')
-array_container = array_container.replace('[','Seq(').replace(']',')')
-array_container = array_container.replace('.,',',').replace('.)',')')
-f.write(array_container)
-f.close()
+if print_data == 1:
+    f = open("generated_files/filter_taps.txt","w")
+    f.write("taps = ")
+    array_container = repr(lpf)
+    array_container = array_container.replace('array','').replace('(','').replace(')','')
+    array_container = array_container.replace('[','Seq(').replace(']',')')
+    array_container = array_container.replace('.,',',').replace('.)',')')
+    f.write(array_container)
+    f.close()
 
 # Plot filter frequency response
 w, h = freqz(lpf)

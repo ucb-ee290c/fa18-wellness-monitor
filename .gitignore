@@ -12,3 +12,4 @@ simulator-*
 *.vcd
 .DS_Store
 data/
+scripts/__pycache__/
