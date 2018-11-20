@@ -3,8 +3,6 @@ This FIR Filter Generator takes a set of coefficients of any desired length and 
 
 ## Parameters
 
-The SVM generator has the following configurable parameters:
-
 ```
 trait FIRFilterParams[T <: Data] {
   val protoData: T
