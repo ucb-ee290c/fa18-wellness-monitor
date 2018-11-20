@@ -31,6 +31,21 @@
 #define CONF_ADDR_WIDTH 2
 #define CONF_ADDR_MASK ((1L << CONF_ADDR_WIDTH)-1)
 
+void printDouble(double v, int decimalDigits)
+{
+    if(v<0){
+      printf("-");
+      v = -v;
+    }
+    printf("%d.", (int)v);
+    for (int i=1; i<=decimalDigits; i++){
+      v = v - (int)v;
+      v *= 10;
+      printf("%d", (int)v);
+    }
+    printf("\n");
+}
+
 uint64_t pack_data(double x) {
   int64_t dataint = (int64_t)(x * (1L << DATA_BP));
 
@@ -139,7 +154,6 @@ int main(void)
   double tol = 0.5;
 
   // the array constants, must be consistent with Wellness.scala
-  // TODO: I'm declaring this as an int for now, since I can't print doubles for debugging
   double pcaVector[FEATURES][DIMENSIONS] = {{5.1,0.3,-2.15},{1,2,3}};
   double SVMSupportVector[SUPPORTS][FEATURES] = {{1,2.21},{3.33,4}};
   double SVMAlphaVector[CLASSIFIERS][SUPPORTS] = {{7,3.3}};
@@ -163,8 +177,10 @@ int main(void)
     SVMout[i] = SVM(PCAout,SVMSupportVector,SVMAlphaVector,SVMIntercept,i);
   }
 
-  printf("svm0 %d\n",SVMout[0]);
-  printf("svm1 %d\n",SVMout[1]);
+  printf("svm0 ");
+  printDouble(SVMout[0],4);
+  printf("svm1 ");
+  printDouble(SVMout[1],4);
   // ##################################### END DIAGNOSTIC
 
   for(i=0;i<24;i++) {
@@ -175,6 +191,7 @@ int main(void)
   for(i=1;i<=FEATURES;i++){
     for(j=1;j<=DIMENSIONS;j++){
         write_data = pack_conf_data(0,pcaVector[FEATURES-i][DIMENSIONS-j]);
+        //printf("pcawr: %d\n ",write_data);
         //printf("Write Data: %d\n",write_data);
         reg_write64(WELLNESSCONF_WRITE, write_data);
         while(reg_read64(WELLNESSCONF_WRITE_COUNT) > 0);
@@ -219,8 +236,10 @@ int main(void)
     data_out_0 = unpack_pca_0(pack_out);
     data_out_1 = unpack_pca_1(pack_out);
     //data_out_double = (double) data_out / pow(2,DATA_BP);
-    printf("DATA0 = %d\n", data_out_0);
-    printf("DATA1 = %d\n", data_out_1);
+    //printf("DATA0 = %d\n", data_out_0);
+    printDouble(data_out_0,4);
+    //printf("DATA1 = %d\n", data_out_1);
+    printDouble(data_out_1,4);
     printf("----------\n");
     //if(check_tol(data_out_double,ex[i],tol)) ;
     //else { printf("TEST %d FAILED!\n",(i+1)); test_failed = 1; all_tests_passed = 0;}

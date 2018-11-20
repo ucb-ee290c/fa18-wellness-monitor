@@ -2,29 +2,30 @@ package memorybuffer
 
 import wellness._
 import chisel3._
+import chisel3.core.FixedPoint
 import dsptools.numbers._
 import dsptools.DspTester
 
 import scala.collection.mutable
 
-class outBundle(params: MemoryBufferParams[SInt]) {
-  val regs = mutable.Buffer.fill(params.nColumns,params.nRows)(0)
+class outBundle(nColumns:Int, nRows:Int) {
+  val regs = mutable.Buffer.fill(nColumns,nRows)(0.toDouble)
   var valid : Boolean = false
 }
 
-class GoldenIntMemoryBuffer(params: MemoryBufferParams[SInt]) {
-  val totalSize = params.nRows * params.nColumns
-  var pseudoRegisters = List.fill(totalSize)(0)
+class GoldenMemoryBuffer(nColumns:Int, nRows:Int) {
+  val totalSize = nRows * nColumns
+  var pseudoRegisters = List.fill(totalSize)(0.toDouble)
 
-  val out = new outBundle(params)
+  val out = new outBundle(nColumns, nRows)
 
   var counter = 0
-  def poke(value: Int): outBundle = {
+  def poke(value: Double): outBundle = {
     pseudoRegisters = value :: pseudoRegisters.take(totalSize - 1)
 
-    for(x <- 0 until params.nColumns) {
-      for (y <- 0 until params.nRows) {
-        out.regs(x)(y) = pseudoRegisters((x * params.nRows) + y)
+    for(x <- 0 until nColumns) {
+      for (y <- 0 until nRows) {
+        out.regs(x)(y) = pseudoRegisters((x * nRows) + y)
       }
     }
 
@@ -43,11 +44,11 @@ class GoldenIntMemoryBuffer(params: MemoryBufferParams[SInt]) {
     }
     out
   }
-  def idlePoke(value: Int): outBundle = {
+  def idlePoke(value: Double): outBundle = {
 
-    for(x <- 0 until params.nColumns) {
-      for (y <- 0 until params.nRows) {
-        out.regs(x)(y) = pseudoRegisters((x * params.nRows) + y)
+    for(x <- 0 until nColumns) {
+      for (y <- 0 until nRows) {
+        out.regs(x)(y) = pseudoRegisters((x * nRows) + y)
       }
     }
 
@@ -61,11 +62,14 @@ class GoldenIntMemoryBuffer(params: MemoryBufferParams[SInt]) {
   }
 }
 
-class MemoryBufferTester[T <: chisel3.Data](c: MemoryBuffer[T], params: MemoryBufferParams[SInt]) extends DspTester(c) {
-  val MemoryBuffer = new GoldenIntMemoryBuffer(params)
+class MemoryBufferTester[T <: chisel3.Data](c: MemoryBuffer[T], params: MemoryBufferParams[T], testType: Int) extends DspTester(c) {
+  val MemoryBuffer = new GoldenMemoryBuffer(params.nColumns, params.nRows)
 
   for(i <- 0 until (params.nRows*params.nColumns + 1)) {
-    val input = scala.util.Random.nextInt(20)-10
+    var input = scala.util.Random.nextFloat*20
+    if (testType == 0) {
+      input = scala.util.Random.nextInt(20)
+    }
 
     val goldenModelResult = MemoryBuffer.poke(input)
 
@@ -77,16 +81,32 @@ class MemoryBufferTester[T <: chisel3.Data](c: MemoryBuffer[T], params: MemoryBu
     expect(c.io.out.valid, goldenModelResult.valid)
     for(x <- 0 until params.nColumns) {
       for (y <- 0 until params.nRows) {
-        expect(c.io.out.bits(x)(y), goldenModelResult.regs(x)(y))
+        if (testType == 0) {
+          expect(c.io.out.bits(x)(y), goldenModelResult.regs(x)(y))
+        } else {
+          fixTolLSBs.withValue(c.params.protoData.getWidth / 8) {
+            expect(c.io.out.bits(x)(y), goldenModelResult.regs(x)(y))
+          }
+        }
       }
     }
   }
 }
-object MemoryBufferTester {
+
+object UIntMemoryBufferTester {
   def apply(params: MemoryBufferParams[SInt]): Boolean = {
     //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new MemoryBuffer(params)) {
     dsptools.Driver.execute(() => new MemoryBuffer(params), TestSetup.dspTesterOptions) {
-      c => new MemoryBufferTester(c, params)
+      c => new MemoryBufferTester(c, params, 0)
+    }
+  }
+}
+
+object FixedPointMemoryBufferTester {
+  def apply(params: MemoryBufferParams[FixedPoint]): Boolean = {
+    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new MemoryBuffer(params)) {
+    dsptools.Driver.execute(() => new MemoryBuffer(params), TestSetup.dspTesterOptions) {
+      c => new MemoryBufferTester(c, params, 1)
     }
   }
 }

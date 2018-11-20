@@ -179,7 +179,7 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
         expect(c.io.classVotes(i), svmResult(1)(i))
       } else {
         // due to the series of multiply and accumulates, error actually blows up, let's be lenient
-        fixTolLSBs.withValue(20) { // +-16, 4 extra bits after the binary point
+        fixTolLSBs.withValue(c.svmParams.protoData.getWidth/4 + 2) {
           expect(c.io.rawVotes(i), svmResult(0)(i))
         }
         // strict check for the class votes

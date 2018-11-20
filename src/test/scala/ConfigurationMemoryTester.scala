@@ -8,10 +8,10 @@ import memorybuffer._
 import scala.collection.mutable
 
 class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt], params: ConfigurationMemoryParams[SInt]) extends DspTester(c) {
-  val PCAVectorMemoryBuffer = new GoldenIntMemoryBuffer(c.pcaVectorMemoryParams)
-  val SVMSupportVectorMemoryBuffer = new GoldenIntMemoryBuffer(c.svmSupportVectorMemoryParams)
-  val SVMAlphaVectorMemoryBuffer = new GoldenIntMemoryBuffer(c.svmAlphaVectorMemoryParams)
-  val SVMInterceptMemoryBuffer = new GoldenIntMemoryBuffer(c.svmInterceptMemoryParams)
+  val PCAVectorMemoryBuffer = new GoldenMemoryBuffer(c.pcaVectorMemoryParams.nColumns,c.pcaVectorMemoryParams.nRows)
+  val SVMSupportVectorMemoryBuffer = new GoldenMemoryBuffer(c.svmSupportVectorMemoryParams.nColumns,c.svmSupportVectorMemoryParams.nRows)
+  val SVMAlphaVectorMemoryBuffer = new GoldenMemoryBuffer(c.svmAlphaVectorMemoryParams.nColumns,c.svmAlphaVectorMemoryParams.nRows)
+  val SVMInterceptMemoryBuffer = new GoldenMemoryBuffer(c.svmInterceptMemoryParams.nColumns,c.svmInterceptMemoryParams.nRows)
 
   for(i <- 0 until ( (c.pcaVectorMemoryParams.nRows*c.pcaVectorMemoryParams.nColumns)*10 + 1)) {
     val input = scala.util.Random.nextInt(20)
