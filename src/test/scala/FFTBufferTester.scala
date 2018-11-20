@@ -52,6 +52,7 @@ class FFTBufferTester[T <: chisel3.Data](c: FFTBuffer[T], lanes: Int) extends Ds
 
     poke(c.io.in.bits, input)
     poke(c.io.in.valid, true)
+    poke(c.io.in.sync, true)
 
     step(1)
 

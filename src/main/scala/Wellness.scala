@@ -198,6 +198,10 @@ class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1P
   // val filterValid = Output(Bool())
   val lineLengthValid = Output(Bool())
   val bandpowerValid = Output(Bool())
+//  val fftBufferSync = Output(Bool())
+//  val fftValid = Output(Bool())
+
+  val fftIn = Input(Vec(fftConfig.lanes, fftConfig.genIn)) // TODO
 
   override def cloneType: this.type = WellnessModuleIO( filter1Params: FIRFilterParams[T],
                                                         lineLength1Params: lineLengthParams[T],
@@ -280,16 +284,29 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
 
   // FIR Filters to FFT Buffers
   fftBuffer.io.in.valid := filter1.io.out.valid
-  fftBuffer.io.in.sync := false.B
+  //fftBuffer.io.in.sync := false.B
+  fftBuffer.io.in.sync := filter1.io.out.valid
   fftBuffer.io.in.bits := filter1.io.out.bits.asTypeOf(fftBufferParams.protoData)
 
   // FFT Buffers to FFTs
-  fft.io.in.valid := fftBuffer.io.out.valid
+  //fft.io.in.valid := fftBuffer.io.out.valid
+  fft.io.in.valid := fftBuffer.io.out.sync
   fft.io.in.sync := false.B
+
+  // TODO: fails
   for (i <- fft.io.in.bits.indices) {
-    fft.io.in.bits(i).real := fftBuffer.io.out.bits(i).asTypeOf(fft.io.in.bits(i).real)
+    fft.io.in.bits(i).real := fftBuffer.io.out.bits(i)//.asTypeOf(fft.io.in.bits(i).real)
   }
   fft.io.in.bits.foreach(_.imag := Ring[T].zero)
+
+//  fft.io.in.bits.zip(fftBuffer.io.out.bits).map{ case (a, b) => a.real := b.asTypeOf(fft.io.in.bits(0).real) } // TODO: fails
+
+//  fft.io.in.bits := io.fftIn // TODO: works
+
+//  for (i <- fft.io.in.bits.indices) { // TODO: works
+//    fft.io.in.bits(i).real := io.fftIn(i).real.asTypeOf(fft.io.in.bits(i).real)
+//  }
+
   fft.io.data_set_end_clear := false.B
 
   // FFTs to Bandpowers
@@ -333,7 +350,10 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   io.bandpower1Out := bandpower1.io.out.bits
   io.bandpower2Out := bandpower2.io.out.bits
   io.pcaOut := pca.io.out.bits
+
   io.lineLengthValid := lineLength1.io.out.valid
+//  io.fftBufferSync := fftBuffer.io.out.sync
+//  io.fftValid := fft.io.out.valid
   io.bandpowerValid := bandpower1.io.out.valid
 }
 
