@@ -1,7 +1,7 @@
 # Infinite Impulse Response Filter Generator
 This iir block takes two sequences of coefficients and will generate a direct form II IIR Filter (a generic block diagram is shown below) with a `validWithSync` i/o interface. The generator extrapolates the number of taps from the length of the coefficient sequences also uses the valid signal to only allow new inputs when valid is high. While it seems trivial, it's importance cannot be overstated because it prevents output instability while applying new signals to the input (in between clock edges). 
 
-![blockDiagram](iirFilterForm2.png)
+![blockDiagram](images/iirFilterForm2.png)
 
 ### Parameters
 

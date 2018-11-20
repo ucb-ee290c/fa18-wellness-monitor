@@ -6,7 +6,7 @@
 The ExG generators describe a tool box of important digital blocks for any arbitrary wellness monitor. The goal of this project is to develop a flow such that any designer could describe a wellness monitor by high level features (e.g. arythmia detection, EEG alpha wave monitoring, siezure detection, etc.) and the generator would build and connect the neccessary filters, FFT blocks, feature extractors, and learning mechanisms required to achieve the high level specification.
 
 An example datapath is shown below:
-![blockDiagram](doc/exgBlockDiagram.png)
+![blockDiagram](doc/images/exgBlockDiagram.png)
 
 ## Team Members
 Adelson Chua, Justin Doong, Ryan Kaveh, Cem Yalcin, and Rachel Zoll
@@ -54,7 +54,7 @@ In order to test the entire flow, each block has been connected in an WIP [teste
 
 It's important to note that the FFT memory buffer is effectively a shift register to make the FFT a streaming FFT. 
 
-![blockDiagram](doc/testBlockDiagram.png)
+![blockDiagram](doc/images/testBlockDiagram.png)
 
 In parallel to the simulated hardware, the integration test also calculates an expected output using a scala golden model of the entire datapath. The golden model uses all of the smaller unit golden models strung together to build a scala version of the wellness datapath. 
 
