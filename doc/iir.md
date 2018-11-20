@@ -23,4 +23,4 @@ The generated IIR Filter has one input and one output port. Both of these are st
 1) Coefficients_B must be one element larger than Coefficients_A
 2) Generate coefficient values in matlab
 3) Plug coefficient values as sequences into params
-4) To test this block, there is a golden scala implementation of an IIR block in the tests folder. Running SBT test will automatically run the proper tests. Keep in mind, with random coefficients, the IIR block will most likely overflow if you run it for too many cycles.
+4) To test this block, there is a golden scala implementation of an IIR block in the tests folder. Running SBT test will automatically run the proper tests(currently it tests the generator with UInts and SInts). Keep in mind, with random coefficients, the IIR block will most likely overflow if you run it for too many cycles.
