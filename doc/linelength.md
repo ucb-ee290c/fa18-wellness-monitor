@@ -3,7 +3,7 @@ This Line Length Calculator Generator takes a window size as an input to calcula
 
 ## Parameters
 
-The SVM generator has the following configurable parameters:
+The Line Length Calculator generator has the following configurable parameters:
 
 ```
 trait FIRFilterParams[T <: Data] {
