@@ -48,11 +48,11 @@ elif classes == 3 or classes == 4:
 # Create a SVM Classifier
 # for more information, check out this link: http://scikit-learn.org/stable/modules/multiclass.html
 if class_type == 'ovr':
-    clf = OneVsRestClassifier(SVC(kernel=kernel, gamma=1, coef0=coef, degree=degree), n_jobs=-1)
+    clf = OneVsRestClassifier(SVC(kernel=kernel, gamma=1, coef0=coef, degree=degree))
 elif class_type == 'ovo':
     clf = SVC(kernel=kernel, gamma=1, coef0=coef, degree=degree) # SVC is ovo by default, contrary to documentation
 elif class_type == 'ecoc':
-    clf = OutputCodeClassifier(SVC(kernel=kernel, gamma=1, coef0=coef, degree=degree), code_size=1.5, random_state=109, n_jobs=-1)
+    clf = OutputCodeClassifier(SVC(kernel=kernel, gamma=1, coef0=coef, degree=degree), code_size=1.5, random_state=109)
 
 # Train the model using the training sets
 clf.fit(X_train, y_train)
@@ -64,10 +64,40 @@ X_test = np.array(X_test)   # we're using numpy here
 # It creates the alpha vector, support vector, and intercepts 
 #########################################
 
+# one vs rest classification creates 1 classifier per class
+# we just need to combine all support vectors and setup the corresponding alpha vector
+if class_type == 'ovr':
+    if classes == 2:
+        classes = 1     # pseudo fix since 2 classes = 1 classifier, 3 classes = 3 classifiers, so 2 is a special case
+
+    support_index = np.array([0])
+    for i in range(classes):    # count the number of alphas and extract the indices
+        support_index = np.concatenate((support_index,[support_index[-1]+clf.estimators_[i].dual_coef_.shape[1]]))
+
+    alpha_vector = np.zeros((classes,support_index[-1]))
+
+    # get the intercept vector
+    intercept = clf.intercept_
+
+    # get initial values of support vectors and alpha, at index 0
+    alpha_vector[0,support_index[0]:support_index[1]] = clf.estimators_[0].dual_coef_
+    supports = clf.estimators_[0].support_vectors_
+
+    # create the alpha vector and support vector list by iterating through the estimators
+    for i in range(1,classes):
+        alpha_vector[i,support_index[i]:support_index[i+1]] = clf.estimators_[i].dual_coef_
+        supports = np.concatenate((supports,clf.estimators_[i].support_vectors_))
+
+    num_classifiers = classes
+
+    # this is the raw votes, test for equality here
+    decision1 = clf.decision_function(X_test)
+
+
 # one vs one classification creates pairwise combinations of all classes as classifier
 # we need to create a classifier map for these pairwise combinations
 # we will also arrange the alphas accordingly, since the SVC function from sklearn is too optimized...
-if class_type == 'ovo':
+elif class_type == 'ovo':
     # extract parameters from the SVC function
     alphas = clf.dual_coef_
     supports = clf.support_vectors_
@@ -103,32 +133,6 @@ if class_type == 'ovo':
     # this is the raw votes, test for equality here
     decision1 = clf.decision_function(X_test)
 
-# one vs rest classification creates 1 classifier per class
-# we just need to combine all support vectors and setup the corresponding alpha vector
-elif class_type == 'ovr':
-    if classes == 2:
-        classes = 1     # pseudo fix since 2 classes = 1 classifier, 3 classes = 3 classifiers, so 2 is a special case
-
-    support_index = np.array([0])
-    for i in range(classes):    # count the number of alphas and extract the indices
-        support_index = np.concatenate((support_index,[support_index[-1]+clf.estimators_[i].dual_coef_.shape[1]]))
-        
-    alpha_vector = np.zeros((classes,support_index[-1]))
-    # get initial values, at index 0
-    alpha_vector[0,support_index[0]:support_index[1]] = clf.estimators_[0].dual_coef_
-    supports = clf.estimators_[0].support_vectors_
-    intercept = clf.intercept_
-    
-    # create the alpha vector and support vector list by iterating through the estimators
-    for i in range(1,classes):
-        alpha_vector[i,support_index[i]:support_index[i+1]] = clf.estimators_[i].dual_coef_
-        supports = np.concatenate((supports,clf.estimators_[i].support_vectors_))
-        
-    num_classifiers = classes
-    
-    # this is the raw votes, test for equality here
-    decision1 = clf.decision_function(X_test)
-
 # error-correcting output codes utilize some code book which is a binary permutation to represent each class
 # the number of classifiers will depend on the user, the more classifiers, the more robust it becomes
 # this is because classification is performed by calculating the hamming distances
@@ -146,11 +150,12 @@ elif class_type == 'ecoc':
         support_index = np.concatenate((support_index,[support_index[-1]+clf.estimators_[i].dual_coef_.shape[1]]))
         
     alpha_vector = np.zeros((num_classifiers,support_index[-1]))
-    # get initial values, at index 0
+    # get initial values of support vectors, alpha and intercept, at index 0
     alpha_vector[0,support_index[0]:support_index[1]] = clf.estimators_[0].dual_coef_
     supports = clf.estimators_[0].support_vectors_
     intercept = clf.estimators_[0].intercept_
-    
+
+    # create the alpha vector, support vector and intercept list by iterating through the estimators
     for i in range(1,num_classifiers): 
         alpha_vector[i,support_index[i]:support_index[i+1]] = clf.estimators_[i].dual_coef_
         supports = np.concatenate((supports,clf.estimators_[i].support_vectors_))
@@ -199,7 +204,14 @@ vote = np.ndarray.tolist(vote.astype(int))
 # initialize container of final predicted classes using manual calculation
 y_manual = np.zeros((len(vote),1))
 
-if class_type == 'ovo':
+if class_type == 'ovr':
+    for i in range(len(X_test)):  # number of test data
+        if classes != 1:
+            y_manual[i] = decision2[i].argmax(axis=0)   # check actual values since there might be a tie
+        else:
+            y_manual[i] = decision2[i] > 0  # special case for 2 classes
+
+elif class_type == 'ovo':
     # create the votes from the values of the decision function (vote)
     for i in range(len(X_test)):
         for j in range(num_classifiers):
@@ -212,13 +224,6 @@ if class_type == 'ovo':
             
         # find the max votes, that will be the final class
         y_manual[i] = max(set(vote[i]), key=vote[i].count)
-
-elif class_type == 'ovr':
-    for i in range(len(X_test)):  # number of test data
-        if classes != 1:
-            y_manual[i] = decision2[i].argmax(axis=0)   # check actual values since there might be a tie
-        else:
-            y_manual[i] = decision2[i] > 0  # special case for 2 classes
     
 elif class_type == 'ecoc':
     # create a temp array (not required for chisel since we detect 1 sample), that will contain per class votes
