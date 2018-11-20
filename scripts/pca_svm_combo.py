@@ -372,9 +372,9 @@ elif class_type == 'ecoc':
     # let's try creating a pseudo euclidean distance metric
     for i in range(len(X_test)): # number of test data
         for j in range(classes):
-            tempvote[i][j] = sum(abs(decision2[i] - clf.code_book_[j])) # sum of absolute values, instead of euclidean
+            tempvote[i][j] = -1*sum(np.power(decision2[i] - clf.code_book_[j],2)) # sum of squares, instead of euclidean
             
-        y_manual[i] = tempvote[i].argmin(axis=0) # pick the minimum distance, using this distance metric
+        y_manual[i] = tempvote[i].argmax(axis=0) # pick the minimum distance, using this distance metric
     
     # here's the actual operation required:
     #y_manual = euclidean_distances(decision2,codes).argmin(axis=1) # override if ever

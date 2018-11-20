@@ -65,7 +65,9 @@ After training, we will need to extract the vectors and matrices that was genera
 
 * The intercept vector: After multiplying the support vectors with its weights, there will be a bias term that needs to be added so shift the separating hyperplane away from the origin. This is the intercept term. For multiple classifiers, there will be a separate intercept term for each. This forms a 1D matrix of size `nClassifiers x 1`. 
 
-The extraction of these matrices are different depending on what type of classification is being performed. The actual challenge is to form these matrices in a consistent fashion so that the calculation of the decision function will be consistent no matter the type of classifier (calculation of the decision function will be discussed in the next section). The specific steps in extracting these matrices are presented below (only relevant code segments are indicated, check the full code [`here`](../scripts/svm_reference.py)):
+The extraction of these matrices are different depending on what type of classification is being performed. The actual challenge is to form these matrices in a consistent fashion so that the calculation of the decision function will be consistent no matter the type of classifier (calculation of the decision function will be discussed in the next section). Specifically, in a multi-classification setup, each classifier will have its own set of support vectors and weights (alphas). The Python script will try to separate these collections. However, if we are aiming for a consistent array format for these three matrices, then all of the corresponding arrays per classifier must be combined (that is, all support vectors per classifier must be combined as a single support vector array, same goes for the alpha and the intercepts). 
+
+The specific steps in extracting these matrices are presented below (only relevant code segments are indicated, check the full code [`here`](../scripts/svm_reference.py)):
 
 #### One vs Rest matrix extraction
 
@@ -174,40 +176,137 @@ for i in range(1,num_classifiers):
 
 ## SVM Classification
 
-### Kernel calculation
+This part references the second half of my [`Python script`](../scripts/svm_reference.py). This presents the required calculations to perform manual classification on a new data point given the arrays that were extracted earlier. This is also the reference that is used to create the [`Chisel implementation`](../src/main/scala/svm/svm.scala) of the SVM generator.
 
 ### Decision function
 
-### Voting
-
-
-The SVM implementation for this project will be limited to classification only, since the algorithm for training the SVM is pretty complex to be implemented in custom hardware. Performing classification is done by calculating the following sum:
+In equation form, SVM classification is done by calculating the following sum:
 
 ![SVM equation](http://chrisjmccormick.files.wordpress.com/2013/04/scoringfunction.png)
 
+The alpha term corresponds to the support vector weights, as already explained earlier. The y term is the label of the support vector where it belongs (-1 for class 0, +1 for class 1). **The product of this two forms the alpha vector that I have been referring to earlier**. 
 
+The x(i) refers to the support vectors of the classifier, while the x term refers to the new data point. Both of these are an input to a kernel function `K()`. The calculations for this kernel function depends on the type, the two most common forms are the polynomial and radial basis functions (RBF):
 
+* Polynomial kernel: Involves taking the dot product between the support vectors and the new data point and then raising the answer to some degree _d_. By setting _d_ to be 1, then the polynomial kernel reduces to a linear kernel, which is what a bare-bones SVM algorithm does.
 
-. Depending on the sign of the decision function, the answer can determine what class the new data point belongs to (say negative answers corresponding to class 0 and positive answers corresponding to class 1). The decision function is calculated 
+![poly](images/poly.png)
 
+```
+...
+if kernel == 'poly':
+    # polynomial kernel, varying degrees
+    # if you want linear, set coef = 0, degree = 1
+    kernel_dotproduct = np.power((coef + np.matmul(supports,X_test.T)),degree) 
+...
+```
 
-## Version 1
+* Radial Basis Function: Involves taking the square of the Euclidean distance between the support vector and the new data point and then treating it as a negative exponent to an exponential function. This is actually rather complex due to the inclusion of the exponential function. For the SVM generator, only the exponent is calculated.
 
-For the first version, the SVM classifier only performs binary classification (2-class system) and uses a linear kernel. This is the simplest one since the computation ends up to be a simple dot product of the alpha vector (1 x s), the support vectors (s x p), and the input vector (p x 1), plus the intercept. This gives a 1x1 numerical answer that can be positive or negative, which then determines the class where the datapoint corresponding to the input vector belongs to.
+![rbf](images/rbf.png)
 
-## Version 2
+```
+...
+elif kernel == 'rbf': # this is so tricky!
+    # rbf kernel
+    kernel_dotproduct = np.zeros((len(supports),len(X_test)))
+    for i in range(len(supports)): # loop for all support vectors
+        for j in range(len(X_test)): # loop for all test data samples
+            kernel_dotproduct[i,j] = np.exp(-sum((supports[i] - X_test[j]) ** 2))
+...
+```
 
-For the second version, the classifier will be improved with configurable kernel support. There are two variants of kernels that will be implemented for this project: a polynomial kernel and the radial basis function (RBF) kernel). The linear kernel that was implemented in version 1 is the simplest case of the polynomial kernel. The polynomial kernel raises the dot product of the support vector 2D array and the input vector to some degree (that is also parameterizable). On the other hand, the RBF kernel models the dot product as a Gaussian distribution instead (performing e^-((support - input)^2)). The RBF is actually tricky to implement due to the exponential. So in this implementation, only the exponent is being computed.
+Finally, after calculating the product of the alpha vector and the kernel function, the intercept is added to the scalar sum. 
 
-## Version 3
+```
+...
+# kernel_dotproduct will be computed given the test set and support vectors
+decision = np.matmul(alpha_vector,kernel_dotproduct)
 
-The final upgrade for this classifier is to support multi-class classification. SVM on its own is a binary classifier, but by implementing several parallel classifiers, multiple classes can be determined. There are three 'common' approaches to support multi-class classification, as discussed in this link: http://scikit-learn.org/stable/modules/multiclass.html. Here's a brief summary of the classification methods that will be implemented for this project.
+# add the intercept after doing the dot product with the alphas
+decision = decision + np.matmul(intercept.reshape((num_classifiers,1)),np.ones((1,len(X_test.T[0]))))
+...
+```
 
-One vs all: Say we have 3 classes: a, b, c: We create 3 classifiers. The first classifier classifies a vs (b,c). The second classifies b vs (a,c), and so on. Each of the classifier then votes for the correct classification.
+In summary, for a multi-class SVM classification, it is simply some function (kernel) of each of the support vectors (`nSupports x nFeatures`) to the new data point (`nFeatures x 1`), multiplied with the alpha vector weights (`nClassifiers x nSupports`) with an intercept being added (`nClassifiers x 1`). The result will be a vector of decision values (`nClassifiers x 1`) which is basically the vote of each classifier on what class the new data point belongs to.
 
-One vs one: Using the same 3 classes, we create a classifier for every pairwise combination of the classes, n(n-1)/2, where n is the number of classes. Then we have voting happening here as well. They say that this is better than one vs all.
+### Voting
 
-Error-correcting output codes: In this approach, each class will be assigned its own unique binary assignment (the number of bits will vary depending on the user). Each bit in this binary assignment will correspond to a classifier. If the number of bits exceed the number of classes, we can be more robust to errors. For more information, check this out: http://scikit-learn.org/stable/modules/generated/sklearn.multiclass.OutputCodeClassifier.html
+After calculating the decision function, the next step is to sum up the votes to finally determine the class of the new data point. For a binary classification, this is trivial (depending the sign of the decision, that is the corresponding class). However, for multi-class classification, the challenge is to sum up the votes for every classifier (which depends on the classification type). This section will present the approaches for voting for each of the classification methods.
 
-There’s also a Youtube video that discusses these approaches:
-https://www.youtube.com/watch?v=6kzvrq-MIO0
+#### One vs Rest voting
+
+In a One vs Rest format, voting is simply the class with the highest (positive) vote. While checking just for positivity of the decision value works for a binary classification mode, it might not work if we are considering more than 2 classes. This is because more than one classifier might have a positive vote (maybe the new data point does not uniquely belong to a single class), leading to a tie. To resolve this, the classifier that has the most confidence (i.e. the classifier that has the highest positive vote) should win.
+
+```
+...
+for i in range(len(X_test)):  # number of test data
+    if classes != 1: # there's 1 classifier => binary classification
+        y_manual[i] = decision2[i].argmax(axis=0)   # check actual values since there might be a tie
+    else:
+        y_manual[i] = decision2[i] > 0  # special case for 2 classes
+...
+
+```
+
+#### One vs One voting
+
+In a One vs One format, voting is a bit tricky. Looking back to the One vs One implementation, this creates classifiers to classify all pairwise combination of classes. Therefore, each classifier can only vote on either one of the two classes, depending on what combination it is checking. The `class_pairs` vector that was created for the matrix extraction is used again in this code block to map the vote to one of the two classes per classifier. The total votes per class will then be summed up and the class with the highest number of votes wins. To avoid potential ties, the raw values of the decision function can also be used instead of just checking for positivity.
+
+```
+...
+vote = decision > 0
+for i in range(len(X_test)):
+    for j in range(num_classifiers):
+        if classes > 2:     # binary classification is a special case since that only has 1 classifier
+            vote[i][j] = class_pairs[j][1-vote[i][j]]
+        else:
+            vote[i][j] = class_pairs[j][vote[i][j]]
+        # I did 1-x since 1 must correspond to the first of the pair
+        # this is just index manipulation, 0 -> 1, 1 -> 0
+        
+    # find the max votes, that will be the final class
+    y_manual[i] = max(set(vote[i]), key=vote[i].count)
+...
+```
+
+#### Error-Correcting Output-Codes voting
+
+In the Error-Correcting Output-Code format, the voting scheme is a little different. Each of the classifiers will output a binary decision (depending on the sign of the decision function). This then forms a vector of 0s and 1s. This vector is now matched to the code book. Some distance metric will be used to find the class corresponding to the vector it closely matches. 
+
+One approach is to calculate the hamming distance, calculating how many bits matches. The main reference would be the entry of the code book, which should have been identified during the training phase. After calculating the amount of similarity between each codebook entry, the class corresponding to the highest sum would win.
+
+```
+...
+vote = decision > 0
+for i in range(len(X_test)):
+        for j in range(classes):
+            tempvote[i][j] = sum(vote[i] == codes[j]) # hamming distance of every data to the code book 
+            
+        y_manual[i] = tempvote[i].argmax(axis=0) # pick the class with the largest hamming distance, will there be a tie?
+
+...
+```
+
+Another approach, which is the actual approach being used by the Python library, is to calculate the Euclidean distance. The problem with this approach, however, is complexity, since it requires a square root function for the actual distance measurement. What can be done instead is to leave out the square root and just sum the square differences. This can lead to some inaccuracies between the Python library output and the manual calculation, but it should not be too drastic. 
+
+```
+...
+codes[codes == 0] = -1  # get distance to [-1,1] not [0,1]
+
+# let's try creating a pseudo euclidean distance metric
+for i in range(len(X_test)): # number of test data
+    for j in range(classes):
+        tempvote[i][j] = -1*sum(np.power(decision2[i] - codes[j],2)) # sum of squares, instead of euclidean
+        
+    y_manual[i] = tempvote[i].argmax(axis=0) # pick the maximum number, the least negative
+...
+```
+
+Here is the Euclidean distance implementation, if you're interested. The output of this should match the Python `predict` function.
+
+```
+y_manual = euclidean_distances(decision2,codes).argmin(axis=1)
+```
+
+## End
