@@ -1,12 +1,6 @@
 # FIR Filter
 This FIR Filter Generator takes a set of coefficients of any desired length and type and generates an FIR filter with a `ValidWithSync` interface for input/output streams. This version generates an FIR filter with constant coefficients as it is only intended as a Low Pass/Band Pass filter generator with constant corner frequencies.
 
-# SVM
-
-## Overview
-
-The SVM block performs classification using the Support Vector Machine algorithm. [`svm_reference.py`](../scripts/svm_reference.py) models the whole chain (from training all the way to inference/classification). This reference file already implements the final SVM algorithm to be implemented for this project (parameterizable number of classes, different kernel support, and variable number of features). Understanding what the script does requires some background on how to do inference using SVM. I have written a [`comprehensive tutorial`](svm_tutorial.md) regarding that. Please read that first.
-
 ## Parameters
 
 The SVM generator has the following configurable parameters:
