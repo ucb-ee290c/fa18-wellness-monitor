@@ -25,6 +25,16 @@ abstract class fftBufferParamsTemplate {
   val lanes:Int
 }
 
+abstract class fftConfigTemplate {
+  val nPts: Int
+}
+
+abstract class bandpowerParamsTemplate {
+  val idxStartBin: Int
+  val idxEndBin: Int
+  val nBins: Int
+}
+
 abstract class pcaParamsTemplate {
   val nDimensions:Int
   val nFeatures:Int
@@ -57,23 +67,25 @@ class wellnessIntegrationParameterBundle {
   val filter1Params:filterParamsTemplate = new filterParamsTemplate {
     override val taps = Seq(1.toDouble,2.toDouble,3.toDouble,4.toDouble,5.toDouble,0.toDouble)
   }
-  val filter2Params:filterParamsTemplate = new filterParamsTemplate {
-    override val taps = Seq(5.toDouble,4.toDouble,3.toDouble,2.toDouble,1.toDouble,0.toDouble)
-  }
-  val filter3Params:filterParamsTemplate = new filterParamsTemplate {
-    override val taps = Seq(0.toDouble,1.toDouble,2.toDouble,2.toDouble,1.toDouble,0.toDouble)
-  }
   val lineLength1Params:lineLengthParamsTemplate = new lineLengthParamsTemplate {
-    override val windowSize = 2
-  }
-  val lineLength2Params:lineLengthParamsTemplate = new lineLengthParamsTemplate {
-    override val windowSize = 2
-  }
-  val lineLength3Params:lineLengthParamsTemplate = new lineLengthParamsTemplate {
     override val windowSize = 2
   }
   val fftBufferParams:fftBufferParamsTemplate = new fftBufferParamsTemplate {
     override val lanes: Int = 4
+  }
+  val fftConfig: fftConfigTemplate = new fftConfigTemplate {
+    override val nPts: Int = 4
+  }
+  // TODO: parameterize to match Chisel params below
+  val bandpower1Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
+    override val idxStartBin: Int = 0
+    override val idxEndBin: Int = 3
+    override val nBins: Int = 4
+  }
+  val bandpower2Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
+    override val idxStartBin: Int = 0
+    override val idxEndBin: Int = 1
+    override val nBins: Int = 4
   }
   val pcaParams:pcaParamsTemplate = new pcaParamsTemplate {
     override val nDimensions: Int = 3
@@ -106,15 +118,20 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
 
   it should "pass the input through filters, compute features, and classify (SInt)" in {
 
-    val tap_count = scala.util.Random.nextInt(50) + 1
+    //val tap_count = scala.util.Random.nextInt(50) + 1
+    val tap_count = 5
 
     val coefficients1 = mutable.ArrayBuffer[Int]()
     val coefficients2 = mutable.ArrayBuffer[Int]()
     val coefficients3 = mutable.ArrayBuffer[Int]()
     for(j <- 0 until tap_count) {
-      coefficients1 += (-32 + scala.util.Random.nextInt(64))
-      coefficients2 += (-32 + scala.util.Random.nextInt(64))
-      coefficients3 += (-32 + scala.util.Random.nextInt(64)) }
+      //coefficients1 += (-32 + scala.util.Random.nextInt(64))
+      //coefficients2 += (-32 + scala.util.Random.nextInt(64))
+      //coefficients3 += (-32 + scala.util.Random.nextInt(64))
+      coefficients1 += j
+      coefficients2 += j
+      coefficients3 += j
+       }
 
     //val numDimensions = scala.util.Random.nextInt(9) + 2
     //val numFeatures = scala.util.Random.nextInt(numDimensions - 1) + 1
@@ -123,20 +140,25 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       override val filter1Params: filterParamsTemplate = new filterParamsTemplate {
         override val taps: Seq[Double] = coefficients1.map(_.toDouble)
       }
-      override val filter2Params: filterParamsTemplate = new filterParamsTemplate {
-        override val taps: Seq[Double] = coefficients2.map(_.toDouble)
-      }
-      override val filter3Params: filterParamsTemplate = new filterParamsTemplate {
-        override val taps: Seq[Double] = coefficients3.map(_.toDouble)
-      }
       override val lineLength1Params: lineLengthParamsTemplate = new lineLengthParamsTemplate {
         override val windowSize = 2
       }
-      override val lineLength2Params: lineLengthParamsTemplate = new lineLengthParamsTemplate {
-        override val windowSize = 2
+      override val fftBufferParams:fftBufferParamsTemplate = new fftBufferParamsTemplate {
+        override val lanes: Int = 4
       }
-      override val lineLength3Params: lineLengthParamsTemplate = new lineLengthParamsTemplate {
-        override val windowSize = 2
+      override val fftConfig: fftConfigTemplate = new fftConfigTemplate {
+        override val nPts: Int = 4
+      }
+      // TODO: parameterize to match Chisel params below
+      override val bandpower1Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
+        override val idxStartBin: Int = 0
+        override val idxEndBin: Int = 3
+        override val nBins: Int = 4
+      }
+      override val bandpower2Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
+        override val idxStartBin: Int = 0
+        override val idxEndBin: Int = 1
+        override val nBins: Int = 4
       }
       override val pcaParams:pcaParamsTemplate = new pcaParamsTemplate {
         override val nDimensions: Int = 3
@@ -184,45 +206,25 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
     val nPts = 4
 
     val filter1Params = new FIRFilterParams[SInt] {
-      override val protoData = SInt(32.W)
+      override val protoData = SInt(64.W)
       override val taps = coefficients1.map(_.asSInt())
     }
 
-    val filter2Params = new FIRFilterParams[SInt] {
-      override val protoData = SInt(32.W)
-      override val taps = coefficients2.map(_.asSInt())
-    }
-
-    val filter3Params = new FIRFilterParams[SInt] {
-      override val protoData = SInt(32.W)
-      override val taps = coefficients3.map(_.asSInt())
-    }
-
     val lineLength1Params = new lineLengthParams[SInt] {
-      override val protoData = SInt(32.W)
-      override val windowSize = 2
-    }
-
-    val lineLength2Params = new lineLengthParams[SInt] {
-      override val protoData = SInt(32.W)
-      override val windowSize = 2
-    }
-
-    val lineLength3Params = new lineLengthParams[SInt] {
-      override val protoData = SInt(32.W)
+      override val protoData = SInt(64.W)
       override val windowSize = 2
     }
 
     // FFTBufferParams
     val fftBufferParams = new FFTBufferParams[SInt] {
-      val protoData = SInt(32.W)
+      val protoData = SInt(64.W)
       val lanes = nPts
     }
 
     // FFTConfigs
     val fftConfig = FFTConfig(
-      genIn = DspComplex(SInt(32.W), SInt(32.W)),
-      genOut = DspComplex(SInt(32.W), SInt(32.W)),
+      genIn = DspComplex(SInt(64.W), SInt(64.W)),
+      genOut = DspComplex(SInt(64.W), SInt(64.W)),
       n = nPts,
       lanes = nPts,
       pipelineDepth = 0,
@@ -232,31 +234,27 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
     // BandpowerParams
     val bandpower1Params = new BandpowerParams[SInt] {
       val idxStartBin = 0
-      val idxEndBin = nPts-1
+      val idxEndBin = 3
       val nBins = nPts
-      val protoData = SInt(32.W)
+      val genIn = DspComplex(SInt(64.W), SInt(64.W))
+      val genOut = SInt(64.W)
     }
     val bandpower2Params = new BandpowerParams[SInt] {
       val idxStartBin = 0
-      val idxEndBin = nPts-1
+      val idxEndBin = 1
       val nBins = nPts
-      val protoData = SInt(32.W)
-    }
-    val bandpower3Params = new BandpowerParams[SInt] {
-      val idxStartBin = 0
-      val idxEndBin = nPts-1
-      val nBins = nPts
-      val protoData = SInt(32.W)
+      val genIn = DspComplex(SInt(64.W), SInt(64.W))
+      val genOut = SInt(64.W)
     }
 
     val pcaParams = new PCAParams[SInt] {
-      override val protoData = SInt(32.W)
+      override val protoData = SInt(64.W)
       override val nDimensions = 3 // input dimension, minimum 1
       override val nFeatures = 2   // output dimension to SVM, minimum 1
     }
 
     val svmParams = new SVMParams[SInt] {
-      val protoData = SInt(32.W)
+      val protoData = SInt(64.W)
       val nSupports = 2
       val nFeatures = pcaParams.nFeatures
       val nClasses = 2
@@ -267,7 +265,7 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
     }
 
     val pcaVectorBufferParams = new MemoryBufferParams[SInt] {
-      override val protoData = SInt(32.W)
+      override val protoData = SInt(64.W)
       override val nRows:Int = pcaParams.nFeatures
       override val nColumns:Int = pcaParams.nDimensions
     }
@@ -300,16 +298,11 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
 
 
     WellnessIntegrationTesterSInt(filter1Params: FIRFilterParams[SInt],
-      filter2Params: FIRFilterParams[SInt],
-      filter3Params: FIRFilterParams[SInt],
       lineLength1Params: lineLengthParams[SInt],
-      lineLength2Params: lineLengthParams[SInt],
-      lineLength3Params: lineLengthParams[SInt],
       fftBufferParams: FFTBufferParams[SInt],
       fftConfig: FFTConfig[SInt],
       bandpower1Params: BandpowerParams[SInt],
       bandpower2Params: BandpowerParams[SInt],
-      bandpower3Params: BandpowerParams[SInt],
       pcaParams: PCAParams[SInt],
       svmParams: SVMParams[SInt],
       pcaVectorBufferParams: MemoryBufferParams[SInt],
@@ -321,37 +314,42 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
 
     val nPts = 4
 
-    val dataWidth = 32
+    val dataWidth = 64
     val dataBP = 8
 
-    val tap_count = scala.util.Random.nextInt(50) + 1
+    val tap_count = scala.util.Random.nextInt(15) + 1
     val coefficients1 = mutable.ArrayBuffer[Double]()
     val coefficients2 = mutable.ArrayBuffer[Double]()
     val coefficients3 = mutable.ArrayBuffer[Double]()
     for(j <- 0 until tap_count) {
-      coefficients1 += (-32 + scala.util.Random.nextFloat * 64)
-      coefficients2 += (-32 + scala.util.Random.nextFloat * 64)
-      coefficients3 += (-32 + scala.util.Random.nextFloat * 64)
+      coefficients1 += (-5 + scala.util.Random.nextFloat * 10)
+      coefficients2 += (-16 + scala.util.Random.nextFloat * 32)
+      coefficients3 += (-16 + scala.util.Random.nextFloat * 32)
     }
 
     val goldenModelParameters = new wellnessIntegrationParameterBundle {
       override val filter1Params: filterParamsTemplate = new filterParamsTemplate {
         override val taps: Seq[Double] = coefficients1
       }
-      override val filter2Params: filterParamsTemplate = new filterParamsTemplate {
-        override val taps: Seq[Double] = coefficients2
-      }
-      override val filter3Params: filterParamsTemplate = new filterParamsTemplate {
-        override val taps: Seq[Double] = coefficients3
-      }
       override val lineLength1Params: lineLengthParamsTemplate = new lineLengthParamsTemplate {
         override val windowSize = 2
       }
-      override val lineLength2Params: lineLengthParamsTemplate = new lineLengthParamsTemplate {
-        override val windowSize = 2
+      override val fftBufferParams:fftBufferParamsTemplate = new fftBufferParamsTemplate {
+        override val lanes: Int = 4
       }
-      override val lineLength3Params: lineLengthParamsTemplate = new lineLengthParamsTemplate {
-        override val windowSize = 2
+      override val fftConfig: fftConfigTemplate = new fftConfigTemplate {
+        override val nPts: Int = 4
+      }
+      // TODO: parameterize to match Chisel params below
+      override val bandpower1Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
+        override val idxStartBin: Int = 0
+        override val idxEndBin: Int = 3
+        override val nBins: Int = 4
+      }
+      override val bandpower2Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
+        override val idxStartBin: Int = 0
+        override val idxEndBin: Int = 1
+        override val nBins: Int = 4
       }
       override val pcaParams:pcaParamsTemplate = new pcaParamsTemplate {
         override val nDimensions: Int = 3
@@ -401,24 +399,7 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       override val taps = coefficients1.map(ConvertableTo[FixedPoint].fromDouble(_))
     }
 
-    val filter2Params = new FIRFilterParams[FixedPoint] {
-      override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
-      override val taps = coefficients2.map(ConvertableTo[FixedPoint].fromDouble(_))
-    }
-
-    val filter3Params = new FIRFilterParams[FixedPoint] {
-      override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
-      override val taps = coefficients3.map(ConvertableTo[FixedPoint].fromDouble(_))
-    }
     val lineLength1Params = new lineLengthParams[FixedPoint] {
-      override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
-      override val windowSize = 2
-    }
-    val lineLength2Params = new lineLengthParams[FixedPoint] {
-      override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
-      override val windowSize = 2
-    }
-    val lineLength3Params = new lineLengthParams[FixedPoint] {
       override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
       override val windowSize = 2
     }
@@ -442,21 +423,17 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
     // BandpowerParams
     val bandpower1Params = new BandpowerParams[FixedPoint] {
       val idxStartBin = 0
-      val idxEndBin = nPts-1
+      val idxEndBin = 3
       val nBins = nPts
-      val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+      val genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP))
+      val genOut = FixedPoint(dataWidth.W,dataBP.BP)
     }
     val bandpower2Params = new BandpowerParams[FixedPoint] {
       val idxStartBin = 0
-      val idxEndBin = nPts-1
+      val idxEndBin = 1
       val nBins = nPts
-      val protoData = FixedPoint(dataWidth.W,dataBP.BP)
-    }
-    val bandpower3Params = new BandpowerParams[FixedPoint] {
-      val idxStartBin = 0
-      val idxEndBin = nPts-1
-      val nBins = nPts
-      val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+      val genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP))
+      val genOut = FixedPoint(dataWidth.W,dataBP.BP)
     }
 
     val pcaParams = new PCAParams[FixedPoint] {
@@ -510,16 +487,11 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
 
 
     WellnessIntegrationTesterFP(filter1Params: FIRFilterParams[FixedPoint],
-      filter2Params: FIRFilterParams[FixedPoint],
-      filter3Params: FIRFilterParams[FixedPoint],
       lineLength1Params: lineLengthParams[FixedPoint],
-      lineLength2Params: lineLengthParams[FixedPoint],
-      lineLength3Params: lineLengthParams[FixedPoint],
       fftBufferParams: FFTBufferParams[FixedPoint],
       fftConfig: FFTConfig[FixedPoint],
       bandpower1Params: BandpowerParams[FixedPoint],
       bandpower2Params: BandpowerParams[FixedPoint],
-      bandpower3Params: BandpowerParams[FixedPoint],
       pcaParams: PCAParams[FixedPoint],
       svmParams: SVMParams[FixedPoint],
       pcaVectorBufferParams: MemoryBufferParams[FixedPoint],

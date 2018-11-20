@@ -70,8 +70,8 @@ object SIntLineLengthTester {
 }
 object FixedPointLineLengthTester {
   def apply(params: lineLengthParams[FixedPoint], windowSize: Int): Boolean = {
-    chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new lineLength(params)) {
-    //dsptools.Driver.execute(() => new lineLength(params), TestSetup.dspTesterOptions) {
+    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new lineLength(params)) {
+    dsptools.Driver.execute(() => new lineLength(params), TestSetup.dspTesterOptions) {
       c => new lineLengthFloatTester(c, windowSize, 1)
     }
   }
