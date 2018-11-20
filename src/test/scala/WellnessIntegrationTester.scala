@@ -41,11 +41,13 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     goldenModelParameters.bandpower1Params.nBins,
     goldenModelParameters.bandpower1Params.idxStartBin,
     goldenModelParameters.bandpower1Params.idxEndBin,
+    testType
     )
   val bandpower2 = new GoldenDoubleBandpower(
     goldenModelParameters.bandpower2Params.nBins,
     goldenModelParameters.bandpower2Params.idxStartBin,
     goldenModelParameters.bandpower2Params.idxEndBin,
+    testType
   )
   val SVM = new GoldenSVM(
     goldenModelParameters.svmParams.nSupports,

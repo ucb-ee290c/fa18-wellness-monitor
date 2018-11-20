@@ -1,5 +1,6 @@
 package features
 
+import breeze.numerics.log10
 import chisel3._
 import dsptools.numbers._
 import dspjunctions._
@@ -24,7 +25,9 @@ object BandpowerIO {
   def apply[T <: Data](params: BandpowerParams[T]): BandpowerIO[T] = new BandpowerIO(params)
 }
 
-class Bandpower[T <: Data : Real](val params: BandpowerParams[T]) extends Module {
+class Bandpower[T <: Data : Real : BinaryRepresentation](val params: BandpowerParams[T]) extends Module {
+  require( params.idxEndBin > params.idxStartBin )
+  require( ( (params.idxEndBin - params.idxStartBin + 1) & (params.idxEndBin - params.idxStartBin + 1 - 1)) == 0 )
   val io = IO(new BandpowerIO[T](params))
 
   // TODO: sqrt, division
@@ -35,7 +38,7 @@ class Bandpower[T <: Data : Real](val params: BandpowerParams[T]) extends Module
   // Concatenate back in unscaled DC and sampling freq elems
   val p1 = VecInit(p2(0)) ++ p1Scaled ++ VecInit(p2(params.nBins/2))
   // Just sum because already squared
-  io.out.bits := p1.slice(params.idxStartBin, params.idxEndBin).reduce(_ + _)
+  io.out.bits := p1.slice(params.idxStartBin, params.idxEndBin).reduce(_ + _) >> (log10(params.idxEndBin - params.idxStartBin + 1) / log10(2)).toInt
 
   io.out.valid := io.in.valid
   io.out.sync := io.in.sync
