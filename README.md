@@ -5,7 +5,8 @@
 ## Project Description
 The ExG generators describe a tool box of important digital blocks for any arbitrary wellness monitor. The goal of this project is to develop a flow such that any designer could describe a wellness monitor by high level features (e.g. arythmia detection, EEG alpha wave monitoring, siezure detection, etc.) and the generator would build and connect the neccessary filters, FFT blocks, feature extractors, and learning mechanisms required to achieve the high level specification.
 
-In the future we will add a tutorial on building an example wellness monitor.
+An example datapath is shown below:
+![blockDiagram](exgBlockDiagram.png)
 
 ## Team Members
 Adelson Chua, Justin Doong, Ryan Kaveh, Cem Yalcin, and Rachel Zoll
