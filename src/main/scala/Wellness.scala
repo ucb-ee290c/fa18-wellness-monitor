@@ -1,8 +1,8 @@
 package wellness
 
 import chisel3._
+import chisel3.core.FixedPoint
 import chisel3.util._
-import chisel3.experimental.FixedPoint
 import dspblocks._
 import dspjunctions.ValidWithSync
 import dsptools.numbers._
@@ -465,8 +465,8 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real :
     inConf.ready := true.B
     configurationMemory.io.in.valid := inConf.valid
     configurationMemory.io.in.sync := false.B
-    configurationMemory.io.in.bits.wrdata := inConf.bits.data.asUInt()(configurationMemory.io.in.bits.wrdata.getWidth-1,0).asSInt()
-    configurationMemory.io.in.bits.wraddr := inConf.bits.data.asUInt()(configurationMemory.io.in.bits.wrdata.getWidth+1,configurationMemory.io.in.bits.wrdata.getWidth)
+    configurationMemory.io.in.bits.wrdata := inConf.bits.data(configurationMemory.io.in.bits.wrdata.getWidth-1,0).asTypeOf(configurationMemory.io.in.bits.wrdata)
+    configurationMemory.io.in.bits.wraddr := inConf.bits.data(configurationMemory.io.in.bits.wrdata.getWidth+1,configurationMemory.io.in.bits.wrdata.getWidth).asTypeOf(configurationMemory.io.in.bits.wraddr)
     wellness.io.inConf := configurationMemory.io.out
   }
 }
@@ -552,11 +552,8 @@ class WellnessThing[T <: Data : Real : Order : BinaryRepresentation]
   lazy val module = new LazyModuleImp(this)
 }
 
-/**
-  * Mixin for top-level rocket to add a PWM
-  *
-  */
-trait HasPeripheryWellness extends BaseSubsystem {
+object SIntWellnessParams {
+
   val nPts = 4
 
   val filter1Params = new FIRFilterParams[SInt] {
@@ -609,19 +606,19 @@ trait HasPeripheryWellness extends BaseSubsystem {
   // BandpowerParams
   val bandpower1Params = new BandpowerParams[SInt] {
     val idxStartBin = 0
-    val idxEndBin = nPts-1
+    val idxEndBin = nPts - 1
     val nBins = nPts
     val protoData = SInt(32.W)
   }
   val bandpower2Params = new BandpowerParams[SInt] {
     val idxStartBin = 0
-    val idxEndBin = nPts-1
+    val idxEndBin = nPts - 1
     val nBins = nPts
     val protoData = SInt(32.W)
   }
   val bandpower3Params = new BandpowerParams[SInt] {
     val idxStartBin = 0
-    val idxEndBin = nPts-1
+    val idxEndBin = nPts - 1
     val nBins = nPts
     val protoData = SInt(32.W)
   }
@@ -629,7 +626,7 @@ trait HasPeripheryWellness extends BaseSubsystem {
   val pcaParams = new PCAParams[SInt] {
     override val protoData = SInt(32.W)
     override val nDimensions = 3 // input dimension, minimum 1
-    override val nFeatures = 2   // output dimension to SVM, minimum 1
+    override val nFeatures = 2 // output dimension to SVM, minimum 1
   }
 
   val svmParams = new SVMParams[SInt] {
@@ -640,17 +637,139 @@ trait HasPeripheryWellness extends BaseSubsystem {
     val nDegree = 1
     val kernelType = "poly"
     val classifierType = "ovo"
-    val codeBook = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
+    val codeBook = Seq.fill(nClasses, nClasses * 2)((scala.util.Random.nextInt(2) * 2) - 1) // ignored for this test case
   }
 
   val pcaVectorBufferParams = new MemoryBufferParams[SInt] {
     override val protoData = pcaParams.protoData.cloneType
+    override val nRows: Int = pcaParams.nFeatures
+    override val nColumns: Int = pcaParams.nDimensions
+  }
+  val configurationMemoryParams = new ConfigurationMemoryParams[SInt] {
+
+    object computeNClassifiers {
+      def apply(params: SVMParams[chisel3.SInt] with Object {
+        val nClasses: Int
+        val codeBook: Seq[Seq[Int]]
+        val classifierType: String
+      }): Int =
+        if (params.classifierType == "ovr") {
+          if (params.nClasses == 2) params.nClasses - 1
+          else 1
+        }
+        else if (params.classifierType == "ovo") {
+          (params.nClasses * (params.nClasses - 1)) / 2
+        }
+        else if (params.classifierType == "ecoc") {
+          params.codeBook.head.length
+        }
+        else 1
+    }
+
+    override val protoData = pcaParams.protoData.cloneType
+    override val nDimensions: Int = pcaParams.nDimensions
+    override val nFeatures: Int = pcaParams.nFeatures
+    override val nSupports: Int = svmParams.nSupports
+    override val nClassifiers: Int = computeNClassifiers(svmParams)
+  }
+
+}
+
+object FixedPointWellnessParams {
+
+  val nPts = 4
+  val dataWidth:Int = 32
+  val dataBP:Int = 8
+
+  val filter1Params = new FIRFilterParams[FixedPoint] {
+    override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    override val taps = Seq(1, 2, 3, 4, 5, 0).map(ConvertableTo[FixedPoint].fromDouble(_))
+  }
+
+  val filter2Params = new FIRFilterParams[FixedPoint] {
+    override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    override val taps = Seq(5, 4, 3, 2, 1, 0).map(ConvertableTo[FixedPoint].fromDouble(_))
+  }
+
+  val filter3Params = new FIRFilterParams[FixedPoint] {
+    override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    override val taps = Seq(0, 1, 2, 2, 1, 0).map(ConvertableTo[FixedPoint].fromDouble(_))
+  }
+  val lineLength1Params = new lineLengthParams[FixedPoint] {
+    override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    override val windowSize = 2
+  }
+  val lineLength2Params = new lineLengthParams[FixedPoint] {
+    override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    override val windowSize = 2
+  }
+  val lineLength3Params = new lineLengthParams[FixedPoint] {
+    override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    override val windowSize = 2
+  }
+
+  // FFTBufferParams
+  val fftBufferParams = new FFTBufferParams[FixedPoint] {
+    val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    val lanes = nPts
+  }
+
+  // FFTConfigs
+  val fftConfig = FFTConfig(
+    genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP)),
+    genOut = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP)),
+    n = nPts,
+    lanes = nPts,
+    pipelineDepth = 0,
+    quadrature = false,
+  )
+
+  // BandpowerParams
+  val bandpower1Params = new BandpowerParams[FixedPoint] {
+    val idxStartBin = 0
+    val idxEndBin = nPts-1
+    val nBins = nPts
+    val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+  }
+  val bandpower2Params = new BandpowerParams[FixedPoint] {
+    val idxStartBin = 0
+    val idxEndBin = nPts-1
+    val nBins = nPts
+    val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+  }
+  val bandpower3Params = new BandpowerParams[FixedPoint] {
+    val idxStartBin = 0
+    val idxEndBin = nPts-1
+    val nBins = nPts
+    val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+  }
+
+  val pcaParams = new PCAParams[FixedPoint] {
+    override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    override val nDimensions = 3 // input dimension, minimum 1
+    override val nFeatures = 2   // output dimension to SVM, minimum 1
+  }
+
+  val svmParams = new SVMParams[FixedPoint] {
+    val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    val nSupports = 2
+    val nFeatures = pcaParams.nFeatures
+    val nClasses = 2
+    val nDegree = 1
+    val kernelType = "poly"
+    val classifierType = "ovo"
+    val codeBook = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
+  }
+
+  val pcaVectorBufferParams = new MemoryBufferParams[FixedPoint] {
+    override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
     override val nRows:Int = pcaParams.nFeatures
     override val nColumns:Int = pcaParams.nDimensions
   }
-  val configurationMemoryParams = new ConfigurationMemoryParams[SInt] {
+
+  val configurationMemoryParams = new ConfigurationMemoryParams[FixedPoint] {
     object computeNClassifiers {
-      def apply(params: SVMParams[chisel3.SInt] with Object {
+      def apply(params: SVMParams[FixedPoint] with Object {
         val nClasses: Int
         val codeBook: Seq[Seq[Int]]
         val classifierType: String
@@ -674,15 +793,29 @@ trait HasPeripheryWellness extends BaseSubsystem {
     override val nClassifiers: Int = computeNClassifiers(svmParams)
   }
 
+}
+
+trait HasPeripheryWellness extends BaseSubsystem {
+
+  val wellnessParams = FixedPointWellnessParams
+
   // Instantiate wellness monitor
   val wellness = LazyModule(new WellnessThing(
-    filter1Params, filter2Params, filter3Params,
-    lineLength1Params, lineLength2Params, lineLength3Params,
-    fftBufferParams,
-    fftConfig,
-    bandpower1Params, bandpower2Params, bandpower3Params,
-    pcaParams, svmParams, pcaVectorBufferParams,
-    configurationMemoryParams))
+    wellnessParams.filter1Params,
+    wellnessParams.filter2Params,
+    wellnessParams.filter3Params,
+    wellnessParams.lineLength1Params,
+    wellnessParams.lineLength2Params,
+    wellnessParams.lineLength3Params,
+    wellnessParams.fftBufferParams,
+    wellnessParams.fftConfig,
+    wellnessParams.bandpower1Params,
+    wellnessParams.bandpower2Params,
+    wellnessParams.bandpower3Params,
+    wellnessParams.pcaParams,
+    wellnessParams.svmParams,
+    wellnessParams.pcaVectorBufferParams,
+    wellnessParams.configurationMemoryParams))
   // Connect memory interfaces to pbus
   pbus.toVariableWidthSlave(Some("wellnessWrite")) { wellness.writeQueue.mem.get }
   pbus.toVariableWidthSlave(Some("wellnessConfigurationWrite")) { wellness.writeConfigurationQueue.mem.get }

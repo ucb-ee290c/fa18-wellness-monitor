@@ -36,10 +36,15 @@ class MemoryBuffer[T <: chisel3.Data : Real](val params: MemoryBufferParams[T]) 
   val counter = RegInit(UInt((log2Ceil(totalSize)+1).W),0.U)
 
   // create the register matrix
-  val regs = mutable.ArrayBuffer[T]()
+  val regs = RegInit(Vec(totalSize, params.protoData), VecInit(List.fill(totalSize)(Ring[T].zero)))
+
   for(i <- 0 until totalSize) {
-    if(i == 0) regs += RegEnable(io.in.bits, Ring[T].zero, shift_en)
-    else       regs += RegEnable(regs(i - 1), Ring[T].zero, shift_en)
+    when(shift_en === true.B) {
+      if (i == 0) regs(i) := io.in.bits
+      else regs(i) := regs(i - 1)
+    } .otherwise {
+      regs(i) := regs(i)
+    }
   }
 
   when(io.in.valid === true.B) {

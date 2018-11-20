@@ -321,8 +321,8 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
 
     val nPts = 4
 
-    val dataWidth = 64
-    val dataBP = 16
+    val dataWidth = 32
+    val dataBP = 8
 
     val tap_count = scala.util.Random.nextInt(50) + 1
     val coefficients1 = mutable.ArrayBuffer[Double]()
