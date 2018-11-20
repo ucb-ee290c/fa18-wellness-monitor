@@ -51,9 +51,7 @@ testOnly firFilter.FIRFilterSpec
 ### Wellness Integration Tests
 In order to test the entire flow, each block has been connected in an WIP [tester](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/src/test/scala/WellnessIntegrationTester.scala). The current datapath involves: 
 
-filters->LineLength->
-                      | -> PCA -> SVM
-FFT buffer->    FFT->
+-- insert 
 
 You can run it as part of the all encompassing SBT 'tests' or a similar testOnly as the unit tests:
 ```
@@ -61,4 +59,4 @@ testOnly wellness.WellnessIntegrationSpec
 ```
 
 ### Rocket Core Integration Tests
-Currently there are two C code tests in the [c_sources](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/c_sources) directory that both integrate FIR filters with rocket core. The first tests a single writer and reader to/from the 'wellness' block while the second tests multiple writers and single reader from the 'wellness' block. 
+Currently there are two C code tests in the [tests](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/tests) directory that both integrate FIR filters with rocket core. [Wellness_TLtest.c](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/tests/wellness_TLtest.c) tests a single writer and reader to/from the 'wellness' block (which is assumed to be a constant coefficient FIR filter. [wellness_IntegrationTest.c](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/tests/wellness_IntegrationTest.c) tests a more substantial version of the 'wellness' block. The C code writes to two queues (that are asynchronous in respect to eachother). One queue feeds into multiple FIR filters while the other feeds into a configuration memory that sets parameters and reference vectors for the PCA and SVM blocks. As data is pushed into the filters, it propogates through to the PCA and then the SVM. Results are read from a read queue and then the C-code will print out the read values and expected values (that are generated using golden C models).
