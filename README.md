@@ -50,9 +50,13 @@ testOnly firFilter.FIRFilterSpec
 ```
 
 ### Wellness Integration Tests
-In order to test the entire flow, each block has been connected in an WIP [tester](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/src/test/scala/WellnessIntegrationTester.scala). The current datapath involves: 
+In order to test the entire flow, each block has been connected in an WIP [tester](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/src/test/scala/WellnessIntegrationTester.scala). The current test datapath involves a realistic assortment of different blocks for simple siezure detection. All data is prefiltered and then split to separate frequency domain and time domain branches. The time domain branch consists of a single line length block (for now) while the frequency domain path involves a memory buffer, FFT and different bandpower blocks. The outputs of the line length and bandpower blocks are fed into a PCA and lastly an SVM.
 
--- insert 
+It's important to note that the FFT memory buffer is effectively a shift register to make the FFT a streaming FFT. 
+
+![blockDiagram](doc/testBlockDiagram.png)
+
+In parallel to the simulated hardware, the integration test also calculates an expected output using a scala golden model of the entire datapath. The golden model uses all of the smaller unit golden models strung together to build a scala version of the wellness datapath. 
 
 You can run it as part of the all encompassing SBT 'tests' or a similar testOnly as the unit tests:
 ```
