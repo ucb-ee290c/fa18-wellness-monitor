@@ -2,6 +2,7 @@ package iirFilter
 
 import chisel3._
 import chisel3.util.RegEnable
+import chisel3.experimental.FixedPoint
 import dspblocks.ShiftRegisterWithReset
 import dspjunctions.ValidWithSync
 import dsptools.numbers._
@@ -41,34 +42,40 @@ class ConstantCoefficientIIRFilter[T <: chisel3.Data : Ring](val params: IIRFilt
 
   val shift_en = Wire(Bool())
 
-  val regs = mutable.ArrayBuffer[T]()
+  // val regs = mutable.ArrayBuffer[T]()
   val muls_B = mutable.ArrayBuffer[T]()
   val scan_B = mutable.ArrayBuffer[T]()
 
   val muls_A = mutable.ArrayBuffer[T]()
   val scan_A = mutable.ArrayBuffer[T]()
 
-  val topLine = Wire(params.protoData.cloneType) 
+  val topLine = Wire(params.protoData.cloneType)
 
-  for(i <- 0 to params.consts_B.length) 
-  {
-    if(i == 0) regs += topLine
-    else       regs += RegEnable(regs(i - 1), Ring[T].zero, shift_en)
+  val regs = RegInit(Vec(params.consts_A.length, params.protoData), VecInit(List.fill(params.consts_A.length)(Ring[T].zero)))
+
+  for(i <- 0 until params.consts_A.length) {
+    when(shift_en === true.B) {
+      if (i == 0) regs(i) := topLine
+      else regs(i) := regs(i - 1)
+    } .otherwise {
+      regs(i) := regs(i)
+    }
   }
 
-    // need to split into two to allow for different constant sequences
-    for(i <- 0 to params.consts_A.length)
-    {
-        if(i == 0) {
-            muls_A += io.in.bits
-        }
-        else muls_A += regs(i) * params.consts_A(i-1)
-    }
+  // need to split into two to allow for different constant sequences
+  for(i <- 0 to params.consts_A.length)
+  {
+      if(i == 0) {
+          muls_A += io.in.bits
+      }
+      else muls_A += regs(i-1) * params.consts_A(i-1)
+  }
 
 
   for(i <- 0 until params.consts_B.length)
   {
-    muls_B += regs(i) * params.consts_B(i)
+    if (i == 0) muls_B += (topLine * params.consts_B(0))
+    else muls_B += regs(i-1) * params.consts_B(i)
   }
 
   for(i <- 0 to params.consts_A.length) 
@@ -83,7 +90,8 @@ class ConstantCoefficientIIRFilter[T <: chisel3.Data : Ring](val params: IIRFilt
   {
     if(i == 0) scan_B += muls_B(i)
     else scan_B += muls_B(i) + scan_B(i - 1)
-  } // should replce this with a fold statement as well
+  } // should replace this with a fold statement as well
+
 
   io.out.bits := scan_B.last
 
