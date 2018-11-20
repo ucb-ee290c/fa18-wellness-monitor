@@ -45,10 +45,15 @@ class FFTBuffer[T <: chisel3.Data : Ring](val params: FFTBufferParams[T]) extend
   val shift_en = Wire(Bool())
   val counter = RegInit(UInt( ((log10(params.lanes)/log10(2)).ceil.toInt+1).W ),0.U)
 
-  val regs = mutable.ArrayBuffer[T]()
+  val regs = RegInit(Vec(params.lanes, params.protoData), VecInit(List.fill(params.lanes)(Ring[T].zero)))
+
   for(i <- 0 until params.lanes) {
-    if(i == 0) regs += RegEnable(io.in.bits, Ring[T].zero, shift_en)
-    else       regs += RegEnable(regs(i - 1), Ring[T].zero, shift_en)
+    when(shift_en === true.B) {
+      if (i == 0) regs(i) := io.in.bits
+      else regs(i) := regs(i - 1)
+    } .otherwise {
+      regs(i) := regs(i)
+    }
   }
 
   when(io.in.valid === true.B) {

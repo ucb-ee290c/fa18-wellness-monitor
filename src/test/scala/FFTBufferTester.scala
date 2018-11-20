@@ -1,23 +1,23 @@
 package fft
 
 import wellness._
-import chisel3.core.UInt
+import chisel3.core.{FixedPoint, UInt}
 import dsptools.DspTester
 
 import scala.collection.mutable
 
 class outBundle(lanes: Int) {
-  val regs = mutable.Buffer.fill(lanes)(0)
+  val regs = mutable.Buffer.fill(lanes)(0.toDouble)
   var valid : Boolean = false
 }
 
-class GoldenIntFFTBuffer(lanes: Int) {
-  var pseudoRegisters = List.fill(lanes)(0)
+class GoldenFFTBuffer(lanes: Int) {
+  var pseudoRegisters = List.fill(lanes)(0.toDouble)
 
   val out = new outBundle(lanes)
 
   var counter = 0
-  def poke(value: Int): outBundle = {
+  def poke(value: Double): outBundle = {
     pseudoRegisters = value :: pseudoRegisters.take(lanes - 1)
 
     for(i <- 0 until lanes) {
@@ -39,8 +39,8 @@ class GoldenIntFFTBuffer(lanes: Int) {
   }
 }
 
-class FFTBufferTester[T <: chisel3.Data](c: FFTBuffer[T], lanes: Int) extends DspTester(c) {
-  val fftBuffer = new GoldenIntFFTBuffer(lanes)
+class FFTBufferTester[T <: chisel3.Data](c: FFTBuffer[T], lanes: Int, testType: Int) extends DspTester(c) {
+  val fftBuffer = new GoldenFFTBuffer(lanes)
 
   for(i <- 0 until 50) {
     val input = scala.util.Random.nextInt(8)
@@ -54,15 +54,32 @@ class FFTBufferTester[T <: chisel3.Data](c: FFTBuffer[T], lanes: Int) extends Ds
 
     expect(c.io.out.valid, goldenModelResult.valid, s"i $i, input $input, gm ${goldenModelResult.valid}, ${peek(c.io.out.valid)}")
     for(i <- 0 until lanes) {
-      expect(c.io.out.bits(i), goldenModelResult.regs(i), s"i $i, input $input, gm ${goldenModelResult.regs}, ${peek(c.io.out.bits)}")
+      if (testType == 0) {
+        expect(c.io.out.bits(i), goldenModelResult.regs(i))
+      } else {
+        fixTolLSBs.withValue(c.params.protoData.getWidth / 8) {
+          expect(c.io.out.bits(i), goldenModelResult.regs(i))
+        }
+      }
     }
+
   }
 }
+
 object UIntFFTBufferTester {
   def apply(params: FFTBufferParams[UInt], lanes: Int): Boolean = {
     //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new FFTBuffer(params)) {
     dsptools.Driver.execute(() => new FFTBuffer(params), TestSetup.dspTesterOptions) {
-      c => new FFTBufferTester(c, lanes)
+      c => new FFTBufferTester(c, lanes, 0)
+    }
+  }
+}
+
+object FixedPointFFTBufferTester {
+  def apply(params: FFTBufferParams[FixedPoint], lanes: Int): Boolean = {
+    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new FFTBuffer(params)) {
+    dsptools.Driver.execute(() => new FFTBuffer(params), TestSetup.dspTesterOptions) {
+      c => new FFTBufferTester(c, lanes, 1)
     }
   }
 }
