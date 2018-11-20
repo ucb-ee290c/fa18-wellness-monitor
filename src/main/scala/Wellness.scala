@@ -338,16 +338,16 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
 
   // TOP LEVEL INTEGRATION TRIALS
   val pcaInVector = Wire(Vec(3,pcaParams.protoData))
-  // pcaInVector(0) := filter1.io.out.bits
-  // pcaInVector(1) := filter2.io.out.bits
-  // pcaInVector(2) := filter3.io.out.bits
+  //pcaInVector(0) := filter1.io.out.bits
+  //pcaInVector(1) := filter2.io.out.bits
+  //pcaInVector(2) := filter3.io.out.bits
   pcaInVector(0) := lineLength1.io.out.bits.asTypeOf(pcaParams.protoData)
   pcaInVector(1) := lineLength2.io.out.bits.asTypeOf(pcaParams.protoData)
   pcaInVector(2) := lineLength3.io.out.bits.asTypeOf(pcaParams.protoData)
   pca.io.PCAVector := io.inConf.bits.confPCAVector
   pca.io.in.bits := pcaInVector
   pca.io.in.sync := false.B
-  // pca.io.in.valid := filter1.io.out.valid
+  //pca.io.in.valid := filter1.io.out.valid
   pca.io.in.valid := lineLength1.io.out.valid
 
   // FIR Filters to FFT Buffers

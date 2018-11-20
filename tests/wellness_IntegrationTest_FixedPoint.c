@@ -112,7 +112,7 @@ double SVM(double inputs[FEATURES], double SVMSupportVector[SUPPORTS][FEATURES],
     //kernel[i] = pow(kernel[i],degree); // for polynomial degrees
   }
 
-  int decision[CLASSIFIERS];
+  double decision[CLASSIFIERS];
 
   // final dot product of the kernel with the weights (alphas)
   for(i=0 ; i < CLASSIFIERS ; i++) {
@@ -149,7 +149,7 @@ int main(void)
   int32_t data_out_0;
   int32_t data_out_1;
   double data_out_double;
-  double in[24] = {1,1,2.2,3,4,5.3,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
+  double in[24] = {1,1,2.2,3,9,5.3,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
   double ex[24] = {5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,4,3,2,1};
   double tol = 0.5;
 
@@ -160,7 +160,10 @@ int main(void)
   double SVMIntercept[CLASSIFIERS] = {4.1};
 
   // TODO: Feed the computed features here
-  double inputs[DIMENSIONS] = {36.1,56.9,21.5};
+  double inputs[DIMENSIONS] = {
+  in[1]*5+in[2]*4+in[3]*3+in[4]*2+in[5],
+  in[5]*5+in[4]*4+in[3]*3+in[2]*2+in[1],
+  in[4]+in[3]*2+in[2]*2+in[1]};
 
   double PCAout[FEATURES];
   double SVMout[CLASSES];
