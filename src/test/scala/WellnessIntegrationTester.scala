@@ -143,25 +143,24 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
 
   for(i <- 0 until 1000) {
-//    var input = scala.util.Random.nextFloat*32
-//    if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
-//      input = scala.util.Random.nextInt(32)
-//    }
-//    else if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
-//      input = scala.util.Random.nextInt(64) - 32
-//    }
+    var input = scala.util.Random.nextFloat*32
+    if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
+      input = scala.util.Random.nextInt(32)
+    }
+    else if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
+      input = scala.util.Random.nextInt(64) - 32
+    }
 
-    var input = i // TODO
 
     // Poke inputs to golden models
+    fftBufferResult = fftBuffer.poke(filter1Result)
     lineLength1Result = lineLength1.poke(value = filter1Result)
+    filter1Result = filter1.poke(input)
+    //fftBufferResult.regs.map(x => Complex(x, 0.0)).zip(c.io.fftIn).foreach { case(sig, port) => poke(port, sig) } // TODO
+
+    fftResult = fft.poke(fftBufferResult.regs.map(x => Complex(x, 0.0)))
     bandpower1Result = bandpower1.poke(fftResult)
     bandpower2Result = bandpower2.poke(fftResult)
-    fftResult = fft.poke(fftBufferResult.regs.map(x => Complex(x, 0.0)))
-//    fftBufferResult.regs.map(x => Complex(x, 0.0)).zip(c.io.fftIn).foreach { case(sig, port) => poke(port, sig) } // TODO
-    fftBufferResult = fftBuffer.poke(filter1Result)
-    filter1Result = filter1.poke(input)
-
     pcaInputBundle = Seq(lineLength1Result, bandpower1Result, bandpower2Result)
     pcaResult = PCA.poke(pcaInputBundle, referencePCAVector.map(_.map(_.toDouble)))
     svmResult = SVM.poke(pcaResult.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),

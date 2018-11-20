@@ -301,7 +301,7 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
 
 //  fft.io.in.bits.zip(fftBuffer.io.out.bits).map{ case (a, b) => a.real := b.asTypeOf(fft.io.in.bits(0).real) } // TODO: fails
 
-//  fft.io.in.bits := io.fftIn // TODO: works
+  //fft.io.in.bits := io.fftIn // TODO: works
 
 //  for (i <- fft.io.in.bits.indices) { // TODO: works
 //    fft.io.in.bits(i).real := io.fftIn(i).real.asTypeOf(fft.io.in.bits(i).real)
