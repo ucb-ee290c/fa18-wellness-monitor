@@ -49,13 +49,7 @@ class ConstantCoefficientIIRFilter[T <: chisel3.Data : Ring](val params: IIRFilt
   val muls_A = mutable.ArrayBuffer[T]()
   val scan_A = mutable.ArrayBuffer[T]()
 
-  val topLine = Wire(params.protoData.cloneType) 
-
-  // for(i <- 0 to params.consts_B.length)
-  // {
-  //   if(i == 0) regs += topLine
-  //   else       regs += RegInit(regs(i - 1), Ring[T].zero)
-  // }
+  val topLine = Wire(params.protoData.cloneType)
 
   val regs = RegInit(Vec(params.consts_A.length, params.protoData), VecInit(List.fill(params.consts_A.length)(Ring[T].zero)))
 

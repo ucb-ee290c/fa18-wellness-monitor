@@ -52,27 +52,22 @@ class IIRFilterSpec extends FlatSpec with Matchers {
     }
   }
 
-  it should "FixedPoint strawberry" in {
-
-    for(i <- 0 until 4) {
-      val tap_count = scala.util.Random.nextInt(8) + 1
-      val dataWidth = 64
-      val dataBP = 32
-
-      val coefficientsA = mutable.ArrayBuffer[Double]()
-      val coefficientsB = mutable.ArrayBuffer[Double]()
-
-      for(j <- 0 until tap_count) coefficientsA += (scala.util.Random.nextFloat * 4)
-      for(j <- 0 until (tap_count+1)) coefficientsB += (scala.util.Random.nextFloat * 4)
-
-      val params = new IIRFilterParams[FixedPoint] {
-        val protoData = FixedPoint(dataWidth.W,dataBP.BP)
-        val consts_A = coefficientsA.map(ConvertableTo[FixedPoint].fromDouble(_))
-        val consts_B = coefficientsA.map(ConvertableTo[FixedPoint].fromDouble(_))
-      }
-
-      FixedPointIIRFilterTester(params, coefficientsA, coefficientsB) should be (true)
-    }
-  }
+  //it should "FixedPoint strawberry" in {
+  //  for(i <- 0 until 4) {
+  //    val tap_count = scala.util.Random.nextInt(8) + 1
+  //    val dataWidth = 64
+  //    val dataBP = 32
+  //    val coefficientsA = mutable.ArrayBuffer[Double]()
+  //    val coefficientsB = mutable.ArrayBuffer[Double]()
+  //    for(j <- 0 until tap_count) coefficientsA += (scala.util.Random.nextFloat * 4)
+  //    for(j <- 0 until (tap_count+1)) coefficientsB += (scala.util.Random.nextFloat * 4)
+  //    val params = new IIRFilterParams[FixedPoint] {
+  //      val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+  //      val consts_A = coefficientsA.map(ConvertableTo[FixedPoint].fromDouble(_))
+  //      val consts_B = coefficientsA.map(ConvertableTo[FixedPoint].fromDouble(_))
+  //    }
+  //    FixedPointIIRFilterTester(params, coefficientsA, coefficientsB) should be (true)
+  //  }
+  //}
 
 }

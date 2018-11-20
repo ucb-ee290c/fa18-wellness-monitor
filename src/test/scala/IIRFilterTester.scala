@@ -79,28 +79,6 @@ case class XYZ(
                 zout: Option[Double] = None
               )
 
-// /**
-//   * DspTester for FixedIterativeCordic
-//   *
-//   * Run each trial in @trials
-//   */
-// class IIRFilterTester[T <: chisel3.Data](c: ConstantCoefficientIIRFilter[T], coefficients_A: Seq[Int], coefficients_B: Seq[Int]) extends DspTester(c) {
-//   val filter = new GoldenIntIIRFilter(coefficients_A, coefficients_B)
-//
-//   for(i <- 0 until 4) {
-//     val input = scala.util.Random.nextInt(8)
-//
-//     val goldenModelResult = filter.poke(input)
-//
-//     poke(c.io.in.bits, input)
-//     poke(c.io.in.valid, 1)
-//
-//     step(1)
-//
-//     expect(c.io.out.bits, goldenModelResult, s"i $i, input $input, gm $goldenModelResult, ${peek(c.io.out.bits)}")
-//   }
-// }
-
 object UIntIIRFilterTester {
   def apply(params: IIRFilterParams[UInt], coefficients_A: Seq[Double], coefficients_B: Seq[Double]): Boolean = {
     //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new ConstantCoefficientIIRFilter(params)) {
