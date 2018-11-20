@@ -16,7 +16,6 @@ import scala.collection._
   */
 trait IIRFilterParams[T <: Data] {
   val protoData: T
-  //val taps: Seq[T]
   val consts_A: Seq[T]
   val consts_B: Seq[T]
 }
