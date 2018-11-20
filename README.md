@@ -31,7 +31,7 @@ For tape-in 1, generators and unit tests were written for FIR and IIR filters, F
 Tape-in 2's primary goal was a more complete integration. Throughout the integration process, several supporting generators were written (Memory Buffer and FFT Buffer), additional feature generators were constructed (Line Length and a WIP Arythmia Detection), and the original blocks were updated to support various new tests and functions (FIR, IIR, FFT).
 
 ## How To Set Up and Test The Current Generators
-Setting up the generators is straight forward because everything is self-contained. Simply clone the repo and explore the different generators in the [src](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/src/main/scala) folder. Refer to the doc directory [doc](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/doc) for documentation for each generator.
+Setting up the generators is straight forward because everything is self-contained. Simply clone the repo and explore the different generators in the [src](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/src/main/scala) folder. Refer to the doc directory [doc](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/doc) for documentation on each generator.
 
 There are multiple ways to test each block and whole designs: unit-tests, SBT based integration tests, and C code tests that integrate the blocks with a RISC-V Rocket core. 
 
