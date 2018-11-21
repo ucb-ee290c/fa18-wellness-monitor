@@ -2,6 +2,9 @@
 
 [![Build Status](https://travis-ci.org/ucberkeley-ee290c/fa18-wellness-monitor.svg?branch=master)](https://travis-ci.org/ucberkeley-ee290c/fa18-wellness-monitor)
 
+## Brief Course Description
+The Fall 2018 offering of EE290C, taught by Prof. Borivoje Nikolic, covers digital signal-processing algorithms, architectures and their rapid implementation in advanced technology nodes. The class uses Chisel as a hardware construction language to design a modular baseband/system and connect it to a RISC-V system-on-a-chip. For our final project, we chose to implement a wellness monitor as described below.
+
 ## Project Description
 The ExG generators describe a tool box of important digital blocks for any arbitrary wellness monitor. The goal of this project is to develop a flow such that any designer could describe a wellness monitor by high level features (e.g. arythmia detection, EEG alpha wave monitoring, siezure detection, etc.) and the generator would build and connect the neccessary filters, FFT blocks, feature extractors, and learning mechanisms required to achieve the high level specification.
 
@@ -36,7 +39,7 @@ Setting up the generators is straight forward because everything is self-contain
 There are multiple ways to test each block and whole designs: unit-tests, SBT based integration tests, and C code tests that integrate the blocks with a RISC-V Rocket core. 
 
 ### Unit Tests
-Each type-generic generator comes equipped with unit tests to randomnly excersize the blocks and compare their outputs against golden scala models (all of which are in the [test](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/src/test/scala) directory). 
+Each type-generic generator comes equipped with unit tests to randomnly exercise the blocks and compare their outputs against golden scala models (all of which are in the [test](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/src/test/scala) directory). 
 
 To run a specific unit test, open SBT and use the 'testOnly' function:
 

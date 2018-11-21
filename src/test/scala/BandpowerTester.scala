@@ -18,10 +18,10 @@ class GoldenDoubleBandpower(nBins: Int, idxStartBin: Int, idxEndBin: Int, testTy
     val p1Scaled = p2.slice(1, nBins / 2 - 1).map(_ * 2)
     // Concatenate back in unscaled DC and sampling freq elems
     val p1 = Seq(p2(0)) ++ p1Scaled ++ Seq(p2(nBins / 2))
-    // Just sum because already squared
+    // Sum and divide by num of bins of interest squared
     val output = p1.slice(idxStartBin, idxEndBin).sum
-    if(testType == 0) floor(output/(idxEndBin - idxStartBin + 1))
-    else output/(idxEndBin - idxStartBin + 1)
+    if(testType == 0) floor(output/((idxEndBin - idxStartBin + 1) * (idxEndBin - idxStartBin + 1)))
+    else output/((idxEndBin - idxStartBin + 1) * (idxEndBin - idxStartBin + 1))
   }
 }
 
