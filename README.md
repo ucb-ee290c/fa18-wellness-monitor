@@ -36,7 +36,7 @@ Setting up the generators is straight forward because everything is self-contain
 There are multiple ways to test each block and whole designs: unit-tests, SBT based integration tests, and C code tests that integrate the blocks with a RISC-V Rocket core. 
 
 ### Unit Tests
-Each type-generic generator comes equipped with unit tests to randomnly excersize the blocks and compare their outputs against golden scala models (all of which are in the [test](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/src/test/scala) directory). 
+Each type-generic generator comes equipped with unit tests to randomnly exercise the blocks and compare their outputs against golden scala models (all of which are in the [test](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/src/test/scala) directory). 
 
 To run a specific unit test, open SBT and use the 'testOnly' function:
 
