@@ -4,7 +4,7 @@
 This is a comprehensive tutorial on using Support Vector Machines for classification. This only includes the detailed computations required to perform inference. Details on training the SVM will not be covered (it is hard, it is very mathy, and it would have been better if an expert in machine learning discusses it). I have written this document as a future reference to someone else who is trying to understand how SVMs perform classification, down in the calculation level. Hope this helps!
 
 ## Overview
-I will first cover the high-level concept of SVMs, what it does and how it classifies. Afterwards, we'll go into detail on how the classification is performed. I will also reference my [`SVM Python Code`](../scripts/svm_reference.py) which was written to perform classification by manually calculating stuff. This script utilizes the matrices acquired from the SVM training. The manipulation of these matrices to perform classification, instead of relying on the predefined Python libraries, is the main feature of this document. 
+I will first cover the high-level concept of SVMs, what it does and how it classifies. Afterwards, we'll go into detail on how the classification is performed. I will also reference my [`SVM Python Code`](../scripts/pca_svm/svm_reference.py) which was written to perform classification by manually calculating stuff. This script utilizes the matrices acquired from the SVM training. The manipulation of these matrices to perform classification, instead of relying on the predefined Python libraries, is the main feature of this document. 
 
 ## High-level SVM Description
 
@@ -39,7 +39,7 @@ There are three general approaches for multi-class classification using multiple
 
 ### Training using the Python library
 
-This section references the first half of my [`Python code`](../scripts/svm_reference.py). After dividing the dataset into training and test, the SVM algorithm is trained depending on the type of classification to use (refer to the previous section). This uses Python's SVC function defined in `sklearn` library.
+This section references the first half of my [`Python code`](../scripts/pca_svm/svm_reference.py). After dividing the dataset into training and test, the SVM algorithm is trained depending on the type of classification to use (refer to the previous section). This uses Python's SVC function defined in `sklearn` library.
 
 ```
 if class_type == 'ovr': # One vs Rest classification
@@ -67,7 +67,7 @@ After training, we will need to extract the vectors and matrices that was genera
 
 The extraction of these matrices are different depending on what type of classification is being performed. The actual challenge is to form these matrices in a consistent fashion so that the calculation of the decision function will be consistent no matter the type of classifier (calculation of the decision function will be discussed in the next section). Specifically, in a multi-classification setup, each classifier will have its own set of support vectors and weights (alphas). The Python script will try to separate these collections. However, if we are aiming for a consistent array format for these three matrices, then all of the corresponding arrays per classifier must be combined (that is, all support vectors per classifier must be combined as a single support vector array, same goes for the alpha and the intercepts). 
 
-The specific steps in extracting these matrices are presented below (only relevant code segments are indicated, check the full code [`here`](../scripts/svm_reference.py)):
+The specific steps in extracting these matrices are presented below (only relevant code segments are indicated, check the full code [`here`](../scripts/pca_svm/svm_reference.py)):
 
 #### One vs Rest matrix extraction
 
@@ -176,7 +176,7 @@ for i in range(1,num_classifiers):
 
 ## SVM Classification
 
-This part references the second half of my [`Python script`](../scripts/svm_reference.py). This presents the required calculations to perform manual classification on a new data point given the arrays that were extracted earlier. This is also the reference that is used to create the [`Chisel implementation`](../src/main/scala/svm/svm.scala) of the SVM generator.
+This part references the second half of my [`Python script`](../scripts/pca_svm/svm_reference.py). This presents the required calculations to perform manual classification on a new data point given the arrays that were extracted earlier. This is also the reference that is used to create the [`Chisel implementation`](../src/main/scala/svm/svm.scala) of the SVM generator.
 
 ### Decision function
 

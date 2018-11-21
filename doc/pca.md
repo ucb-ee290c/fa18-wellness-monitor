@@ -1,6 +1,6 @@
 # PCA
 
-The PCA block performs dimensionality reduction using Principal Component Analysis. This algorithm enables the transformation of the current feature space into a reduced dimension space that captures most of the variance in the original data. This is done through the process called eigendecomposition. For this project, this procedure will be done offline (through some software such as MATLAB, Python), and only the translation from the original feature space to the reduced dimension space will be performed.You can refer to the [`pca_reference.py`](../scripts/pca_reference.py) file for the implementation of the whole PCA chain in Python.
+The PCA block performs dimensionality reduction using Principal Component Analysis. This algorithm enables the transformation of the current feature space into a reduced dimension space that captures most of the variance in the original data. This is done through the process called eigendecomposition. For this project, this procedure will be done offline (through some software such as MATLAB, Python), and only the translation from the original feature space to the reduced dimension space will be performed.You can refer to the [`pca_reference.py`](../scripts/pca_svm/pca_reference.py) file for the implementation of the whole PCA chain in Python.
 
 ## Parameters
 
@@ -34,7 +34,7 @@ class PCAIO[T <: Data](params: PCAParams[T]) extends Bundle {
 
 * The `in` vector has a size of `nDimensions x 1`. This is the vector of the datapoint with each element is a feature that was calculated by the feature extraction units preceding this stage. This is the vector before the dimensionality reduction.
 
-* The `PCAVector` is a 2D matrix with a size of `nFeatures x nDimensions`. This is the principal component array that allows translation from `nDimensions` down to `nFeatures`. This is something acquired from training, as shown in this [`script`](../scripts/pca_reference.py)
+* The `PCAVector` is a 2D matrix with a size of `nFeatures x nDimensions`. This is the principal component array that allows translation from `nDimensions` down to `nFeatures`. This is something acquired from training, as shown in this [`script`](../scripts/pca_svm/pca_reference.py)
 
 * The `out` vector has a size of `nFeatures x 1`. This is the vector corresponding to the reduced dimensions after doing the PCA translation. This will then feed to the SVM block.
 
