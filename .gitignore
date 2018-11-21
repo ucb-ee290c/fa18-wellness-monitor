@@ -13,3 +13,4 @@ simulator-*
 .DS_Store
 data/
 scripts/__pycache__/
+scripts/generated_files/

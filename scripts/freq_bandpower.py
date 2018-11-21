@@ -16,4 +16,4 @@ def get_idx(freq):
 
 idxs = [[get_idx(i) for i in j] for j in bands]
 
-# print(idxs)
+print(idxs)

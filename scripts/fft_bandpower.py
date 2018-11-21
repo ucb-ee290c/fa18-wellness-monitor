@@ -12,3 +12,4 @@ p1 = p2[0:m+1]
 p1[1:m] = 2*p2[1:m]
 bandpower = sum(i/n**2 for i in p1)
 print(bandpower)
+print(np.sum(p1,axis=0)/(n**2))

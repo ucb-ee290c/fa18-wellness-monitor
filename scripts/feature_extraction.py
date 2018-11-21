@@ -4,7 +4,6 @@ import pylab as pl
 import numpy as np
 from scipy.signal import remez
 from scipy.signal import freqz
-from scipy.signal import stft
 
 fs = 500
 # toy data to check filter
@@ -14,10 +13,6 @@ fs = 500
 pair_num = 1
 channel_num = (1,2,3)
 
-# mode = valid, if the end points are not included (for better plots)
-# mode = full, if the end points are included (for testing)
-convolve_mode = 'full'
-
 # number of filter taps, use even numbers for now
 numtaps = 32
 
@@ -26,10 +21,10 @@ window = 500 # 1 second
 
 # freqeuncy bands in Hz
 delta_band = (0, 4)
-theta_band = (4, 7)
-alpha_band = (8, 12)
-beta_band = (12, 30)
-gamma_band = (30, 100)
+theta_band = (4, 8)
+alpha_band = (8, 16)
+beta_band = (16, 32)
+gamma_band = (32, 96)
 
 # are we loading the data again? might take a while
 load_data = 1
@@ -38,7 +33,7 @@ load_data = 1
 print_data = 1
 
 # how many points to keep for train/labels?
-keep_points = 100
+keep_points = 0
 
 #########################################
 # Loading the dataset from the CSV files
@@ -77,10 +72,13 @@ if load_data == 1:
 train = train[-2*round(np.asscalar(sum(labels))):,:]
 labels = labels[-2*round(np.asscalar(sum(labels))):,:]
 
-# Trim the data again since there's just too many points, take the center point
-midpoint = np.where(abs(np.diff(labels[:,0])) == 1)[0]
-train = train[math.floor(midpoint-keep_points/2):math.floor(midpoint+keep_points/2),:]
-labels = labels[math.floor(midpoint-keep_points/2):math.floor(midpoint+keep_points/2),:]
+if keep_points != 0:
+    # Trim the data again since there's just too many points, take the center point
+    midpoint = np.where(abs(np.diff(labels[:,0])) == 1)[0]
+    
+    train = train[math.floor(midpoint-keep_points/2):math.floor(midpoint+keep_points/2),:]
+    labels = labels[math.floor(midpoint-keep_points/2):math.floor(midpoint+keep_points/2),:]
+    
 #########################################
 # Printing the input data to a file
 # OMG THIS IS SO LARGE
@@ -157,24 +155,25 @@ pl.show()
 # now perform filtering on the data
 for i in range(len(channel_num)):
     if i == 0:
-        temp = np.convolve(train[:,i],lpf,mode=convolve_mode)
+        temp = np.convolve(train[:,i],lpf,mode='valid')
         filtered = temp.reshape((len(temp),1))
     else:
-        temp = np.convolve(train[:,i],lpf,mode=convolve_mode).reshape((len(temp),1))
+        temp = np.convolve(train[:,i],lpf,mode='valid').reshape((len(temp),1))
         filtered = np.concatenate((filtered,temp),axis=1)
 
-# this is the valid filtered signal, use this for training
-valid_filtered = filtered[numtaps-1:-numtaps+1,:]
 
-# valid labels to match
-valid_labels = labels[math.floor(numtaps/2):-math.floor(numtaps/2)+1,0]
+# this is the valid filtered signal taken from full convolution, use this for training
+# valid_filtered = filtered[numtaps-1:-numtaps+1,:]
 
 # this is the extended labels (0 padded), you will use this for label comparison after full convolve
 # you use this for characterization
-extended_labels = np.concatenate((np.zeros((math.floor(numtaps/2),1)),
-                                  labels,
-                                  np.zeros((math.floor(numtaps/2)-1,1))))
-extended_filtered = filtered # just renaming for consistency
+# extended_labels = np.concatenate((np.zeros((math.floor(numtaps/2),1)),
+#                                  labels,
+#                                  np.zeros((math.floor(numtaps/2)-1,1))))
+
+
+# valid labels to match the 'valid' convolution
+valid_labels = labels[math.floor(numtaps/2):-math.floor(numtaps/2)+1,0]
 
 #########################################
 # Feature calculations
@@ -186,36 +185,76 @@ def linelength(data,window):
     
     for i in range(data.shape[1]):
         if i == 0:
-            temp = np.convolve(datalength[:,i],np.ones(window,dtype=int),'full')
+            temp = np.convolve(datalength[:,i],np.ones(window,dtype=int),'valid')
             cumsum = temp.reshape((len(temp),1))
         else:
-            temp = np.convolve(datalength[:,i],np.ones(window,dtype=int),'full').reshape((len(temp),1))
+            temp = np.convolve(datalength[:,i],np.ones(window,dtype=int),'valid').reshape((len(temp),1))
             cumsum = np.concatenate((cumsum,temp),axis=1)
     
-    # maintain the same size of data, throw away all the trailing answers
-    return cumsum[:data.shape[0],:]/window 
+    return cumsum/window 
 
-# Bandpower, TODO: need a sliding window type thing
-def bandpower(data,window,freq_band):
+# Auxillary function to identify the index of the frequency bands (for bandpower)
+def get_idx(freq,n_fft,fs):
+    idxStartBin = round(freq[0] * n_fft / fs)
+    idxEndBin = round(freq[1] * n_fft / fs)
+    # check if power of 2
+    if ((idxEndBin - idxStartBin) & ((idxEndBin - idxStartBin - 1)) == 0):
+        return [idxStartBin, idxEndBin]
+    else:
+        print("Warning! difference between indices is not a power of 2")
+        return [idxStartBin, idxEndBin]
 
-    for i in range(data.shape[1]-window+1):
-        fft_res = np.fft.rfft(data[i:i+window,:],axis=0)
+def print_indices(f,freq_band,window,fs):
+    idxStartBin, idxEndBin = get_idx(freq_band,window,fs)
+    f.write("val idxStartBin = %d\n" % idxStartBin)
+    f.write("val idxEndBin = %d\n" % idxEndBin)
+    f.write("\n\n")
+    
+# Bandpower
+def bandpower(data,window,freq_band,fs):
 
-    temp = np.abs(fft_res[freq_band[0]:freq_band[1]])
-    # f,t,test = stft(filtered, fs=500, nperseg=500, noverlap=499, axis=0)
-    return np.sum(temp**2,axis=0)
+    bandpower = []
+    # This is like an STFT, a sliding window of FFTs with overlap being window-1
+    for i in range(data.shape[0]-window):
+        fft_res = np.fft.fft(data[i:i+window,:],axis=0)
+
+        p2 = np.abs(fft_res) ** 2
+        m = int(window/2)
+        p1 = p2[0:m+1,:]
+        p1[1:m,:] = 2*p2[1:m,:]
+        
+        index = get_idx(freq_band,window,fs)        
+        bandpower.append(np.sum(p1[index[0]:index[1],:],axis=0)/
+                         ((index[1]-index[0])**2))
+    
+    return np.array(bandpower)
 
 #########################################
 # Form the X and y set for PCA and SVM processing
 #########################################
 
+# print bandpower indices to file
+if print_data == 1:
+    f = open("generated_files/bandpower_indices.txt","w")
+    f.write("// Delta band\n")
+    print_indices(f,delta_band,window,fs)
+    f.write("// Theta band\n")
+    print_indices(f,theta_band,window,fs)
+    f.write("// Alpha band\n")
+    print_indices(f,alpha_band,window,fs)
+    f.write("// Beta band\n")
+    print_indices(f,beta_band,window,fs)
+    f.write("// Gamma band\n")
+    print_indices(f,gamma_band,window,fs)
+    f.close()
+
 # all feature calculations must end up the same size
 X = np.concatenate((linelength(filtered,window),
-                    bandpower(filtered,window,delta_band),
-                    bandpower(filtered,window,theta_band),
-                    bandpower(filtered,window,alpha_band),
-                    bandpower(filtered,window,beta_band),
-                    bandpower(filtered,window,gamma_band)),axis=1)
+                    bandpower(filtered,window,delta_band,fs),
+                    bandpower(filtered,window,theta_band,fs),
+                    bandpower(filtered,window,alpha_band,fs),
+                    bandpower(filtered,window,beta_band,fs),
+                    bandpower(filtered,window,gamma_band,fs)),axis=1)
 
-# size of labels should be consistent with X
-y = labels
+# size of labels should be consistent with X.shape[0]
+y = valid_labels[window:]
