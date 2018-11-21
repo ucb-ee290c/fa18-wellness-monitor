@@ -196,8 +196,11 @@ def linelength(data,window):
     return cumsum[:data.shape[0],:]/window 
 
 # Bandpower, TODO: need a sliding window type thing
-def bandpower(data,freq_band):
-    fft_res = np.fft.rfft(data,axis=0)
+def bandpower(data,window,freq_band):
+
+    for i in range(data.shape[1]-window+1):
+        fft_res = np.fft.rfft(data[i:i+window,:],axis=0)
+
     temp = np.abs(fft_res[freq_band[0]:freq_band[1]])
     # f,t,test = stft(filtered, fs=500, nperseg=500, noverlap=499, axis=0)
     return np.sum(temp**2,axis=0)
@@ -208,11 +211,11 @@ def bandpower(data,freq_band):
 
 # all feature calculations must end up the same size
 X = np.concatenate((linelength(filtered,window),
-                    bandpower(filtered,delta_band),
-                    bandpower(filtered,theta_band),
-                    bandpower(filtered,alpha_band),
-                    bandpower(filtered,beta_band),
-                    bandpower(filtered,gamma_band)),axis=1)
+                    bandpower(filtered,window,delta_band),
+                    bandpower(filtered,window,theta_band),
+                    bandpower(filtered,window,alpha_band),
+                    bandpower(filtered,window,beta_band),
+                    bandpower(filtered,window,gamma_band)),axis=1)
 
 # size of labels should be consistent with X
 y = labels
