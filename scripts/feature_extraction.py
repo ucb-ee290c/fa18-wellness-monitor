@@ -143,10 +143,10 @@ if print_data == 1:
     f.write(array_container)
     f.close()
 
-# Plot filter frequency response
-w, h = freqz(lpf)
-pl.plot(w/(2*np.pi)*fs, 20*np.log10(abs(h)))
-pl.show()
+# Plot filter frequency response if you want
+# w, h = freqz(lpf)
+# pl.plot(w/(2*np.pi)*fs, 20*np.log10(abs(h)))
+# pl.show()
 
 #########################################
 # Raw data filtering (signal conditioning)
