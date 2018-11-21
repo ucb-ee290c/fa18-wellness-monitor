@@ -43,7 +43,7 @@ if load_data == 1:
     # load the training dataset
     for i in range(len(channel_num)):
         temp = []
-        with open('/Users/adelson.chua/fa18-wellness-monitor/data/channel%d_pairs/channel%d_pair%d.csv' 
+        with open('../data/channel%d_pairs/channel%d_pair%d.csv' 
                   %  (channel_num[i], channel_num[i], pair_num)) as csvfile:
             readCsv = csv.reader(csvfile, delimiter=',')
             for row in readCsv:
@@ -56,7 +56,7 @@ if load_data == 1:
     
     # load the labels
     labels = []
-    with open('/Users/adelson.chua/fa18-wellness-monitor/data/labels/label%d.csv' % pair_num) as csvfile:
+    with open('../data/labels/label%d.csv' % pair_num) as csvfile:
         readCsv = csv.reader(csvfile, delimiter=',')
         for row in readCsv:
             labels.append(row)

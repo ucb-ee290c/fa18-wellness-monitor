@@ -127,11 +127,11 @@ if do_pca == 1:
 
 # for more information, check out this link: http://scikit-learn.org/stable/modules/multiclass.html
 if class_type == 'ovr':
-    clf = OneVsRestClassifier(SVC(kernel=kernel, gamma=1, coef0=coef, degree=degree))
+    clf = OneVsRestClassifier(SVC(kernel=kernel, gamma=1, coef0=coef, degree=degree, max_iter=1e4))
 elif class_type == 'ovo':
-    clf = SVC(kernel=kernel, gamma=1, coef0=coef, degree=degree) # SVC is ovo by default, contrary to documentation
+    clf = SVC(kernel=kernel, gamma=1, coef0=coef, degree=degree, max_iter=1e4) # SVC is ovo by default, contrary to documentation
 elif class_type == 'ecoc':
-    clf = OutputCodeClassifier(SVC(kernel=kernel, gamma=1, coef0=coef, degree=degree), random_state=109)
+    clf = OutputCodeClassifier(SVC(kernel=kernel, gamma=1, coef0=coef, degree=degree, max_iter=1e4), random_state=109)
 
 # Train the model using the training sets
 clf.fit(X_train, y_train)
