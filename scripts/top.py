@@ -10,7 +10,6 @@ from scipy.signal import remez
 
 import features as fe
 import utils as utils
-import printers as pr
 import svm as svm
 
 import warnings
@@ -190,16 +189,29 @@ print("Accuracy from predict function: %f" % accuracy_score(y_test, y_pred))
 print("Accuracy from manual calculation: %f" % accuracy_score(y_test, y_manual))
 
 #########################################
-# Printing the input data to a file
+# Printing data to CSV files, to be read by Scala Tester
 #########################################
 if print_data == 1:
-    pr.generate_files(X_test_raw, y_test_raw, fs, 
-                   normalize, X_train_mean, np.sqrt(X_train_var),
-                   lpf,
-                   do_pca, pca,
-                   alpha_vector, supports, intercept,
-                   class_type, clf) 
+    fmt = '%.10f' # 10 decimal places as float
+    np.savetxt("generated_files/input.csv",X_test_raw.T,fmt=fmt,delimiter=',')
+    np.savetxt("generated_files/labels.csv",y_test_raw.T,fmt=fmt,delimiter=',')
     
-np.savetxt("generated_files/support_vectors.csv",supports,fmt='%.10f',delimiter=',')
-np.savetxt("generated_files/alpha_vectors.csv",alpha_vector,fmt='%.10f',delimiter=',')
-
+    np.savetxt("generated_files/filter_taps.csv",lpf,fmt=fmt,delimiter=',')
+    
+    np.savetxt("generated_files/normalization_mean.csv",X_train_mean,fmt=fmt,delimiter=',')
+    np.savetxt("generated_files/normalization_recipvar.csv",1/np.sqrt(X_train_var),fmt=fmt,delimiter=',')
+    
+    np.savetxt("generated_files/pca_vectors.csv",pca.components_,fmt=fmt,delimiter=',')
+    np.savetxt("generated_files/support_vectors.csv",supports,fmt=fmt,delimiter=',')
+    np.savetxt("generated_files/alpha_vectors.csv",alpha_vector,fmt=fmt,delimiter=',')
+    np.savetxt("generated_files/intercepts.csv",intercept,fmt=fmt,delimiter=',')
+    
+    for i in features:
+        if i == 'delta': np.savetxt("generated_files/delta_index.csv",utils.get_idx(fe.delta_band,fe.window,fs),fmt=fmt,delimiter=',')
+        if i == 'theta': np.savetxt("generated_files/theta_index.csv",utils.get_idx(fe.theta_band,fe.window,fs),fmt=fmt,delimiter=',')
+        if i == 'alpha': np.savetxt("generated_files/alpha_index.csv",utils.get_idx(fe.alpha_band,fe.window,fs),fmt=fmt,delimiter=',')
+        if i == 'beta': np.savetxt("generated_files/beta_index.csv",utils.get_idx(fe.beta_band,fe.window,fs),fmt=fmt,delimiter=',')
+        if i == 'gamma': np.savetxt("generated_files/gamma_index.csv",utils.get_idx(fe.gamma_band,fe.window,fs),fmt=fmt,delimiter=',')
+    
+    if class_type == 'ecoc':
+        np.savetxt("generated_files/codebook.csv",clf.code_book_,fmt=fmt,delimiter=',')
