@@ -32,7 +32,7 @@ balance = 1 # to equalize number of seizure and nonseizure events
 # are we printing out the matrices to a file?
 print_data = 1
 # just print the accuracy, for test purposes
-silence = 0
+silence = 1
 
 # should I do PCA or not?
 do_pca = 1
@@ -59,14 +59,9 @@ penalty = 1
 # what dataset to use? 'actual' or 'toy' data?
 dataset = 'actual'
 # actual dataset parameters, what pair in 151? how many channels?
-train_pair_num = [2,3,4]
-test_pair_num = [5]
+train_pair_num = [3]
+test_pair_num = [4]
 channel_num = [1]
-
-# good settings:
-# train = [2,3,4], test = [5], degree = 1, dimensions = 6, features = 12
-# train = [2,3,4], test = [5], degree = 2, dimensions = 5, features = 12
-# train = [2,3,4], test = [5], degree = 1, dimensions = 1, features = 3, wow!
 
 # test using the train data?
 cheat_test = 0
@@ -174,6 +169,7 @@ clf.fit(X_train, y_train)
 if silence == 0: print("Setting up the configuration matrices for SVM")
 alpha_vector, supports, intercept, num_classifiers = svm.config_matrix(clf,class_type,classes)
 
+print("There are %d support vectors" % supports.shape[0])
 #########################################
 # Do classification to check the accuracy using the test set
 #########################################
@@ -202,5 +198,8 @@ if print_data == 1:
                    lpf,
                    do_pca, pca,
                    alpha_vector, supports, intercept,
-                   class_type, clf)
+                   class_type, clf) 
+    
+np.savetxt("generated_files/support_vectors.csv",supports,fmt='%.10f',delimiter=',')
+np.savetxt("generated_files/alpha_vectors.csv",alpha_vector,fmt='%.10f',delimiter=',')
 

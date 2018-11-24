@@ -14,3 +14,4 @@ simulator-*
 data/
 scripts/__pycache__/
 scripts/generated_files/
+scripts/test
