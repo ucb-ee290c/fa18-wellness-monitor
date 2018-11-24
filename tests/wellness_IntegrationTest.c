@@ -9,6 +9,7 @@
 #include <math.h>
 
 #include "mmio.h"
+#include "arrays.h"
 
 /**
  * Make sure these #defines are correct for your chosen parameters.
@@ -130,10 +131,10 @@ int main(void)
 
   // the array constants, must be consistent with Wellness.scala
   // TODO: I'm declaring this as an int for now, since I can't print doubles for debugging
-  int pcaVector[FEATURES][DIMENSIONS] = {{5,0,-2},{1,2,3}};
-  int SVMSupportVector[SUPPORTS][FEATURES] = {{1,2},{3,4}};
-  int SVMAlphaVector[CLASSIFIERS][SUPPORTS] = {{7,3}};
-  int SVMIntercept[CLASSIFIERS] = {4};
+  //int pcaVector[FEATURES][DIMENSIONS] = {{5,0,-2},{1,2,3}};
+  //int SVMSupportVector[SUPPORTS][FEATURES] = {{1,2},{3,4}};
+  //int SVMAlphaVector[CLASSIFIERS][SUPPORTS] = {{7,3}};
+  //int SVMIntercept[CLASSIFIERS] = {4};
 
   // TODO: Feed the computed features here
   int inputs[DIMENSIONS] = {35,55,15};
@@ -146,8 +147,8 @@ int main(void)
     PCAout[i] = PCA(inputs,pcaVector,i);
   }
 
-  //printf("pca0 %d\n",PCAout[0]);
-  //printf("pca1 %d\n",PCAout[1]);
+  printf("pca0 %d\n",PCAout[0]);
+  printf("pca1 %d\n",PCAout[1]);
 
   for (i=0;i<CLASSES;i++) {
     SVMout[i] = SVM(PCAout,SVMSupportVector,SVMAlphaVector,SVMIntercept,i);

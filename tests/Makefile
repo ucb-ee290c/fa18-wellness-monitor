@@ -3,7 +3,7 @@ OBJDUMP=riscv64-unknown-elf-objdump
 CFLAGS=-mcmodel=medany -std=gnu99 -O2 -fno-common -fno-builtin-printf -Wall
 LDFLAGS=-static -nostdlib -nostartfiles -lgcc
 
-PROGRAMS = wellness_IntegrationTest_FixedPoint
+PROGRAMS = wellness_IntegrationTest
 
 default: $(addsuffix .riscv,$(PROGRAMS))
 
@@ -13,6 +13,9 @@ dumps: $(addsuffix .dump,$(PROGRAMS))
 	$(GCC) $(CFLAGS) -D__ASSEMBLY__=1 -c $< -o $@
 
 %.o: %.c mmio.h
+	$(GCC) $(CFLAGS) -c $< -o $@
+
+%.o: %.c arrays.h
 	$(GCC) $(CFLAGS) -c $< -o $@
 
 %.riscv: %.o crt.o syscalls.o link.ld
