@@ -43,14 +43,16 @@ def bandpower(data,window,freq_band,fs):
     
     return np.array(bandpower)
 
-def feature_extraction (filtered, valid_labels, fs):    
+def feature_extraction (features, filtered, valid_labels, fs):    
     # all feature calculations must end up the same size
-    X = np.concatenate((linelength(filtered,window),
-                        bandpower(filtered,window,utils.get_idx(delta_band,window,fs),fs),
-                        bandpower(filtered,window,utils.get_idx(theta_band,window,fs),fs),
-                        bandpower(filtered,window,utils.get_idx(alpha_band,window,fs),fs),
-                        bandpower(filtered,window,utils.get_idx(beta_band,window,fs),fs),
-                        bandpower(filtered,window,utils.get_idx(gamma_band,window,fs),fs)),axis=1)
+    X = np.empty((len(valid_labels[window:]),0))
+    for i in features:
+        if i == 'linelength': X = np.concatenate((X,linelength(filtered,window)),axis=1)
+        if i == 'delta': X = np.concatenate((X,bandpower(filtered,window,utils.get_idx(delta_band,window,fs),fs)),axis=1)
+        if i == 'theta': X = np.concatenate((X,bandpower(filtered,window,utils.get_idx(theta_band,window,fs),fs)),axis=1)
+        if i == 'alpha': X = np.concatenate((X,bandpower(filtered,window,utils.get_idx(alpha_band,window,fs),fs)),axis=1)
+        if i == 'beta': X = np.concatenate((X,bandpower(filtered,window,utils.get_idx(beta_band,window,fs),fs)),axis=1)
+        if i == 'gamma': X = np.concatenate((X,bandpower(filtered,window,utils.get_idx(gamma_band,window,fs),fs)),axis=1)
     
     # size of labels should be consistent with X.shape[0]
     y = valid_labels[window:]

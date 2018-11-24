@@ -22,20 +22,21 @@ import warnings
 fs = 500
 
 # number of filter taps, use even numbers for now
-numtaps = 32
+numtaps = 6
 
+features = ['linelength','theta','alpha']
 # are we loading the data again? might take a while
 load_data = 1 # you can turn this off if the script has run once
 balance = 1 # to equalize number of seizure and nonseizure events
 # are we printing out the matrices to a file?
 print_data = 1
 # just print the accuracy, for test purposes
-silence = 1
+silence = 0
 
 # should I do PCA or not?
 do_pca = 1
 # number of final features after dimensionality reduction
-dimensions = 6 # 5 for degree 2, 6 for degree 1
+dimensions = 1 # 5 for degree 2, 6 for degree 1
 
 # do we normalize the input?
 normalize = 1
@@ -57,7 +58,12 @@ dataset = 'actual'
 # actual dataset parameters, what pair in 151? how many channels?
 train_pair_num = [2,3,4]
 test_pair_num = [5]
-channel_num = [1,2]
+channel_num = [1]
+
+# good settings:
+# train = [2,3,4], test = [5], degree = 1, dimensions = 6, features = 12
+# train = [2,3,4], test = [5], degree = 2, dimensions = 5, features = 12
+# train = [2,3,4], test = [5], degree = 1, dimensions = 1, features = 3, wow!
 
 # test using the train data?
 cheat_test = 0
@@ -78,7 +84,7 @@ if load_data == 1: X_test_raw, y_test_raw = utils.load_dataset(test_pair_num,cha
 #########################################
 # Signal conditioning filter design
 #########################################
-if silence == 0: print("Designing filter")
+if silence == 0: print("Designing filter with %d taps" % numtaps)
 # Set filter specs
 lpf = remez(numtaps=numtaps, bands=[0, 150, 200, 250], desired=[1.0, 0.0], Hz=fs)
 #lpf = remez(numtaps=numtaps, bands=[0, 50, 100, 150, 200, 250], desired=[0.0, 1.0, 0.0], Hz=fs) 
@@ -90,14 +96,15 @@ if silence == 0: print("Passing the dataset through the filter")
 filtered_train, valid_labels_train = utils.data_filtering(X_train_raw, y_train_raw, lpf)
 
 if silence == 0: print("Calculating features...")
-X_train, y_train = fe.feature_extraction(filtered_train,valid_labels_train,fs)
+X_train, y_train = fe.feature_extraction(features,filtered_train,valid_labels_train,fs)
 
 if cheat_test == 1:
+    print("Setting test set = train set, you're cheating")
     X_test = X_train
     y_test = y_train
 else: 
     filtered_test, valid_labels_test = utils.data_filtering(X_test_raw, y_test_raw, lpf)
-    X_test, y_test = fe.feature_extraction(filtered_test,valid_labels_test,fs)
+    X_test, y_test = fe.feature_extraction(features,filtered_test,valid_labels_test,fs)
 
 #########################################
 # Normalization of the dataset
