@@ -10,7 +10,7 @@ fs = 500
 # t = pl.arange(0, 1, 1.0/fs)
 # s = 4*np.sin(2*np.pi*20*t)+np.sin(2*np.pi*100*t)
 
-pair_num = 1
+pair_num = (2,3)
 channel_num = (1,2,3)
 
 # number of filter taps, use even numbers for now
@@ -41,27 +41,36 @@ keep_points = 0
 
 if load_data == 1:
     # load the training dataset
-    for i in range(len(channel_num)):
-        temp = []
-        with open('../data/channel%d_pairs/channel%d_pair%d.csv' 
-                  %  (channel_num[i], channel_num[i], pair_num)) as csvfile:
+    for j in range(len(pair_num)):
+        for i in range(len(channel_num)):
+            temp = []
+            with open('../data/channel%d_pairs/channel%d_pair%d.csv' 
+                      %  (channel_num[i], channel_num[i], pair_num[j])) as csvfile:
+                readCsv = csv.reader(csvfile, delimiter=',')
+                for row in readCsv:
+                    temp.append(row)
+            if i == 0:
+                pairset = np.array(temp)
+            else:
+                pairset = np.concatenate((pairset,np.array(temp)),axis=1)
+        pairset = pairset.astype(float)
+        
+        # load the labels
+        pairlabel = []
+        with open('../data/labels/label%d.csv' % pair_num[j]) as csvfile:
             readCsv = csv.reader(csvfile, delimiter=',')
             for row in readCsv:
-                temp.append(row)
-        if i == 0:
-            train = np.array(temp)
+                pairlabel.append(row)
+        
+        pairlabel = np.array(pairlabel).T.astype(float)
+    
+        if j == 0:
+            train = pairset
+            labels = pairlabel
         else:
-            train = np.concatenate((train,np.array(temp)),axis=1)
-    train = train.astype(float)
-    
-    # load the labels
-    labels = []
-    with open('../data/labels/label%d.csv' % pair_num) as csvfile:
-        readCsv = csv.reader(csvfile, delimiter=',')
-        for row in readCsv:
-            labels.append(row)
-    
-    labels = np.array(labels).T.astype(float)
+            train = np.concatenate((train,pairset),axis=0)
+            labels = np.concatenate((labels,pairlabel),axis=0)
+            
 
 #########################################
 # Trimmiing/Balancing of dataset
