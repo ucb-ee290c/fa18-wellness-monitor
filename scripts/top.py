@@ -23,6 +23,7 @@ fs = 500
 
 # number of filter taps, use even numbers for now
 numtaps = 6
+cutoff = [0, 150, 200, 250]
 
 features = ['linelength','theta','alpha']
 # are we loading the data again? might take a while
@@ -52,6 +53,8 @@ classes = 2
 class_type = 'ovr'
 # maximum number of iterations for SVM training
 max_iter = 1e4
+# penalty term, higher = lesser number of support vectors = lesser accuracy
+penalty = 1
 
 # what dataset to use? 'actual' or 'toy' data?
 dataset = 'actual'
@@ -68,17 +71,18 @@ channel_num = [1]
 # test using the train data?
 cheat_test = 0
 
+np.random.seed(1)
 #########################################
 # Loading the dataset from the CSV files
 #########################################
 if silence == 0: print("Using actual dataset with %d classes" % classes)
 
 if silence == 0: print("Loading training dataset")
-if silence == 0: print("Dataset has %d pairs of seizure/nonseizure points, with %d channels" % (len(train_pair_num),len(channel_num)))
+if silence == 0: print("Dataset has %d pair(s) of seizure/nonseizure points, with %d channel(s)" % (len(train_pair_num),len(channel_num)))
 if load_data == 1: X_train_raw, y_train_raw = utils.load_dataset(train_pair_num,channel_num,balance)
 
 if silence == 0: print("Loading test dataset")
-if silence == 0: print("Dataset has %d pairs of seizure/nonseizure points, with %d channels" % (len(test_pair_num),len(channel_num)))
+if silence == 0: print("Dataset has %d pair(s) of seizure/nonseizure points, with %d channel(s)" % (len(test_pair_num),len(channel_num)))
 if load_data == 1: X_test_raw, y_test_raw = utils.load_dataset(test_pair_num,channel_num,balance)
 
 #########################################
@@ -86,7 +90,7 @@ if load_data == 1: X_test_raw, y_test_raw = utils.load_dataset(test_pair_num,cha
 #########################################
 if silence == 0: print("Designing filter with %d taps" % numtaps)
 # Set filter specs
-lpf = remez(numtaps=numtaps, bands=[0, 150, 200, 250], desired=[1.0, 0.0], Hz=fs)
+lpf = remez(numtaps=numtaps, bands=cutoff, desired=[1.0, 0.0], Hz=fs)
 #lpf = remez(numtaps=numtaps, bands=[0, 50, 100, 150, 200, 250], desired=[0.0, 1.0, 0.0], Hz=fs) 
 
 #########################################
@@ -96,6 +100,7 @@ if silence == 0: print("Passing the dataset through the filter")
 filtered_train, valid_labels_train = utils.data_filtering(X_train_raw, y_train_raw, lpf)
 
 if silence == 0: print("Calculating features...")
+if silence == 0: print(features)
 X_train, y_train = fe.feature_extraction(features,filtered_train,valid_labels_train,fs)
 
 if cheat_test == 1:
@@ -146,11 +151,14 @@ if do_pca == 1:
 #########################################
 # for more information, check out this link: http://scikit-learn.org/stable/modules/multiclass.html
 if class_type == 'ovr':
-    clf = OneVsRestClassifier(SVC(kernel=kernel, gamma=1, coef0=coef, degree=degree, max_iter=max_iter))
+    clf = OneVsRestClassifier(SVC(kernel=kernel, gamma=1, coef0=coef, degree=degree, 
+                                  max_iter=max_iter, C=penalty, random_state =109))
 elif class_type == 'ovo':
-    clf = SVC(kernel=kernel, gamma=1, coef0=coef, degree=degree, max_iter=max_iter) # SVC is ovo by default, contrary to documentation
+    clf = SVC(kernel=kernel, gamma=1, coef0=coef, degree=degree, 
+              max_iter=max_iter, C=penalty, random_state =109) # SVC is ovo by default, contrary to documentation
 elif class_type == 'ecoc':
-    clf = OutputCodeClassifier(SVC(kernel=kernel, gamma=1, coef0=coef, degree=degree, max_iter=max_iter), random_state=109)
+    clf = OutputCodeClassifier(SVC(kernel=kernel, gamma=1, coef0=coef, degree=degree, 
+                                   max_iter=max_iter, C=penalty, random_state =109), random_state=109)
 
 # remove convergence warning printouts from SVM training
 if silence == 1: warnings.filterwarnings("ignore")
@@ -166,9 +174,9 @@ clf.fit(X_train, y_train)
 if silence == 0: print("Setting up the configuration matrices for SVM")
 alpha_vector, supports, intercept, num_classifiers = svm.config_matrix(clf,class_type,classes)
 
-########################################################################################
+#########################################
 # Do classification to check the accuracy using the test set
-########################################################################################
+#########################################
 
 if silence == 0: print("Calculating SVM %s kernel and decision matrix" % kernel)
 decision, vote = svm.get_decision(X_test, kernel, coef, degree, alpha_vector, supports, intercept, num_classifiers)
