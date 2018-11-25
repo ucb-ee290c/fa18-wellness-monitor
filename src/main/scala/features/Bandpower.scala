@@ -26,9 +26,9 @@ object BandpowerIO {
 }
 
 class Bandpower[T <: Data : Real : BinaryRepresentation](val params: BandpowerParams[T]) extends Module {
-  require( params.idxEndBin > params.idxStartBin, "End index must be greater than start index")
+  require( params.idxEndBin > params.idxStartBin, f"End index ${params.idxEndBin} must be greater than start index ${params.idxStartBin}")
   require( ( (params.idxEndBin - params.idxStartBin) & (params.idxEndBin - params.idxStartBin - 1)) == 0 ,
-                "Difference between the two indices must be a power of 2")
+                f"Difference between the two indices must be a power of 2, currently ${params.idxEndBin - params.idxStartBin}")
   require( params.nBins/2 >= params.idxEndBin,
                 f"End index ${params.idxEndBin} must be at most half of the total number of bins ${params.nBins}")
 

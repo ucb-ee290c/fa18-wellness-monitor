@@ -24,7 +24,7 @@ object PCAIO {
 
 class PCA[T <: chisel3.Data : Real](val params: PCAParams[T]) extends Module {
   require(params.nDimensions >= params.nFeatures,
-    "Number of projected dimensions should be at most the number of original dimensions")
+    f"Number of projected dimensions ${params.nFeatures} should be at most the number of original dimensions ${params.nDimensions}")
 
   val io = IO(new PCAIO[T](params))
 

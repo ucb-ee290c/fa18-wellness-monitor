@@ -39,9 +39,9 @@ object AbsVal {
 
 class lineLength[T <: chisel3.Data : Ring : Order : BinaryRepresentation](val params: lineLengthParams[T]) extends Module {
   // Check that there are at least 2 line length windows to be averaged.
-  require(params.windowSize > 1, "Window size must be greater than 1")
+  require(params.windowSize > 1, f"Window size must be greater than 1, currently ${params.windowSize}")
   // Check that window size is a power of 2. This is enforced due to output normalization, to make division easier.
-  require( (params.windowSize & (params.windowSize - 1)) == 0 , "Window size must be a power of 2")
+  require( (params.windowSize & (params.windowSize - 1)) == 0 , f"Window size must be a power of 2, currently ${params.windowSize}")
   val io = IO(lineLengthIO[T](params))
 
   val shift_en = Wire(Bool())
