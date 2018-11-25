@@ -667,8 +667,8 @@ object FixedPointWellnessParams {
 
 object FixedPointModelWellnessParams {
 
-  val dataWidth:Int = 32
-  val dataBP:Int = 8
+  val dataWidth:Int = 62
+  val dataBP:Int = 16
 
   var fileContents = ArrayBuffer[Array[String]]()
   var fileSource = io.Source.fromFile("scripts/generated_files/filter_taps.csv")

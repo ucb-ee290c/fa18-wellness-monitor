@@ -109,7 +109,7 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
   behavior of "Wellness"
 
   // set this to 1 to use the generated files from the Python model
-  val integrated = 0
+  val integrated = 1
 
   // I am leaving this SInt implementation as is, since my testbench is meant for floats/fixedpoints
   it should "pass the input through filters, compute features, and classify (SInt)" in {
@@ -289,10 +289,10 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
   it should "pass the input through filters, compute features, and classify (FixedPoint)" in {
     val debug = 0
 
-    val windowLength = 4
+    val windowLength = 32
 
-    val dataWidth = 32
-    val dataBP = 8
+    val dataWidth = 62
+    val dataBP = 16
 
     val tap_count = scala.util.Random.nextInt(15) + 1
     val coefficients1 = mutable.ArrayBuffer[Double]()
@@ -464,7 +464,7 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
     it should "work using the Python model generated files" in {
       val debug = 0
 
-      val dataWidth = 64
+      val dataWidth = 62
       val dataBP = 16
 
       var fileContents = ArrayBuffer[Array[String]]()
