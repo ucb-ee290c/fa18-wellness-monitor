@@ -94,19 +94,29 @@ class MemoryBufferTester[T <: chisel3.Data](c: MemoryBuffer[T], params: MemoryBu
 }
 
 object UIntMemoryBufferTester {
-  def apply(params: MemoryBufferParams[SInt]): Boolean = {
-    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new MemoryBuffer(params)) {
-    dsptools.Driver.execute(() => new MemoryBuffer(params), TestSetup.dspTesterOptions) {
-      c => new MemoryBufferTester(c, params, 0)
+  def apply(params: MemoryBufferParams[SInt], debug: Int): Boolean = {
+    if (debug == 1) {
+      chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new MemoryBuffer(params)) {
+        c => new MemoryBufferTester(c, params, 0)
+      }
+    } else {
+      dsptools.Driver.execute(() => new MemoryBuffer(params), TestSetup.dspTesterOptions) {
+        c => new MemoryBufferTester(c, params, 0)
+      }
     }
   }
 }
 
 object FixedPointMemoryBufferTester {
-  def apply(params: MemoryBufferParams[FixedPoint]): Boolean = {
-    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new MemoryBuffer(params)) {
-    dsptools.Driver.execute(() => new MemoryBuffer(params), TestSetup.dspTesterOptions) {
-      c => new MemoryBufferTester(c, params, 1)
+  def apply(params: MemoryBufferParams[FixedPoint], debug: Int): Boolean = {
+    if (debug == 1) {
+      chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new MemoryBuffer(params)) {
+        c => new MemoryBufferTester(c, params, 1)
+      }
+    } else {
+      dsptools.Driver.execute(() => new MemoryBuffer(params), TestSetup.dspTesterOptions) {
+        c => new MemoryBufferTester(c, params, 1)
+      }
     }
   }
 }

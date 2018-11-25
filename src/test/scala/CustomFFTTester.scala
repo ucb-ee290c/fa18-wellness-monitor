@@ -33,13 +33,16 @@ class CustomFFTTester[T <: Data](c: FFT[T], config: FFTConfig[FixedPoint]) exten
   }
 }
 object FixedPointFFTTester{
-  def apply(config: FFTConfig[FixedPoint]): Boolean = {
+  def apply(config: FFTConfig[FixedPoint], debug: Int): Boolean = {
     implicit val p: Parameters = null
-    dsptools.Driver.execute(() => new FFT(config), TestSetup.dspTesterOptions) {
-      c => new CustomFFTTester(c, config)
+    if (debug == 1) {
+      chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new FFT(config)) {
+        c => new CustomFFTTester(c, config)
+      }
+    } else {
+      dsptools.Driver.execute(() => new FFT(config), TestSetup.dspTesterOptions) {
+        c => new CustomFFTTester(c, config)
+      }
     }
-//    chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new FFT(config)) {
-//      c => new CustomFFTTester(c, config)
-//    }
   }
 }

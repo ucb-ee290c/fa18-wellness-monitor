@@ -8,6 +8,7 @@ class MemoryBufferSpec extends FlatSpec with Matchers {
   behavior of "Memory Buffer"
 
   it should "UInt Buffer" in {
+    val debug = 0
 
     for(i <- 0 until 15) {
       val params = new MemoryBufferParams[SInt] {
@@ -16,11 +17,12 @@ class MemoryBufferSpec extends FlatSpec with Matchers {
         val nColumns = scala.util.Random.nextInt(15) + 1
       }
 
-      UIntMemoryBufferTester(params) should be (true)
+      UIntMemoryBufferTester(params, debug) should be (true)
     }
   }
 
   it should "FixedPoint Buffer" in {
+    val debug = 0
 
     for(i <- 0 until 15) {
       val params = new MemoryBufferParams[FixedPoint] {
@@ -29,7 +31,7 @@ class MemoryBufferSpec extends FlatSpec with Matchers {
         val nColumns = scala.util.Random.nextInt(15) + 1
       }
 
-      FixedPointMemoryBufferTester(params) should be (true)
+      FixedPointMemoryBufferTester(params, debug) should be (true)
     }
   }
 }

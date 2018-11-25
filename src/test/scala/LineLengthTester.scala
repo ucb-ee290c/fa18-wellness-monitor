@@ -54,24 +54,41 @@ class lineLengthFloatTester[T <: chisel3.Data](c: lineLength[T], windowSize: Int
 }
 
 object UIntLineLengthTester {
-  def apply(params: lineLengthParams[UInt], windowSize: Int): Boolean = {
-    dsptools.Driver.execute(() => new lineLength(params), TestSetup.dspTesterOptions) {
-      c => new lineLengthFloatTester(c, windowSize, 0)
+  def apply(params: lineLengthParams[UInt], windowSize: Int, debug: Int): Boolean = {
+    if (debug == 1) {
+      chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new lineLength(params)) {
+        c => new lineLengthFloatTester(c, windowSize, 0)
+      }
+    } else {
+      dsptools.Driver.execute(() => new lineLength(params), TestSetup.dspTesterOptions) {
+        c => new lineLengthFloatTester(c, windowSize, 0)
+      }
     }
   }
 }
 object SIntLineLengthTester {
-  def apply(params: lineLengthParams[SInt], windowSize: Int): Boolean = {
-    dsptools.Driver.execute(() => new lineLength(params), TestSetup.dspTesterOptions) {
-      c => new lineLengthFloatTester(c, windowSize,  0)
+  def apply(params: lineLengthParams[SInt], windowSize: Int, debug: Int): Boolean = {
+    if (debug == 1) {
+      chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new lineLength(params)) {
+        c => new lineLengthFloatTester(c, windowSize, 0)
+      }
+    } else {
+      dsptools.Driver.execute(() => new lineLength(params), TestSetup.dspTesterOptions) {
+        c => new lineLengthFloatTester(c, windowSize, 0)
+      }
     }
   }
 }
 object FixedPointLineLengthTester {
-  def apply(params: lineLengthParams[FixedPoint], windowSize: Int): Boolean = {
-    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new lineLength(params)) {
-    dsptools.Driver.execute(() => new lineLength(params), TestSetup.dspTesterOptions) {
-      c => new lineLengthFloatTester(c, windowSize, 1)
+  def apply(params: lineLengthParams[FixedPoint], windowSize: Int, debug: Int): Boolean = {
+    if (debug == 1) {
+      chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new lineLength(params)) {
+        c => new lineLengthFloatTester(c, windowSize, 1)
+      }
+    } else {
+      dsptools.Driver.execute(() => new lineLength(params), TestSetup.dspTesterOptions) {
+        c => new lineLengthFloatTester(c, windowSize, 1)
+      }
     }
   }
 }

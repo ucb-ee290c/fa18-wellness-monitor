@@ -23,6 +23,7 @@ class CustomFFTSpec extends FlatSpec with Matchers {
   )
 
   it should "FFT" in {
-    FixedPointFFTTester(config) should be (true)
+    val debug = 0
+    FixedPointFFTTester(config, debug) should be (true)
   }
 }

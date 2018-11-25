@@ -9,6 +9,8 @@ class BandpowerSpec extends FlatSpec with Matchers {
   behavior of "Bandpower"
 
   it should "sum squares of inputs (UInt)" in {
+    val debug = 0
+
     val params = new BandpowerParams[UInt] {
       val idxStartBin = 0
       val idxEndBin = 63
@@ -17,10 +19,12 @@ class BandpowerSpec extends FlatSpec with Matchers {
       val genOut = UInt(16.W)
     }
 
-    UIntBandpowerTester(params) should be (true)
+    UIntBandpowerTester(params, debug) should be (true)
   }
 
   it should "sum squares of inputs (FixedPoint)" in {
+    val debug = 0
+
     val params = new BandpowerParams[FixedPoint] {
       val idxStartBin = 0
       val idxEndBin = 63
@@ -29,6 +33,6 @@ class BandpowerSpec extends FlatSpec with Matchers {
       val genOut = FixedPoint(35.W, 19.BP)
     }
 
-    FixedPointBandpowerTester(params) should be (true)
+    FixedPointBandpowerTester(params, debug) should be (true)
   }
 }

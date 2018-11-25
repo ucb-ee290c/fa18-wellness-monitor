@@ -118,6 +118,7 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
 
   it should "pass the input through filters, compute features, and classify (SInt)" in {
 
+    val debug = 0
     //val tap_count = scala.util.Random.nextInt(50) + 1
     val tap_count = 5
 
@@ -307,10 +308,11 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       svmParams: SVMParams[SInt],
       pcaVectorBufferParams: MemoryBufferParams[SInt],
       configurationMemoryParams: ConfigurationMemoryParams[SInt],
-      goldenModelParameters: wellnessIntegrationParameterBundle) should be (true)
+      goldenModelParameters: wellnessIntegrationParameterBundle, debug) should be (true)
   }
 
   it should "pass the input through filters, compute features, and classify (FixedPoint)" in {
+    val debug = 0
 
     val nPts = 4
 
@@ -496,7 +498,7 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       svmParams: SVMParams[FixedPoint],
       pcaVectorBufferParams: MemoryBufferParams[FixedPoint],
       configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
-      goldenModelParameters: wellnessIntegrationParameterBundle) should be (true)
+      goldenModelParameters: wellnessIntegrationParameterBundle, debug) should be (true)
   }
 
 }

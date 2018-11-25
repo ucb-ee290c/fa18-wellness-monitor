@@ -11,6 +11,7 @@ class FIRFilterSpec extends FlatSpec with Matchers {
   behavior of "ConstantCoefficientFIRFilter"
 
   it should "multiply its input stream with correct coefficients at correct timesteps (UInt)" in {
+    val debug = 0
 
     for(i <- 0 until 15) {
       val tap_count = scala.util.Random.nextInt(50) + 1
@@ -22,11 +23,12 @@ class FIRFilterSpec extends FlatSpec with Matchers {
         val taps = coefficients.map(_.asUInt(16.W))
       }
 
-      UIntFIRFilterTester(params, coefficients) should be (true)
+      UIntFIRFilterTester(params, coefficients, debug) should be (true)
     }
   }
 
   it should "multiply its input stream with correct coefficients at correct timesteps (SInt)" in {
+    val debug = 0
 
     for(i <- 0 until 15) {
       val tap_count = scala.util.Random.nextInt(50) + 1
@@ -38,11 +40,12 @@ class FIRFilterSpec extends FlatSpec with Matchers {
         val taps = coefficients.map(_.asSInt(16.W))
       }
 
-      SIntFIRFilterTester(params, coefficients) should be (true)
+      SIntFIRFilterTester(params, coefficients, debug) should be (true)
     }
   }
 
   it should "multiply its input stream with correct coefficients at correct timesteps (FixedPoint)" in {
+    val debug = 0
 
     for(i <- 0 until 15) {
       val tap_count = scala.util.Random.nextInt(50) + 1
@@ -56,7 +59,7 @@ class FIRFilterSpec extends FlatSpec with Matchers {
         val taps = coefficients.toList.map(ConvertableTo[FixedPoint].fromDouble(_))
       }
 
-      FixedPointFIRFilterTester(params, coefficients) should be (true)
+      FixedPointFIRFilterTester(params, coefficients, debug) should be (true)
     }
   }
 }

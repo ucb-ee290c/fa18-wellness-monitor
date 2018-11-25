@@ -10,6 +10,7 @@ class FFTBufferSpec extends FlatSpec with Matchers {
   behavior of "FFT Buffer"
 
   it should "convert from stream to parallel (SInt)" in {
+    val debug = 0
 
     for(i <- 0 until 15) {
       val laneCount = scala.util.Random.nextInt(15) + 1
@@ -19,11 +20,12 @@ class FFTBufferSpec extends FlatSpec with Matchers {
         val lanes = laneCount
       }
 
-      SIntFFTBufferTester(params, laneCount) should be (true)
+      SIntFFTBufferTester(params, laneCount, debug) should be (true)
     }
   }
 
   it should "convert from stream to parallel (FixedPoint)" in {
+    val debug = 0
 
     for(i <- 0 until 15) {
       val laneCount = scala.util.Random.nextInt(15) + 1
@@ -33,11 +35,12 @@ class FFTBufferSpec extends FlatSpec with Matchers {
         val lanes = laneCount
       }
 
-      FixedPointFFTBufferTester(params, laneCount) should be (true)
+      FixedPointFFTBufferTester(params, laneCount, debug) should be (true)
     }
   }
 
   it should "convert from stream to parallel (Fixed Point)" in {
+    val debug = 0
 
     for(i <- 0 until 15) {
       val laneCount = scala.util.Random.nextInt(15) + 1
@@ -47,7 +50,7 @@ class FFTBufferSpec extends FlatSpec with Matchers {
         val lanes = laneCount
       }
 
-      FixedPointFFTBufferTester(params, laneCount) should be (true)
+      FixedPointFFTBufferTester(params, laneCount, debug) should be (true)
     }
   }
 }

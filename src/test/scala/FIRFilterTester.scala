@@ -46,23 +46,41 @@ class FIRFilterFloatTester[T <: chisel3.Data](c: ConstantCoefficientFIRFilter[T]
 }
 
 object UIntFIRFilterTester {
-  def apply(params: FIRFilterParams[UInt], coefficients: Seq[Int]): Boolean = {
-    dsptools.Driver.execute(() => new ConstantCoefficientFIRFilter(params), TestSetup.dspTesterOptions) {
-      c => new FIRFilterFloatTester(c, coefficients.map(_.toDouble), 0)
+  def apply(params: FIRFilterParams[UInt], coefficients: Seq[Int], debug: Int): Boolean = {
+    if (debug == 1) {
+      chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new ConstantCoefficientFIRFilter(params)) {
+        c => new FIRFilterFloatTester(c, coefficients.map(_.toDouble), 0)
+      }
+    } else {
+      dsptools.Driver.execute(() => new ConstantCoefficientFIRFilter(params), TestSetup.dspTesterOptions) {
+        c => new FIRFilterFloatTester(c, coefficients.map(_.toDouble), 0)
+      }
     }
   }
 }
 object SIntFIRFilterTester {
-  def apply(params: FIRFilterParams[SInt], coefficients: Seq[Int]): Boolean = {
-    dsptools.Driver.execute(() => new ConstantCoefficientFIRFilter(params), TestSetup.dspTesterOptions) {
-      c => new FIRFilterFloatTester(c, coefficients.map(_.toDouble),  0)
+  def apply(params: FIRFilterParams[SInt], coefficients: Seq[Int], debug: Int): Boolean = {
+    if (debug == 1) {
+      chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new ConstantCoefficientFIRFilter(params)) {
+        c => new FIRFilterFloatTester(c, coefficients.map(_.toDouble), 0)
+      }
+    } else {
+      dsptools.Driver.execute(() => new ConstantCoefficientFIRFilter(params), TestSetup.dspTesterOptions) {
+        c => new FIRFilterFloatTester(c, coefficients.map(_.toDouble), 0)
+      }
     }
   }
 }
 object FixedPointFIRFilterTester {
-  def apply(params: FIRFilterParams[FixedPoint], coefficients: Seq[Double]): Boolean = {
-    dsptools.Driver.execute(() => new ConstantCoefficientFIRFilter(params), TestSetup.dspTesterOptions) {
-      c => new FIRFilterFloatTester(c, coefficients, 1)
+  def apply(params: FIRFilterParams[FixedPoint], coefficients: Seq[Double], debug: Int): Boolean = {
+    if (debug == 1) {
+      chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new ConstantCoefficientFIRFilter(params)) {
+        c => new FIRFilterFloatTester(c, coefficients, 1)
+      }
+    } else {
+      dsptools.Driver.execute(() => new ConstantCoefficientFIRFilter(params), TestSetup.dspTesterOptions) {
+        c => new FIRFilterFloatTester(c, coefficients, 1)
+      }
     }
   }
 }

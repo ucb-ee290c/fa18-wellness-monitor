@@ -78,24 +78,41 @@ case class XYZ(
               )
 
 object UIntIIRFilterTester {
-  def apply(params: IIRFilterParams[UInt], coefficients_A: Seq[Double], coefficients_B: Seq[Double]): Boolean = {
-    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new ConstantCoefficientIIRFilter(params)) {
-    dsptools.Driver.execute(() => new ConstantCoefficientIIRFilter(params), TestSetup.dspTesterOptions) {
-      c => new IIRFilterTester(c, coefficients_A, coefficients_B, 0)
+  def apply(params: IIRFilterParams[UInt], coefficients_A: Seq[Double], coefficients_B: Seq[Double], debug: Int): Boolean = {
+    if (debug == 1) {
+      chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new ConstantCoefficientIIRFilter(params)) {
+        c => new IIRFilterTester(c, coefficients_A, coefficients_B, 0)
+      }
+    } else {
+      dsptools.Driver.execute(() => new ConstantCoefficientIIRFilter(params), TestSetup.dspTesterOptions) {
+        c => new IIRFilterTester(c, coefficients_A, coefficients_B, 0)
+      }
     }
   }
 }
 object SIntIIRFilterTester {
-  def apply(params: IIRFilterParams[SInt], coefficients_A: Seq[Double], coefficients_B: Seq[Double]): Boolean = {
-    dsptools.Driver.execute(() => new ConstantCoefficientIIRFilter(params), TestSetup.dspTesterOptions) {
-      c => new IIRFilterTester(c, coefficients_A, coefficients_B, 0)
+  def apply(params: IIRFilterParams[SInt], coefficients_A: Seq[Double], coefficients_B: Seq[Double], debug: Int): Boolean = {
+    if (debug == 1) {
+      chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new ConstantCoefficientIIRFilter(params)) {
+        c => new IIRFilterTester(c, coefficients_A, coefficients_B, 0)
+      }
+    } else {
+      dsptools.Driver.execute(() => new ConstantCoefficientIIRFilter(params), TestSetup.dspTesterOptions) {
+        c => new IIRFilterTester(c, coefficients_A, coefficients_B, 0)
+      }
     }
   }
 }
 object FixedPointIIRFilterTester {
-  def apply(params: IIRFilterParams[FixedPoint], coefficients_A: Seq[Double], coefficients_B: Seq[Double]): Boolean = {
-    dsptools.Driver.execute(() => new ConstantCoefficientIIRFilter(params), TestSetup.dspTesterOptions) {
-      c => new IIRFilterTester(c, coefficients_A, coefficients_B,1)
+  def apply(params: IIRFilterParams[FixedPoint], coefficients_A: Seq[Double], coefficients_B: Seq[Double], debug: Int): Boolean = {
+    if (debug == 1) {
+      chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new ConstantCoefficientIIRFilter(params)) {
+        c => new IIRFilterTester(c, coefficients_A, coefficients_B, 0)
+      }
+    } else {
+      dsptools.Driver.execute(() => new ConstantCoefficientIIRFilter(params), TestSetup.dspTesterOptions) {
+        c => new IIRFilterTester(c, coefficients_A, coefficients_B, 1)
+      }
     }
   }
 }

@@ -9,6 +9,7 @@ class LineLengthSpec extends FlatSpec with Matchers {
   behavior of "lineLength"
 
   it should "multiply its input stream with correct coefficients at correct timesteps (UInt)" in {
+    val debug = 0
 
     for(i <- 0 until 15) {
       val window_size = pow(2,scala.util.Random.nextInt(6) + 1)
@@ -18,11 +19,12 @@ class LineLengthSpec extends FlatSpec with Matchers {
         val windowSize = window_size
       }
 
-      UIntLineLengthTester(params, window_size) should be (true)
+      UIntLineLengthTester(params, window_size, debug) should be (true)
     }
   }
 
   it should "multiply its input stream with correct coefficients at correct timesteps (SInt)" in {
+    val debug = 0
 
     for(i <- 0 until 15) {
       val window_size = pow(2,scala.util.Random.nextInt(6) + 1)
@@ -32,11 +34,12 @@ class LineLengthSpec extends FlatSpec with Matchers {
         val windowSize = window_size
       }
 
-      SIntLineLengthTester(params, window_size) should be (true)
+      SIntLineLengthTester(params, window_size, debug) should be (true)
     }
   }
 
   it should "multiply its input stream with correct coefficients at correct timesteps (FixedPoint)" in {
+    val debug = 0
 
     for(i <- 0 until 15) {
       val window_size = pow(2,scala.util.Random.nextInt(6) + 1)
@@ -48,7 +51,7 @@ class LineLengthSpec extends FlatSpec with Matchers {
         val windowSize = window_size
       }
 
-      FixedPointLineLengthTester(params, window_size) should be (true)
+      FixedPointLineLengthTester(params, window_size, debug) should be (true)
     }
   }
 }

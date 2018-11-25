@@ -51,16 +51,28 @@ class BandpowerTester[T <: Data](c: Bandpower[T], params: BandpowerParams[T], te
   }
 }
 object UIntBandpowerTester {
-  def apply(params: BandpowerParams[UInt]): Boolean = {
-    dsptools.Driver.execute(() => new Bandpower(params), TestSetup.dspTesterOptions) {
-      c => new BandpowerTester(c, params, 0)
+  def apply(params: BandpowerParams[UInt], debug: Int): Boolean = {
+    if (debug == 1) {
+      chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new Bandpower(params)){
+        c => new BandpowerTester(c, params, 0)
+      }
+    } else {
+      dsptools.Driver.execute(() => new Bandpower(params), TestSetup.dspTesterOptions) {
+        c => new BandpowerTester(c, params, 0)
+      }
     }
   }
 }
 object FixedPointBandpowerTester {
-  def apply(params: BandpowerParams[FixedPoint]): Boolean = {
-    dsptools.Driver.execute(() => new Bandpower(params), TestSetup.dspTesterOptions) {
-      c => new BandpowerTester(c, params, 1)
+  def apply(params: BandpowerParams[FixedPoint], debug: Int): Boolean = {
+    if (debug == 1) {
+      chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new Bandpower(params)){
+        c => new BandpowerTester(c, params, 1)
+      }
+    } else {
+      dsptools.Driver.execute(() => new Bandpower(params), TestSetup.dspTesterOptions) {
+        c => new BandpowerTester(c, params, 1)
+      }
     }
   }
 }

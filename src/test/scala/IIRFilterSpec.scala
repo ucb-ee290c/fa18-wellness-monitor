@@ -10,6 +10,7 @@ class IIRFilterSpec extends FlatSpec with Matchers {
   behavior of "ConstantCoefficientIIRFilter"
 
   it should "UInt banana" in {
+    val debug = 0
 
     for(i <- 0 until 4) {
       val tap_count = scala.util.Random.nextInt(8) + 1
@@ -25,11 +26,12 @@ class IIRFilterSpec extends FlatSpec with Matchers {
         val consts_B = coefficientsB.map(ConvertableTo[UInt].fromDouble(_))
       }
 
-      UIntIIRFilterTester(params, coefficientsA, coefficientsB) should be (true)
+      UIntIIRFilterTester(params, coefficientsA, coefficientsB, debug) should be (true)
     }
   }
 
   it should "SInt tomato" in {
+    val debug = 0
 
     for(i <- 0 until 4) {
       val tap_count = scala.util.Random.nextInt(8) + 1
@@ -45,11 +47,13 @@ class IIRFilterSpec extends FlatSpec with Matchers {
         val consts_B = coefficientsB.map(ConvertableTo[SInt].fromDouble(_))
 
       }
-      SIntIIRFilterTester(params, coefficientsA, coefficientsB) should be (true)
+      SIntIIRFilterTester(params, coefficientsA, coefficientsB, debug) should be (true)
     }
   }
 
   //it should "FixedPoint strawberry" in {
+  //  val debug = 0
+  //
   //  for(i <- 0 until 4) {
   //    val tap_count = scala.util.Random.nextInt(8) + 1
   //    val dataWidth = 64
@@ -63,7 +67,7 @@ class IIRFilterSpec extends FlatSpec with Matchers {
   //      val consts_A = coefficientsA.map(ConvertableTo[FixedPoint].fromDouble(_))
   //      val consts_B = coefficientsA.map(ConvertableTo[FixedPoint].fromDouble(_))
   //    }
-  //    FixedPointIIRFilterTester(params, coefficientsA, coefficientsB) should be (true)
+  //    FixedPointIIRFilterTester(params, coefficientsA, coefficientsB, debug) should be (true)
   //  }
   //}
 

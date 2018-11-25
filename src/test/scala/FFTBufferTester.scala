@@ -70,19 +70,29 @@ class FFTBufferTester[T <: chisel3.Data](c: FFTBuffer[T], lanes: Int) extends Ds
   }
 }
 object SIntFFTBufferTester {
-  def apply(params: FFTBufferParams[SInt], lanes: Int): Boolean = {
-    //chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new FFTBuffer(params)) {
-    dsptools.Driver.execute(() => new FFTBuffer(params), TestSetup.dspTesterOptions) {
-      c => new FFTBufferTester(c, lanes)
+  def apply(params: FFTBufferParams[SInt], lanes: Int, debug: Int): Boolean = {
+    if (debug == 1) {
+      chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new FFTBuffer(params)) {
+        c => new FFTBufferTester(c, lanes)
+      }
+    } else {
+      dsptools.Driver.execute(() => new FFTBuffer(params), TestSetup.dspTesterOptions) {
+        c => new FFTBufferTester(c, lanes)
+      }
     }
   }
 }
 
 object FixedPointFFTBufferTester {
-  def apply(params: FFTBufferParams[FixedPoint], lanes: Int): Boolean = {
-//    chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new FFTBuffer(params)) {
-    dsptools.Driver.execute(() => new FFTBuffer(params), TestSetup.dspTesterOptions) {
-      c => new FFTBufferTester(c, lanes)
+  def apply(params: FFTBufferParams[FixedPoint], lanes: Int, debug: Int): Boolean = {
+    if (debug == 1) {
+      chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new FFTBuffer(params)) {
+        c => new FFTBufferTester(c, lanes)
+      }
+    } else {
+      dsptools.Driver.execute(() => new FFTBuffer(params), TestSetup.dspTesterOptions) {
+        c => new FFTBufferTester(c, lanes)
+      }
     }
   }
 }
