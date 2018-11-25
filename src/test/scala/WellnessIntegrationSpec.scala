@@ -79,12 +79,12 @@ class wellnessIntegrationParameterBundle {
   // TODO: parameterize to match Chisel params below
   val bandpower1Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
     override val idxStartBin: Int = 0
-    override val idxEndBin: Int = 3
+    override val idxEndBin: Int = 4
     override val nBins: Int = 4
   }
   val bandpower2Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
     override val idxStartBin: Int = 0
-    override val idxEndBin: Int = 1
+    override val idxEndBin: Int = 2
     override val nBins: Int = 4
   }
   val pcaParams:pcaParamsTemplate = new pcaParamsTemplate {
@@ -153,12 +153,12 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       // TODO: parameterize to match Chisel params below
       override val bandpower1Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
         override val idxStartBin: Int = 0
-        override val idxEndBin: Int = 3
+        override val idxEndBin: Int = 4
         override val nBins: Int = 4
       }
       override val bandpower2Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
         override val idxStartBin: Int = 0
-        override val idxEndBin: Int = 1
+        override val idxEndBin: Int = 2
         override val nBins: Int = 4
       }
       override val pcaParams:pcaParamsTemplate = new pcaParamsTemplate {
@@ -235,14 +235,14 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
     // BandpowerParams
     val bandpower1Params = new BandpowerParams[SInt] {
       val idxStartBin = 0
-      val idxEndBin = 3
+      val idxEndBin = 4
       val nBins = nPts
       val genIn = DspComplex(SInt(64.W), SInt(64.W))
       val genOut = SInt(64.W)
     }
     val bandpower2Params = new BandpowerParams[SInt] {
       val idxStartBin = 0
-      val idxEndBin = 1
+      val idxEndBin = 2
       val nBins = nPts
       val genIn = DspComplex(SInt(64.W), SInt(64.W))
       val genOut = SInt(64.W)
@@ -345,12 +345,12 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       // TODO: parameterize to match Chisel params below
       override val bandpower1Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
         override val idxStartBin: Int = 0
-        override val idxEndBin: Int = 3
+        override val idxEndBin: Int = 4
         override val nBins: Int = 4
       }
       override val bandpower2Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
         override val idxStartBin: Int = 0
-        override val idxEndBin: Int = 1
+        override val idxEndBin: Int = 2
         override val nBins: Int = 4
       }
       override val pcaParams:pcaParamsTemplate = new pcaParamsTemplate {
@@ -425,14 +425,14 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
     // BandpowerParams
     val bandpower1Params = new BandpowerParams[FixedPoint] {
       val idxStartBin = 0
-      val idxEndBin = 3
+      val idxEndBin = 4
       val nBins = nPts
       val genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP))
       val genOut = FixedPoint(dataWidth.W,dataBP.BP)
     }
     val bandpower2Params = new BandpowerParams[FixedPoint] {
       val idxStartBin = 0
-      val idxEndBin = 1
+      val idxEndBin = 2
       val nBins = nPts
       val genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP))
       val genOut = FixedPoint(dataWidth.W,dataBP.BP)

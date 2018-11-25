@@ -27,7 +27,7 @@ object BandpowerIO {
 
 class Bandpower[T <: Data : Real : BinaryRepresentation](val params: BandpowerParams[T]) extends Module {
   require( params.idxEndBin > params.idxStartBin )
-  require( ( (params.idxEndBin - params.idxStartBin + 1) & (params.idxEndBin - params.idxStartBin + 1 - 1)) == 0 )
+  require( ( (params.idxEndBin - params.idxStartBin) & (params.idxEndBin - params.idxStartBin - 1)) == 0 )
   val io = IO(new BandpowerIO[T](params))
 
   // Take mag squared of FFT output
@@ -38,7 +38,7 @@ class Bandpower[T <: Data : Real : BinaryRepresentation](val params: BandpowerPa
   val p1 = VecInit(p2(0)) ++ p1Scaled ++ VecInit(p2(params.nBins/2))
   // Sum and divide by num of bins of interest squared
 //  io.out.bits := p1.slice(params.idxStartBin, params.idxEndBin).reduce(_ + _) >> (log10(params.idxEndBin - params.idxStartBin + 1) / log10(2)).toInt
-  io.out.bits := p1.slice(params.idxStartBin, params.idxEndBin).reduce(_ + _) >> (2 * log2(params.idxEndBin - params.idxStartBin + 1).toInt)
+  io.out.bits := p1.slice(params.idxStartBin, params.idxEndBin).reduce(_ + _) >> (2 * log2(params.idxEndBin - params.idxStartBin).toInt)
 
   io.out.valid := io.in.valid
   io.out.sync := io.in.sync

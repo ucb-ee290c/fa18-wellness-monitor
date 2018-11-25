@@ -20,12 +20,12 @@ class GoldenDoubleBandpower(nBins: Int, idxStartBin: Int, idxEndBin: Int, dataTy
     val p1 = Seq(p2(0)) ++ p1Scaled ++ Seq(p2(nBins / 2))
     // Sum and divide by num of bins of interest squared
     val output = p1.slice(idxStartBin, idxEndBin).sum
-    if((dataType == "chisel3.core.SInt") || (dataType == "chisel3.core.UInt")) floor(output/((idxEndBin - idxStartBin + 1) * (idxEndBin - idxStartBin + 1)))
-    else output/((idxEndBin - idxStartBin + 1) * (idxEndBin - idxStartBin + 1))
+    if((dataType == "chisel3.core.SInt") || (dataType == "chisel3.core.UInt")) floor(output/((idxEndBin - idxStartBin) * (idxEndBin - idxStartBin)))
+    else output/((idxEndBin - idxStartBin) * (idxEndBin - idxStartBin))
   }
 }
 
-class BandpowerTester[T <: Data](c: Bandpower[T], params: BandpowerParams[T], testType: Int = 0) extends DspTester(c) {
+class BandpowerTester[T <: Data](c: Bandpower[T], params: BandpowerParams[T]) extends DspTester(c) {
   val nBins = params.nBins
   val idxStartBin = params.idxStartBin
   val idxEndBin = params.idxEndBin
@@ -55,11 +55,11 @@ object UIntBandpowerTester {
   def apply(params: BandpowerParams[UInt], debug: Int): Boolean = {
     if (debug == 1) {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new Bandpower(params)){
-        c => new BandpowerTester(c, params, 0)
+        c => new BandpowerTester(c, params)
       }
     } else {
       dsptools.Driver.execute(() => new Bandpower(params), TestSetup.dspTesterOptions) {
-        c => new BandpowerTester(c, params, 0)
+        c => new BandpowerTester(c, params)
       }
     }
   }
@@ -68,11 +68,11 @@ object FixedPointBandpowerTester {
   def apply(params: BandpowerParams[FixedPoint], debug: Int): Boolean = {
     if (debug == 1) {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new Bandpower(params)){
-        c => new BandpowerTester(c, params, 1)
+        c => new BandpowerTester(c, params)
       }
     } else {
       dsptools.Driver.execute(() => new Bandpower(params), TestSetup.dspTesterOptions) {
-        c => new BandpowerTester(c, params, 1)
+        c => new BandpowerTester(c, params)
       }
     }
   }
