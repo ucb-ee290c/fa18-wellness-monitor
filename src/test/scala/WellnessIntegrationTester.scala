@@ -17,28 +17,22 @@ import scala.collection.Seq
 
 class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParameters: wellnessIntegrationParameterBundle) extends DspTester(c) {
 
-  val testType =
-    if ( (c.filter1Params.protoData.getClass.getTypeName == "chisel3.core.SInt") || (c.filter1Params.protoData.getClass.getTypeName == "chisel3.core.UInt") )
-      0
-    else
-      1
-
   // Instantiate golden models
   val filter1 = new GoldenDoubleFIRFilter(goldenModelParameters.filter1Params.taps)
-  val lineLength1 = new GoldenDoubleLineLength(goldenModelParameters.lineLength1Params.windowSize,testType)
+  val lineLength1 = new GoldenDoubleLineLength(goldenModelParameters.lineLength1Params.windowSize,c.lineLength1Params.protoData.getClass.getTypeName)
   val fftBuffer = new GoldenFFTBuffer(goldenModelParameters.fftBufferParams.lanes)
   val fft = new GoldenDoubleFFT
   val bandpower1 = new GoldenDoubleBandpower(
     goldenModelParameters.bandpower1Params.nBins,
     goldenModelParameters.bandpower1Params.idxStartBin,
     goldenModelParameters.bandpower1Params.idxEndBin,
-    testType
+    c.bandpower1Params.genOut.getClass.getTypeName
     )
   val bandpower2 = new GoldenDoubleBandpower(
     goldenModelParameters.bandpower2Params.nBins,
     goldenModelParameters.bandpower2Params.idxStartBin,
     goldenModelParameters.bandpower2Params.idxEndBin,
-    testType
+    c.bandpower2Params.genOut.getClass.getTypeName
   )
   val SVM = new GoldenSVM(
     goldenModelParameters.svmParams.nSupports,
@@ -55,31 +49,6 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   val referenceSVMSupportVector = Seq(Seq(1, 2), Seq(3, 4))
   val referenceSVMAlphaVector = Seq(Seq(7, 3))
   val referenceSVMIntercept = Seq(4)
-  /*val referencePCAVector = Seq(Seq(5, 0, -2), Seq(1, 2, 3))
-  val PCAVector = Wire(Vec(2, Vec(3, pcaParams.protoData)))
-  for(i <- 0 until 2) {
-    PCAVector(i) := VecInit(referencePCAVector(i).map(ConvertableTo[T].fromInt(_)))
-  }
-
-  val referenceSVMSupportVector = Seq(Seq(1, 2), Seq(3, 4))
-  val SVMSupportVector = Wire(Vec(2, Vec(2, svmParams.protoData)))
-  for(i <- 0 until 2) {
-    SVMSupportVector(i) := VecInit(referenceSVMSupportVector(i).map(ConvertableTo[T].fromInt(_)))
-  }
-
-  val referenceSVMAlphaVector = Seq(Seq(7, 3))
-  val SVMAlphaVector = Wire(Vec(1, Vec(2, svmParams.protoData)))
-  for(i <- 0 until 1) {
-    SVMAlphaVector(i) := VecInit(referenceSVMAlphaVector(i).map(ConvertableTo[T].fromInt(_)))
-  }
-
-  val referenceSVMIntercept = Seq(4)
-  val SVMIntercept = VecInit(referenceSVMIntercept.map(ConvertableTo[T].fromInt(_)))
-  //for(i <- 0 until 1) {
-  //  SVMIntercept(i) := VecInit(ConvertableTo[T].fromInt(referenceSVMIntercept(i)))
-  //} */
-
-  //poke(c.io.inConf.bits.confSVMIntercept, referenceSVMIntercept)
 
   val pcaVectorMemoryParams = new MemoryBufferParams[T] {
     override val protoData: T = c.configurationMemoryParams.protoData.cloneType

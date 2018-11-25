@@ -10,7 +10,7 @@ import breeze.numerics.floor
 
 import scala.util.Random
 
-class GoldenDoubleBandpower(nBins: Int, idxStartBin: Int, idxEndBin: Int, testType: Int) {
+class GoldenDoubleBandpower(nBins: Int, idxStartBin: Int, idxEndBin: Int, dataType: String) {
   def poke(input: Seq[Complex]): Double = {
     // Take mag squared of FFT output
     val p2 = input.map{ case x => x.abs * x.abs}
@@ -20,7 +20,7 @@ class GoldenDoubleBandpower(nBins: Int, idxStartBin: Int, idxEndBin: Int, testTy
     val p1 = Seq(p2(0)) ++ p1Scaled ++ Seq(p2(nBins / 2))
     // Sum and divide by num of bins of interest squared
     val output = p1.slice(idxStartBin, idxEndBin).sum
-    if(testType == 0) floor(output/((idxEndBin - idxStartBin + 1) * (idxEndBin - idxStartBin + 1)))
+    if((dataType == "chisel3.core.SInt") || (dataType == "chisel3.core.UInt")) floor(output/((idxEndBin - idxStartBin + 1) * (idxEndBin - idxStartBin + 1)))
     else output/((idxEndBin - idxStartBin + 1) * (idxEndBin - idxStartBin + 1))
   }
 }
@@ -29,10 +29,11 @@ class BandpowerTester[T <: Data](c: Bandpower[T], params: BandpowerParams[T], te
   val nBins = params.nBins
   val idxStartBin = params.idxStartBin
   val idxEndBin = params.idxEndBin
-  val bandpower = new GoldenDoubleBandpower(nBins, idxStartBin, idxEndBin, testType)
+  val dataType = c.params.genOut.getClass.getTypeName
+  val bandpower = new GoldenDoubleBandpower(nBins, idxStartBin, idxEndBin, dataType)
 
   var input = Seq.fill(nBins)(Complex(Random.nextDouble(), Random.nextDouble()))
-  if (testType == 0) { // UInt
+  if ((dataType == "chisel3.core.SInt") || (dataType == "chisel3.core.UInt")) { // UInt
     input = Seq.fill(nBins)(Complex(Random.nextInt(16), Random.nextInt(16)))
   }
 
@@ -42,12 +43,12 @@ class BandpowerTester[T <: Data](c: Bandpower[T], params: BandpowerParams[T], te
   poke(c.io.in.valid, value = 1)
   step(1)
 
-  if (testType == 1) { // FixedPoint
+  if ((dataType == "chisel3.core.SInt") || (dataType == "chisel3.core.UInt")) {
+    expect(c.io.out.bits, goldenModelResult, msg = s"Input: $input, Golden: $goldenModelResult, ${peek(c.io.out.bits)}")
+  } else {
     fixTolLSBs.withValue(19) {
       expect(c.io.out.bits, goldenModelResult, msg = s"Input: $input, Golden: $goldenModelResult, ${peek(c.io.out.bits)}")
     }
-  } else { // UInt
-      expect(c.io.out.bits, goldenModelResult, msg = s"Input: $input, Golden: $goldenModelResult, ${peek(c.io.out.bits)}")
   }
 }
 object UIntBandpowerTester {
