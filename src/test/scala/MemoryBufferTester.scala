@@ -3,6 +3,7 @@ package memorybuffer
 import wellness._
 import chisel3._
 import chisel3.core.FixedPoint
+import chisel3.util.log2Ceil
 import dsptools.numbers._
 import dsptools.DspTester
 
@@ -62,7 +63,7 @@ class GoldenMemoryBuffer(nColumns:Int, nRows:Int) {
   }
 }
 
-class MemoryBufferTester[T <: chisel3.Data](c: MemoryBuffer[T], params: MemoryBufferParams[T], testType: Int) extends DspTester(c) {
+class MemoryBufferTester[T <: chisel3.Data](c: MemoryBuffer[T], params: MemoryBufferParams[T], dataBP: Int, testType: Int) extends DspTester(c) {
   val MemoryBuffer = new GoldenMemoryBuffer(params.nColumns, params.nRows)
 
   for(i <- 0 until (params.nRows*params.nColumns + 1)) {
@@ -84,7 +85,8 @@ class MemoryBufferTester[T <: chisel3.Data](c: MemoryBuffer[T], params: MemoryBu
         if (testType == 0) {
           expect(c.io.out.bits(x)(y), goldenModelResult.regs(x)(y))
         } else {
-          fixTolLSBs.withValue(c.params.protoData.getWidth / 8) {
+          val tolerance = 0
+          fixTolLSBs.withValue(log2Ceil((goldenModelResult.regs(x)(y).abs*tolerance).toInt+1)+dataBP+1) {
             expect(c.io.out.bits(x)(y), goldenModelResult.regs(x)(y))
           }
         }
@@ -97,25 +99,25 @@ object UIntMemoryBufferTester {
   def apply(params: MemoryBufferParams[SInt], debug: Int): Boolean = {
     if (debug == 1) {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new MemoryBuffer(params)) {
-        c => new MemoryBufferTester(c, params, 0)
+        c => new MemoryBufferTester(c, params, 0,0)
       }
     } else {
       dsptools.Driver.execute(() => new MemoryBuffer(params), TestSetup.dspTesterOptions) {
-        c => new MemoryBufferTester(c, params, 0)
+        c => new MemoryBufferTester(c, params, 0,0)
       }
     }
   }
 }
 
 object FixedPointMemoryBufferTester {
-  def apply(params: MemoryBufferParams[FixedPoint], debug: Int): Boolean = {
+  def apply(params: MemoryBufferParams[FixedPoint], dataBP: Int, debug: Int): Boolean = {
     if (debug == 1) {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new MemoryBuffer(params)) {
-        c => new MemoryBufferTester(c, params, 1)
+        c => new MemoryBufferTester(c, params, dataBP, 1)
       }
     } else {
       dsptools.Driver.execute(() => new MemoryBuffer(params), TestSetup.dspTesterOptions) {
-        c => new MemoryBufferTester(c, params, 1)
+        c => new MemoryBufferTester(c, params, dataBP,1)
       }
     }
   }

@@ -2,6 +2,7 @@ package fft
 
 import wellness._
 import chisel3.core._
+import chisel3.util.log2Ceil
 import dsptools.DspTester
 
 import scala.collection.mutable
@@ -39,7 +40,7 @@ class GoldenFFTBuffer(lanes: Int) {
   }
 }
 
-class FFTBufferTester[T <: chisel3.Data](c: FFTBuffer[T], lanes: Int) extends DspTester(c) {
+class FFTBufferTester[T <: chisel3.Data](c: FFTBuffer[T], lanes: Int, dataBP: Int) extends DspTester(c) {
   val fftBuffer = new GoldenFFTBuffer(lanes)
 
   for(i <- 0 until 50) {
@@ -62,7 +63,8 @@ class FFTBufferTester[T <: chisel3.Data](c: FFTBuffer[T], lanes: Int) extends Ds
         expect(c.io.out.bits(i), goldenModelResult.regs(i), s"i $i, input $input, gm ${goldenModelResult.regs}, ${peek(c.io.out.bits)}")
       } else {
         // due to the series of multiply and accumulates, error actually blows up, let's be lenient
-        fixTolLSBs.withValue(16) { // at least the integer part must match
+        val tolerance = 0.1
+        fixTolLSBs.withValue(log2Ceil((goldenModelResult.regs(i).abs*tolerance).toInt+1)+dataBP+1) { // at least the integer part must match
           expect(c.io.out.bits(i), goldenModelResult.regs(i), s"i $i, input $input, gm ${goldenModelResult.regs}, ${peek(c.io.out.bits)}")
         }
       }
@@ -73,25 +75,25 @@ object SIntFFTBufferTester {
   def apply(params: FFTBufferParams[SInt], lanes: Int, debug: Int): Boolean = {
     if (debug == 1) {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new FFTBuffer(params)) {
-        c => new FFTBufferTester(c, lanes)
+        c => new FFTBufferTester(c, lanes, 0)
       }
     } else {
       dsptools.Driver.execute(() => new FFTBuffer(params), TestSetup.dspTesterOptions) {
-        c => new FFTBufferTester(c, lanes)
+        c => new FFTBufferTester(c, lanes, 0)
       }
     }
   }
 }
 
 object FixedPointFFTBufferTester {
-  def apply(params: FFTBufferParams[FixedPoint], lanes: Int, debug: Int): Boolean = {
+  def apply(params: FFTBufferParams[FixedPoint], lanes: Int, dataBP: Int, debug: Int): Boolean = {
     if (debug == 1) {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new FFTBuffer(params)) {
-        c => new FFTBufferTester(c, lanes)
+        c => new FFTBufferTester(c, lanes, dataBP)
       }
     } else {
       dsptools.Driver.execute(() => new FFTBuffer(params), TestSetup.dspTesterOptions) {
-        c => new FFTBufferTester(c, lanes)
+        c => new FFTBufferTester(c, lanes, dataBP)
       }
     }
   }

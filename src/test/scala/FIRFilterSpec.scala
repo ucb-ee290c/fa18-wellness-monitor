@@ -59,7 +59,7 @@ class FIRFilterSpec extends FlatSpec with Matchers {
         val taps = coefficients.toList.map(ConvertableTo[FixedPoint].fromDouble(_))
       }
 
-      FixedPointFIRFilterTester(params, coefficients, debug) should be (true)
+      FixedPointFIRFilterTester(params, coefficients, dataBP, debug) should be (true)
     }
   }
 }

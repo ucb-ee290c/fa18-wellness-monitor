@@ -51,7 +51,7 @@ class LineLengthSpec extends FlatSpec with Matchers {
         val windowSize = window_size
       }
 
-      FixedPointLineLengthTester(params, window_size, debug) should be (true)
+      FixedPointLineLengthTester(params, window_size, dataBP, debug) should be (true)
     }
   }
 }

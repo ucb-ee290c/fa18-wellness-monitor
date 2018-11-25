@@ -3,6 +3,7 @@ package features
 import breeze.numerics.{abs, floor}
 import wellness._
 import chisel3.core._
+import chisel3.util.log2Ceil
 import dsptools.DspTester
 
 import scala.collection.mutable
@@ -25,7 +26,7 @@ class GoldenDoubleLineLength(windowSize: Int, dataType: String) {
   }
 }
 
-class lineLengthFloatTester[T <: chisel3.Data](c: lineLength[T], windowSize: Int) extends DspTester(c) {
+class lineLengthFloatTester[T <: chisel3.Data](c: lineLength[T], windowSize: Int, dataBP: Int) extends DspTester(c) {
   val dataType = c.params.protoData.getClass.getTypeName
   val filter = new GoldenDoubleLineLength(windowSize, dataType)
 
@@ -46,7 +47,8 @@ class lineLengthFloatTester[T <: chisel3.Data](c: lineLength[T], windowSize: Int
     if ((dataType == "chisel3.core.SInt") || (dataType == "chisel3.core.UInt")) {
       expect(c.io.out.bits, goldenModelResult, s"i $i, input $input, gm $goldenModelResult, ${peek(c.io.out.bits)}")
     } else {
-      fixTolLSBs.withValue(c.params.protoData.getWidth / 2) {
+      val tolerance = 0.1
+      fixTolLSBs.withValue(log2Ceil((goldenModelResult.abs*tolerance).toInt+1)+dataBP+1) {
         expect(c.io.out.bits, goldenModelResult, s"i $i, input $input, gm $goldenModelResult, ${peek(c.io.out.bits)}")
       }
     }
@@ -58,11 +60,11 @@ object UIntLineLengthTester {
   def apply(params: lineLengthParams[UInt], windowSize: Int, debug: Int): Boolean = {
     if (debug == 1) {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new lineLength(params)) {
-        c => new lineLengthFloatTester(c, windowSize)
+        c => new lineLengthFloatTester(c, windowSize, 0)
       }
     } else {
       dsptools.Driver.execute(() => new lineLength(params), TestSetup.dspTesterOptions) {
-        c => new lineLengthFloatTester(c, windowSize)
+        c => new lineLengthFloatTester(c, windowSize, 0)
       }
     }
   }
@@ -71,24 +73,24 @@ object SIntLineLengthTester {
   def apply(params: lineLengthParams[SInt], windowSize: Int, debug: Int): Boolean = {
     if (debug == 1) {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new lineLength(params)) {
-        c => new lineLengthFloatTester(c, windowSize)
+        c => new lineLengthFloatTester(c, windowSize, 0)
       }
     } else {
       dsptools.Driver.execute(() => new lineLength(params), TestSetup.dspTesterOptions) {
-        c => new lineLengthFloatTester(c, windowSize)
+        c => new lineLengthFloatTester(c, windowSize, 0)
       }
     }
   }
 }
 object FixedPointLineLengthTester {
-  def apply(params: lineLengthParams[FixedPoint], windowSize: Int, debug: Int): Boolean = {
+  def apply(params: lineLengthParams[FixedPoint], windowSize: Int, dataBP: Int, debug: Int): Boolean = {
     if (debug == 1) {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new lineLength(params)) {
-        c => new lineLengthFloatTester(c, windowSize)
+        c => new lineLengthFloatTester(c, windowSize, dataBP)
       }
     } else {
       dsptools.Driver.execute(() => new lineLength(params), TestSetup.dspTesterOptions) {
-        c => new lineLengthFloatTester(c, windowSize)
+        c => new lineLengthFloatTester(c, windowSize, dataBP)
       }
     }
   }

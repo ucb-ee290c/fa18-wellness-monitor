@@ -2,6 +2,7 @@ package firFilter
 
 import wellness._
 import chisel3.core._
+import chisel3.util.log2Ceil
 import dsptools.DspTester
 
 class GoldenDoubleFIRFilter(taps: Seq[Double]) {
@@ -17,12 +18,12 @@ class GoldenDoubleFIRFilter(taps: Seq[Double]) {
   }
 }
 
-class FIRFilterFloatTester[T <: chisel3.Data](c: ConstantCoefficientFIRFilter[T], coefficients: Seq[Double], testType: Int) extends DspTester(c) {
+class FIRFilterFloatTester[T <: chisel3.Data](c: ConstantCoefficientFIRFilter[T], coefficients: Seq[Double], dataBP: Int) extends DspTester(c) {
   val filter = new GoldenDoubleFIRFilter(coefficients)
 
   for(i <- 0 until 100) {
     var input = scala.util.Random.nextFloat*8
-    if (testType == 0) {
+    if ((c.params.protoData.getClass.getTypeName == "chisel3.core.UInt") || (c.params.protoData.getClass.getTypeName == "chisel3.core.SInt")) {
       input = scala.util.Random.nextInt(8)
     }
 
@@ -34,10 +35,11 @@ class FIRFilterFloatTester[T <: chisel3.Data](c: ConstantCoefficientFIRFilter[T]
 
     step(1)
 
-    if (testType == 0) {
+    if ((c.params.protoData.getClass.getTypeName == "chisel3.core.UInt") || (c.params.protoData.getClass.getTypeName == "chisel3.core.SInt")) {
       expect(c.io.out.bits, goldenModelResult, s"i $i, input $input, gm $goldenModelResult, ${peek(c.io.out.bits)}")
     } else {
-      fixTolLSBs.withValue(c.params.protoData.getWidth / 2) {
+      val tolerance = 0.1
+      fixTolLSBs.withValue(log2Ceil((goldenModelResult.abs*tolerance).toInt+1)+dataBP+1) {
         expect(c.io.out.bits, goldenModelResult, s"i $i, input $input, gm $goldenModelResult, ${peek(c.io.out.bits)}")
       }
     }
@@ -72,14 +74,14 @@ object SIntFIRFilterTester {
   }
 }
 object FixedPointFIRFilterTester {
-  def apply(params: FIRFilterParams[FixedPoint], coefficients: Seq[Double], debug: Int): Boolean = {
+  def apply(params: FIRFilterParams[FixedPoint], coefficients: Seq[Double], dataBP: Int, debug: Int): Boolean = {
     if (debug == 1) {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new ConstantCoefficientFIRFilter(params)) {
-        c => new FIRFilterFloatTester(c, coefficients, 1)
+        c => new FIRFilterFloatTester(c, coefficients, dataBP)
       }
     } else {
       dsptools.Driver.execute(() => new ConstantCoefficientFIRFilter(params), TestSetup.dspTesterOptions) {
-        c => new FIRFilterFloatTester(c, coefficients, 1)
+        c => new FIRFilterFloatTester(c, coefficients, dataBP)
       }
     }
   }

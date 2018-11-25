@@ -27,30 +27,36 @@ class FFTBufferSpec extends FlatSpec with Matchers {
   it should "convert from stream to parallel (FixedPoint)" in {
     val debug = 0
 
+    val dataWidth = 32
+    val dataBP = 8
+
     for(i <- 0 until 15) {
       val laneCount = scala.util.Random.nextInt(15) + 1
 
       val params = new FFTBufferParams[FixedPoint] {
-        val protoData = FixedPoint(64.W,16.BP)
+        val protoData = FixedPoint(dataWidth.W,dataBP.BP)
         val lanes = laneCount
       }
 
-      FixedPointFFTBufferTester(params, laneCount, debug) should be (true)
+      FixedPointFFTBufferTester(params, laneCount, dataBP, debug) should be (true)
     }
   }
 
   it should "convert from stream to parallel (Fixed Point)" in {
     val debug = 0
 
+    val dataWidth = 32
+    val dataBP = 8
+
     for(i <- 0 until 15) {
       val laneCount = scala.util.Random.nextInt(15) + 1
 
       val params = new FFTBufferParams[FixedPoint] {
-        val protoData = FixedPoint(32.W,8.BP)
+        val protoData = FixedPoint(dataWidth.W,dataBP.BP)
         val lanes = laneCount
       }
 
-      FixedPointFFTBufferTester(params, laneCount, debug) should be (true)
+      FixedPointFFTBufferTester(params, laneCount, dataBP, debug) should be (true)
     }
   }
 }

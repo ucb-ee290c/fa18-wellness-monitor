@@ -25,14 +25,16 @@ class BandpowerSpec extends FlatSpec with Matchers {
   it should "sum squares of inputs (FixedPoint)" in {
     val debug = 0
 
+    val dataWidth = 35
+    val dataBP = 19
     val params = new BandpowerParams[FixedPoint] {
       val idxStartBin = 0
       val idxEndBin = 64
       val nBins = 128
-      val genIn = DspComplex(FixedPoint(35.W, 19.BP), FixedPoint(35.W, 19.BP))
-      val genOut = FixedPoint(35.W, 19.BP)
+      val genIn = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP))
+      val genOut = FixedPoint(dataWidth.W, dataBP.BP)
     }
 
-    FixedPointBandpowerTester(params, debug) should be (true)
+    FixedPointBandpowerTester(params, dataBP, debug) should be (true)
   }
 }

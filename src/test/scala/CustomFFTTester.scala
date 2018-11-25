@@ -10,6 +10,7 @@ import scala.util.Random
 import breeze.math.Complex
 import breeze.signal.fourierTr
 import breeze.linalg.DenseVector
+import chisel3.util.log2Ceil
 
 class GoldenDoubleFFT {
   def poke(tone: Seq[Complex]): Seq[Complex] = {
@@ -18,7 +19,7 @@ class GoldenDoubleFFT {
   }
 }
 
-class CustomFFTTester[T <: Data](c: FFT[T], config: FFTConfig[FixedPoint]) extends DspTester(c) {
+class CustomFFTTester[T <: Data](c: FFT[T], config: FFTConfig[FixedPoint], dataBP: Int) extends DspTester(c) {
 
   val fft = new GoldenDoubleFFT
   for (i <- 0 until 10) {
@@ -29,22 +30,23 @@ class CustomFFTTester[T <: Data](c: FFT[T], config: FFTConfig[FixedPoint]) exten
     poke(c.io.in.valid, value = 1)
     step(1)
     for (i <- c.io.out.bits.indices) {
-      fixTolLSBs.withValue(19) {
+      val tolerance = 0.1
+      fixTolLSBs.withValue(log2Ceil((expected(i).abs*tolerance).toInt+1)+dataBP+1) {
         expect(c.io.out.bits(i), expected(i))
       }
     }
   }
 }
 object FixedPointFFTTester{
-  def apply(config: FFTConfig[FixedPoint], debug: Int): Boolean = {
+  def apply(config: FFTConfig[FixedPoint], dataBP: Int, debug: Int): Boolean = {
     implicit val p: Parameters = null
     if (debug == 1) {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new FFT(config)) {
-        c => new CustomFFTTester(c, config)
+        c => new CustomFFTTester(c, config, dataBP)
       }
     } else {
       dsptools.Driver.execute(() => new FFT(config), TestSetup.dspTesterOptions) {
-        c => new CustomFFTTester(c, config)
+        c => new CustomFFTTester(c, config, dataBP)
       }
     }
   }

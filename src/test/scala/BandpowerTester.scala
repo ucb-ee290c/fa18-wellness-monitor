@@ -7,6 +7,7 @@ import dsptools.numbers._
 import dsptools.DspTester
 import breeze.math.Complex
 import breeze.numerics.floor
+import chisel3.util.log2Ceil
 
 import scala.util.Random
 
@@ -25,7 +26,7 @@ class GoldenDoubleBandpower(nBins: Int, idxStartBin: Int, idxEndBin: Int, dataTy
   }
 }
 
-class BandpowerTester[T <: Data](c: Bandpower[T], params: BandpowerParams[T]) extends DspTester(c) {
+class BandpowerTester[T <: Data](c: Bandpower[T], params: BandpowerParams[T], dataBP: Int) extends DspTester(c) {
   val nBins = params.nBins
   val idxStartBin = params.idxStartBin
   val idxEndBin = params.idxEndBin
@@ -46,7 +47,8 @@ class BandpowerTester[T <: Data](c: Bandpower[T], params: BandpowerParams[T]) ex
   if ((dataType == "chisel3.core.SInt") || (dataType == "chisel3.core.UInt")) {
     expect(c.io.out.bits, goldenModelResult, msg = s"Input: $input, Golden: $goldenModelResult, ${peek(c.io.out.bits)}")
   } else {
-    fixTolLSBs.withValue(19) {
+    val tolerance = 0.1
+    fixTolLSBs.withValue(log2Ceil((goldenModelResult.abs*tolerance).toInt+1)+dataBP+1) {
       expect(c.io.out.bits, goldenModelResult, msg = s"Input: $input, Golden: $goldenModelResult, ${peek(c.io.out.bits)}")
     }
   }
@@ -55,24 +57,24 @@ object UIntBandpowerTester {
   def apply(params: BandpowerParams[UInt], debug: Int): Boolean = {
     if (debug == 1) {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new Bandpower(params)){
-        c => new BandpowerTester(c, params)
+        c => new BandpowerTester(c, params, 0)
       }
     } else {
       dsptools.Driver.execute(() => new Bandpower(params), TestSetup.dspTesterOptions) {
-        c => new BandpowerTester(c, params)
+        c => new BandpowerTester(c, params, 0)
       }
     }
   }
 }
 object FixedPointBandpowerTester {
-  def apply(params: BandpowerParams[FixedPoint], debug: Int): Boolean = {
+  def apply(params: BandpowerParams[FixedPoint], dataBP: Int, debug: Int): Boolean = {
     if (debug == 1) {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new Bandpower(params)){
-        c => new BandpowerTester(c, params)
+        c => new BandpowerTester(c, params, dataBP)
       }
     } else {
       dsptools.Driver.execute(() => new Bandpower(params), TestSetup.dspTesterOptions) {
-        c => new BandpowerTester(c, params)
+        c => new BandpowerTester(c, params, dataBP)
       }
     }
   }

@@ -67,7 +67,7 @@ class IIRFilterSpec extends FlatSpec with Matchers {
   //      val consts_A = coefficientsA.map(ConvertableTo[FixedPoint].fromDouble(_))
   //      val consts_B = coefficientsA.map(ConvertableTo[FixedPoint].fromDouble(_))
   //    }
-  //    FixedPointIIRFilterTester(params, coefficientsA, coefficientsB, debug) should be (true)
+  //    FixedPointIIRFilterTester(params, coefficientsA, coefficientsB, dataBP, debug) should be (true)
   //  }
   //}
 

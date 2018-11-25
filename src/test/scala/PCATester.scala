@@ -4,8 +4,10 @@ import wellness._
 import chisel3._
 import dsptools.numbers._
 import dsptools.DspTester
+
 import scala.collection._
 import chisel3.core.FixedPoint
+import chisel3.util.log2Ceil
 
 class GoldenIntPCA(nDimensions: Int, nFeatures: Int) {
   def poke(input: Seq[Double], PCAVector: Seq[Seq[Double]]): Seq[Double] = {
@@ -18,7 +20,7 @@ class GoldenIntPCA(nDimensions: Int, nFeatures: Int) {
   }
 }
 
-class PCATester[T <: Data](c: PCA[T], nDimensions: Int, nFeatures: Int) extends DspTester(c) {
+class PCATester[T <: Data](c: PCA[T], nDimensions: Int, nFeatures: Int, dataBP: Int) extends DspTester(c) {
   val PCA = new GoldenIntPCA(nDimensions,nFeatures)
 
   var input = Seq.fill(nDimensions)(0D)
@@ -53,8 +55,9 @@ class PCATester[T <: Data](c: PCA[T], nDimensions: Int, nFeatures: Int) extends 
     if (c.params.protoData.getClass.getTypeName == "chisel3.core.SInt") {
       expect(c.io.out.bits(i), goldenModelResult(i))
     } else {
+      val tolerance = 0.1
       // due to the series of multiply and accumulates, error actually blows up, let's be lenient
-      fixTolLSBs.withValue(16) { // at least the integer part must match
+      fixTolLSBs.withValue(log2Ceil((goldenModelResult(i).abs*tolerance).toInt+1)+dataBP+1) { // at least the integer part must match
         expect(c.io.out.bits(i), goldenModelResult(i))
       }
     }
@@ -65,25 +68,25 @@ object IntPCATester {
   def apply(params: PCAParams[SInt], debug: Int): Boolean = {
     if (debug == 1) {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new PCA(params)) {
-        c => new PCATester(c, params.nDimensions, params.nFeatures)
+        c => new PCATester(c, params.nDimensions, params.nFeatures, 0)
       }
     } else {
       dsptools.Driver.execute(() => new PCA(params), TestSetup.dspTesterOptions) {
-        c => new PCATester(c, params.nDimensions, params.nFeatures)
+        c => new PCATester(c, params.nDimensions, params.nFeatures, 0)
       }
     }
   }
 }
 
 object FixedPointPCATester {
-  def apply(params: PCAParams[FixedPoint], debug: Int): Boolean = {
+  def apply(params: PCAParams[FixedPoint], dataBP: Int, debug: Int): Boolean = {
     if (debug == 1) {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new PCA(params)) {
-        c => new PCATester(c, params.nDimensions, params.nFeatures)
+        c => new PCATester(c, params.nDimensions, params.nFeatures, dataBP)
       }
     } else {
       dsptools.Driver.execute(() => new PCA(params), TestSetup.dspTesterOptions) {
-        c => new PCATester(c, params.nDimensions, params.nFeatures)
+        c => new PCATester(c, params.nDimensions, params.nFeatures, dataBP)
       }
     }
   }

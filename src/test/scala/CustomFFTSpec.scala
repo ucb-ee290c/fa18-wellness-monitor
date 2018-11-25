@@ -24,6 +24,8 @@ class CustomFFTSpec extends FlatSpec with Matchers {
 
   it should "FFT" in {
     val debug = 0
-    FixedPointFFTTester(config, debug) should be (true)
+    val dataWidth = totalWidth
+    val dataBP = fractionalBits
+    FixedPointFFTTester(config, dataBP, debug) should be (true)
   }
 }

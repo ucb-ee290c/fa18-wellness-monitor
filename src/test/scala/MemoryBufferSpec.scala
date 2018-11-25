@@ -24,14 +24,17 @@ class MemoryBufferSpec extends FlatSpec with Matchers {
   it should "FixedPoint Buffer" in {
     val debug = 0
 
+    val dataWidth = 32
+    val dataBP = 8
+
     for(i <- 0 until 15) {
       val params = new MemoryBufferParams[FixedPoint] {
-        val protoData = FixedPoint(32.W,8.BP)
+        val protoData = FixedPoint(dataWidth.W,dataBP.BP)
         val nRows = scala.util.Random.nextInt(15) + 1
         val nColumns = scala.util.Random.nextInt(15) + 1
       }
 
-      FixedPointMemoryBufferTester(params, debug) should be (true)
+      FixedPointMemoryBufferTester(params, dataBP, debug) should be (true)
     }
   }
 }
