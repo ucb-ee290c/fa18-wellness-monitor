@@ -39,10 +39,10 @@ object ConfigurationMemoryIO {
 }
 
 class ConfigurationMemory[T <: chisel3.Data : Real : Order : BinaryRepresentation](val params: ConfigurationMemoryParams[T]) extends Module {
-  require(params.nDimensions >= 1)
-  require(params.nFeatures >= 1)
-  require(params.nSupports >= 1)
-  require(params.nClassifiers >= 1)
+  require(params.nDimensions >= 1, "nDimensions must be at least 1")
+  require(params.nFeatures >= 1, "nFeatures must be at least 1")
+  require(params.nSupports >= 1, "nSupports must be at least 1")
+  require(params.nClassifiers >= 1, "nClassifiers must be at least 1")
   val io = IO(ConfigurationMemoryIO[T](params))
   io.out.sync := false.B
   io.out.valid := true.B

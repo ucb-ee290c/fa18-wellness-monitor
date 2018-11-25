@@ -34,7 +34,7 @@ object FIRFilterIO {
 }
 
 class ConstantCoefficientFIRFilter[T <: chisel3.Data : Ring](val params: FIRFilterParams[T]) extends Module {
-  require(params.taps.nonEmpty)
+  require(params.taps.nonEmpty, "Missing filter taps")
   val io = IO(FIRFilterIO[T](params))
 
   val shift_en = Wire(Bool())

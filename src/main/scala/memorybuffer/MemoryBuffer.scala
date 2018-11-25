@@ -27,8 +27,8 @@ object MemoryBufferIO {
 
 // stripped from Cem's FFTBuffer implementation :D
 class MemoryBuffer[T <: chisel3.Data : Real](val params: MemoryBufferParams[T]) extends Module {
-  require(params.nRows > 0)
-  require(params.nColumns > 0)
+  require(params.nRows > 0, "Number of rows must be greater than 0")
+  require(params.nColumns > 0, "Number of columns must be greater than 0")
   val io = IO(MemoryBufferIO[T](params))
 
   val totalSize = params.nRows * params.nColumns

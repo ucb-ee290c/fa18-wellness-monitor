@@ -35,8 +35,8 @@ object IIRFilterIO {
 }
 
 class ConstantCoefficientIIRFilter[T <: chisel3.Data : Ring](val params: IIRFilterParams[T]) extends Module {
-  require(params.consts_A.nonEmpty)
-  require(params.consts_B.nonEmpty)
+  require(params.consts_A.nonEmpty, "Missing filter taps")
+  require(params.consts_B.nonEmpty, "Missing filter taps")
   val io = IO(IIRFilterIO[T](params))
 
   val shift_en = Wire(Bool())
