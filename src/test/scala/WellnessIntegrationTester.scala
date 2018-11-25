@@ -1,5 +1,7 @@
 package wellness
 
+import java.io._
+
 import breeze.math.Complex
 import chisel3._
 import chisel3.experimental.FixedPoint
@@ -152,6 +154,39 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     referenceInput = rows.flatMap(_.map(_.toDouble).toSeq)
   }
 
+  if (testType == 1) { // create the .h file to contain the reference arrays
+    val newFile = new File("tests/reference_array.h")
+    if (newFile.exists) { newFile.delete() } // do an overwrite for this new test
+
+    val file = new FileWriter("tests/reference_array.h",true)
+    // write out the preambles and define statements
+    file.write( "#ifndef __ARRAY_H__\n" +
+                      "#define __ARRAY_H__\n\n" +
+                      f"#define DIMENSIONS ${c.configurationMemoryParams.nDimensions}         // number of channels going into the PCA\n" +
+                      f"#define FEATURES ${c.configurationMemoryParams.nFeatures}           // number of reduced dimensions going into the SVM\n" +
+                      f"#define SUPPORTS ${c.configurationMemoryParams.nSupports}           // number of support vectors for SVM\n" +
+                      f"#define CLASSIFIERS ${c.configurationMemoryParams.nClassifiers}        // number of classifiers created\n\n")
+
+    // write out all the configuration matrices to the file
+    file.write("static double pcaVector[FEATURES][DIMENSIONS] = ")
+    file.write(referencePCAVector.map(_.mkString("{", ", ", "}")).mkString("{", ", ", "};\n"))
+
+    file.write("static double SVMSupportVector[SUPPORTS][FEATURES] = ")
+    file.write(referenceSVMSupportVector.map(_.mkString("{", ", ", "}")).mkString("{", ", ", "};\n"))
+
+    file.write("static double SVMAlphaVector[CLASSIFIERS][SUPPORTS] = ")
+    file.write(referenceSVMAlphaVector.map(_.mkString("{", ", ", "}")).mkString("{", ", ", "};\n"))
+
+    file.write("static double SVMIntercept[CLASSIFIERS] = ")
+    file.write(referenceSVMIntercept.mkString("{", ", ", "};\n"))
+
+    file.write("static double in[] = ")
+    file.write(referenceInput.mkString("{", ", ", "};\n"))
+
+    file.close()
+  }
+
+  val outputContainer = ArrayBuffer[Array[Double]]() // this will hold the rawVotes from SVM for printout
   for (i <- 0 until 100) {
 
     var input = scala.util.Random.nextDouble * 6 - 3
@@ -249,7 +284,19 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
         }
       }
 
+      outputContainer += svmResult(0).toArray // inside the valid checks
     }
+    //outputContainer += svmResult(0).toArray // outside the valid checks
+  }
+
+  if (testType == 1) { // write out the expected rawVotes to the file
+    val file = new FileWriter("tests/reference_array.h",true)
+    file.write("static double ex[][2] = ")
+    file.write(outputContainer.map(_.mkString("{", ", ", "}")).mkString("{", ", ", "};\n\n"))
+
+    file.write("#endif") // the end of the .h file
+
+    file.close()
   }
 }
 
