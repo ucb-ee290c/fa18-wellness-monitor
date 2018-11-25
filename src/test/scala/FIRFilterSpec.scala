@@ -2,8 +2,6 @@ package firFilter
 
 import chisel3._
 import chisel3.core.FixedPoint
-import dspblocks.ShiftRegisterWithReset
-import dspjunctions.ValidWithSync
 import dsptools.numbers._
 import org.scalatest.{FlatSpec, Matchers}
 

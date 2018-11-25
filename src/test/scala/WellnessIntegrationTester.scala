@@ -2,10 +2,7 @@ package wellness
 
 import breeze.math.Complex
 import chisel3._
-import chisel3.util._
 import chisel3.experimental.FixedPoint
-import dspblocks._
-import dspjunctions.ValidWithSync
 import dsptools.DspTester
 import dsptools.numbers._
 import firFilter._
@@ -14,15 +11,9 @@ import features._
 import pca._
 import memorybuffer._
 import svm._
-import freechips.rocketchip.amba.axi4stream._
 import freechips.rocketchip.config.Parameters
-import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.regmapper._
-import freechips.rocketchip.tilelink._
-import freechips.rocketchip.subsystem._
 
 import scala.collection.Seq
-import scala.collection.mutable
 
 class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParameters: wellnessIntegrationParameterBundle) extends DspTester(c) {
 

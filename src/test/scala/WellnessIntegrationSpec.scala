@@ -1,6 +1,6 @@
 package wellness
 
-import chisel3.{UInt, _}
+import chisel3._
 import chisel3.core.FixedPoint
 import dsptools.numbers._
 import features._

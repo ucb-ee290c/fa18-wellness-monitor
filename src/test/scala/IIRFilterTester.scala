@@ -6,8 +6,6 @@ import chisel3.core._
 import dsptools.DspTester
 
 import chisel3.core.FixedPoint
-import dsptools.numbers.ConvertableTo
-
 
 class GoldenIIRFilter(taps_A: Seq[Double], taps_B: Seq[Double]) {
     var pseudoRegisters = List.fill(taps_A.length)(0.toDouble)

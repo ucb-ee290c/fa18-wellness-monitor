@@ -3,7 +3,6 @@ package firFilter
 import wellness._
 import chisel3.core._
 import dsptools.DspTester
-import dsptools.numbers.ConvertableTo
 
 class GoldenDoubleFIRFilter(taps: Seq[Double]) {
   var pseudoRegisters = List.fill(taps.length)(0.toDouble)

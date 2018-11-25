@@ -1,11 +1,8 @@
 package wellness
 
-import breeze.numerics.pow
 import chisel3._
 import dsptools.DspTester
 import memorybuffer._
-
-import scala.collection.mutable
 
 class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt], params: ConfigurationMemoryParams[SInt]) extends DspTester(c) {
   val PCAVectorMemoryBuffer = new GoldenMemoryBuffer(c.pcaVectorMemoryParams.nColumns,c.pcaVectorMemoryParams.nRows)

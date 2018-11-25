@@ -4,7 +4,6 @@ import breeze.numerics.{abs, floor}
 import wellness._
 import chisel3.core._
 import dsptools.DspTester
-import dsptools.numbers.ConvertableTo
 
 import scala.collection.mutable
 

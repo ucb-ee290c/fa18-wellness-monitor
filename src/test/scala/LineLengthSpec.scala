@@ -3,10 +3,7 @@ package features
 import breeze.numerics.pow
 import chisel3._
 import chisel3.core.FixedPoint
-import dsptools.numbers._
 import org.scalatest.{FlatSpec, Matchers}
-
-import scala.collection.mutable
 
 class LineLengthSpec extends FlatSpec with Matchers {
   behavior of "lineLength"
