@@ -14,7 +14,7 @@ class BandpowerSpec extends FlatSpec with Matchers {
     val params = new BandpowerParams[UInt] {
       val idxStartBin = 0
       val idxEndBin = 64
-      val nBins = 64
+      val nBins = 128
       val genIn = DspComplex(UInt(16.W), UInt(16.W))
       val genOut = UInt(16.W)
     }
@@ -28,7 +28,7 @@ class BandpowerSpec extends FlatSpec with Matchers {
     val params = new BandpowerParams[FixedPoint] {
       val idxStartBin = 0
       val idxEndBin = 64
-      val nBins = 64
+      val nBins = 128
       val genIn = DspComplex(FixedPoint(35.W, 19.BP), FixedPoint(35.W, 19.BP))
       val genOut = FixedPoint(35.W, 19.BP)
     }

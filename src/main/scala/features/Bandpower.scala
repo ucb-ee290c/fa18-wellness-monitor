@@ -29,6 +29,9 @@ class Bandpower[T <: Data : Real : BinaryRepresentation](val params: BandpowerPa
   require( params.idxEndBin > params.idxStartBin, "End index must be greater than start index")
   require( ( (params.idxEndBin - params.idxStartBin) & (params.idxEndBin - params.idxStartBin - 1)) == 0 ,
                 "Difference between the two indices must be a power of 2")
+  require( params.nBins/2 >= params.idxEndBin,
+                f"End index ${params.idxEndBin} must be at most half of the total number of bins ${params.nBins}")
+
   val io = IO(new BandpowerIO[T](params))
 
   // Take mag squared of FFT output

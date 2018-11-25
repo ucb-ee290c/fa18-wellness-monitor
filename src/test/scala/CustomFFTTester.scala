@@ -19,16 +19,19 @@ class GoldenDoubleFFT {
 }
 
 class CustomFFTTester[T <: Data](c: FFT[T], config: FFTConfig[FixedPoint]) extends DspTester(c) {
-  val tone = (0 until config.n).map(x => Complex(Random.nextDouble(), 0.0))
-  val fft = new GoldenDoubleFFT
-  val expected = fft.poke(tone)
 
-  tone.zip(c.io.in.bits).foreach { case(sig, port) => poke(port, sig) }
-  poke(c.io.in.valid, value = 1)
-  step(1)
-  for (i <- c.io.out.bits.indices) {
-    fixTolLSBs.withValue(19) {
-      expect(c.io.out.bits(i), expected(i), msg = s"Input: $tone, Expected: ${expected(i)}, ${peek(c.io.out.bits(i))}")
+  val fft = new GoldenDoubleFFT
+  for (i <- 0 until 10) {
+    val tone = (0 until config.n).map(x => Complex(Random.nextDouble() * 100 - 50, 0.0))
+    val expected = fft.poke(tone)
+
+    tone.zip(c.io.in.bits).foreach { case (sig, port) => poke(port, sig) }
+    poke(c.io.in.valid, value = 1)
+    step(1)
+    for (i <- c.io.out.bits.indices) {
+      fixTolLSBs.withValue(19) {
+        expect(c.io.out.bits(i), expected(i))
+      }
     }
   }
 }

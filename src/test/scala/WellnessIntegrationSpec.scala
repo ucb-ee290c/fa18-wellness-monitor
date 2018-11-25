@@ -11,6 +11,7 @@ import org.scalatest.{FlatSpec, Matchers}
 import pca._
 import svm._
 
+import scala.collection.mutable.ArrayBuffer
 import scala.collection.{Seq, mutable}
 
 abstract class filterParamsTemplate {
@@ -64,119 +65,118 @@ abstract class configurationMemoryParamsTemplate {
 
 class wellnessIntegrationParameterBundle {
 
+  // the numbers here are actually irrelevant, you just need to put something
+  // these will be overwritten anyway in the WellnessIntegrationSpec class
+  // the 'requires' are not even being checked!
   val filter1Params:filterParamsTemplate = new filterParamsTemplate {
-    override val taps = Seq(1.toDouble,2.toDouble,3.toDouble,4.toDouble,5.toDouble,0.toDouble)
+    val taps = Seq(0.toDouble)
   }
   val lineLength1Params:lineLengthParamsTemplate = new lineLengthParamsTemplate {
-    override val windowSize = 2
+    val windowSize = 0
   }
   val fftBufferParams:fftBufferParamsTemplate = new fftBufferParamsTemplate {
-    override val lanes: Int = 4
+    val lanes: Int = 0
   }
   val fftConfig: fftConfigTemplate = new fftConfigTemplate {
-    override val nPts: Int = 4
+    val nPts: Int = 0
   }
-  // TODO: parameterize to match Chisel params below
   val bandpower1Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
-    override val idxStartBin: Int = 0
-    override val idxEndBin: Int = 4
-    override val nBins: Int = 4
+    val idxStartBin: Int = 0
+    val idxEndBin: Int = 0
+    val nBins: Int = 0
   }
   val bandpower2Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
-    override val idxStartBin: Int = 0
-    override val idxEndBin: Int = 2
-    override val nBins: Int = 4
+    val idxStartBin: Int = 0
+    val idxEndBin: Int = 0
+    val nBins: Int = 0
   }
   val pcaParams:pcaParamsTemplate = new pcaParamsTemplate {
-    override val nDimensions: Int = 3
-    override val nFeatures: Int = 2
+    val nDimensions: Int = 0
+    val nFeatures: Int = 0
   }
   val svmParams:svmParamsTemplate = new svmParamsTemplate {
-    override val nSupports = 2
-    override val nFeatures:Int = 2
-    override val nClasses = 2
-    override val nDegree = 1
-    override val kernelType = "poly"
-    override val classifierType = "ovo"
-    override val codeBook:Seq[Seq[Int]] = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
+    val nSupports: Int = 0
+    val nFeatures:Int = 0
+    val nClasses: Int = 0
+    val nDegree: Int = 0
+    val kernelType: String = "adel"
+    val classifierType: String = "adel"
+    val codeBook:Seq[Seq[Int]] = Seq.fill(1,1)(0)
   }
   val pcaVectorBufferParams:pcaVectorBufferParamsTemplate = new pcaVectorBufferParamsTemplate {
-    override val nRows: Int = 2
-    override val nColumns: Int = 3
+    val nRows: Int = 0
+    val nColumns: Int = 0
   }
   val configurationMemoryParams:configurationMemoryParamsTemplate = new configurationMemoryParamsTemplate {
-    override val nDimensions: Int = 3
-    override val nFeatures: Int = 2
-    override val nSupports: Int = 2
-    override val nClassifiers: Int = 1
+    val nDimensions: Int = 0
+    val nFeatures: Int = 0
+    val nSupports: Int = 0
+    val nClassifiers: Int = 0
   }
-
 }
 
 class WellnessIntegrationSpec extends FlatSpec with Matchers {
   behavior of "Wellness"
 
+  // set this to 1 to use the generated files from the Python model
+  val integrated = 0
+
+  // I am leaving this SInt implementation as is, since my testbench is meant for floats/fixedpoints
   it should "pass the input through filters, compute features, and classify (SInt)" in {
 
     val debug = 0
-    //val tap_count = scala.util.Random.nextInt(50) + 1
+
     val tap_count = 5
 
     val coefficients1 = mutable.ArrayBuffer[Int]()
     val coefficients2 = mutable.ArrayBuffer[Int]()
     val coefficients3 = mutable.ArrayBuffer[Int]()
     for(j <- 0 until tap_count) {
-      //coefficients1 += (-32 + scala.util.Random.nextInt(64))
-      //coefficients2 += (-32 + scala.util.Random.nextInt(64))
-      //coefficients3 += (-32 + scala.util.Random.nextInt(64))
       coefficients1 += j
       coefficients2 += j
       coefficients3 += j
        }
 
-    //val numDimensions = scala.util.Random.nextInt(9) + 2
-    //val numFeatures = scala.util.Random.nextInt(numDimensions - 1) + 1
-
     val goldenModelParameters = new wellnessIntegrationParameterBundle {
       override val filter1Params: filterParamsTemplate = new filterParamsTemplate {
-        override val taps: Seq[Double] = coefficients1.map(_.toDouble)
+        val taps: Seq[Double] = coefficients1.map(_.toDouble)
       }
       override val lineLength1Params: lineLengthParamsTemplate = new lineLengthParamsTemplate {
-        override val windowSize = 2
+        val windowSize = 2
       }
       override val fftBufferParams:fftBufferParamsTemplate = new fftBufferParamsTemplate {
-        override val lanes: Int = 4
+        val lanes: Int = 4
       }
       override val fftConfig: fftConfigTemplate = new fftConfigTemplate {
-        override val nPts: Int = 4
+        val nPts: Int = 4
       }
       // TODO: parameterize to match Chisel params below
       override val bandpower1Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
-        override val idxStartBin: Int = 0
-        override val idxEndBin: Int = 4
-        override val nBins: Int = 4
+        val idxStartBin: Int = 0
+        val idxEndBin: Int = 2
+        val nBins: Int = 4
       }
       override val bandpower2Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
-        override val idxStartBin: Int = 0
-        override val idxEndBin: Int = 2
-        override val nBins: Int = 4
+        val idxStartBin: Int = 0
+        val idxEndBin: Int = 2
+        val nBins: Int = 4
       }
       override val pcaParams:pcaParamsTemplate = new pcaParamsTemplate {
-        override val nDimensions: Int = 3
-        override val nFeatures: Int = 2
+        val nDimensions: Int = 3
+        val nFeatures: Int = 2
       }
       override val svmParams:svmParamsTemplate = new svmParamsTemplate {
-        override val nSupports = 2
-        override val nFeatures:Int = pcaParams.nFeatures
-        override val nClasses = 2
-        override val nDegree = 1
-        override val kernelType = "poly"
-        override val classifierType = "ovo"
-        override val codeBook:Seq[Seq[Int]] = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
+        val nSupports: Int = 2
+        val nFeatures:Int = pcaParams.nFeatures
+        val nClasses: Int = 2
+        val nDegree: Int = 1
+        val kernelType: String = "poly"
+        val classifierType: String = "ovo"
+        val codeBook:Seq[Seq[Int]] = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
       }
       override val pcaVectorBufferParams:pcaVectorBufferParamsTemplate = new pcaVectorBufferParamsTemplate {
-        override val nRows: Int = pcaParams.nFeatures
-        override val nColumns: Int = pcaParams.nDimensions
+        val nRows: Int = pcaParams.nFeatures
+        val nColumns: Int = pcaParams.nDimensions
       }
       override val configurationMemoryParams: configurationMemoryParamsTemplate = new configurationMemoryParamsTemplate {
         object computeNClassifiers {
@@ -197,23 +197,23 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
             }
             else 1
         }
-        override val nDimensions: Int = pcaParams.nDimensions
-        override val nFeatures: Int = pcaParams.nFeatures
-        override val nSupports: Int = svmParams.nSupports
-        override val nClassifiers: Int = computeNClassifiers(svmParams)
+        val nDimensions: Int = pcaParams.nDimensions
+        val nFeatures: Int = pcaParams.nFeatures
+        val nSupports: Int = svmParams.nSupports
+        val nClassifiers: Int = computeNClassifiers(svmParams)
       }
     }
 
     val nPts = 4
 
     val filter1Params = new FIRFilterParams[SInt] {
-      override val protoData = SInt(64.W)
-      override val taps = coefficients1.map(_.asSInt())
+      val protoData = SInt(64.W)
+      val taps = coefficients1.map(_.asSInt())
     }
 
     val lineLength1Params = new lineLengthParams[SInt] {
-      override val protoData = SInt(64.W)
-      override val windowSize = 2
+      val protoData = SInt(64.W)
+      val windowSize = 2
     }
 
     // FFTBufferParams
@@ -235,7 +235,7 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
     // BandpowerParams
     val bandpower1Params = new BandpowerParams[SInt] {
       val idxStartBin = 0
-      val idxEndBin = 4
+      val idxEndBin = 2
       val nBins = nPts
       val genIn = DspComplex(SInt(64.W), SInt(64.W))
       val genOut = SInt(64.W)
@@ -249,9 +249,9 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
     }
 
     val pcaParams = new PCAParams[SInt] {
-      override val protoData = SInt(64.W)
-      override val nDimensions = 3 // input dimension, minimum 1
-      override val nFeatures = 2   // output dimension to SVM, minimum 1
+      val protoData = SInt(64.W)
+      val nDimensions = 3 // input dimension, minimum 1
+      val nFeatures = 2   // output dimension to SVM, minimum 1
     }
 
     val svmParams = new SVMParams[SInt] {
@@ -263,12 +263,6 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       val kernelType = "poly"
       val classifierType = "ovo"
       val codeBook = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
-    }
-
-    val pcaVectorBufferParams = new MemoryBufferParams[SInt] {
-      override val protoData = SInt(64.W)
-      override val nRows:Int = pcaParams.nFeatures
-      override val nColumns:Int = pcaParams.nDimensions
     }
 
     val configurationMemoryParams = new ConfigurationMemoryParams[SInt] {
@@ -290,11 +284,11 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
           }
           else 1
       }
-      override val protoData = pcaParams.protoData.cloneType
-      override val nDimensions: Int = pcaParams.nDimensions
-      override val nFeatures: Int = pcaParams.nFeatures
-      override val nSupports: Int = svmParams.nSupports
-      override val nClassifiers: Int = computeNClassifiers(svmParams)
+      val protoData = pcaParams.protoData.cloneType
+      val nDimensions: Int = pcaParams.nDimensions
+      val nFeatures: Int = pcaParams.nFeatures
+      val nSupports: Int = svmParams.nSupports
+      val nClassifiers: Int = computeNClassifiers(svmParams)
     }
 
 
@@ -306,7 +300,6 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       bandpower2Params: BandpowerParams[SInt],
       pcaParams: PCAParams[SInt],
       svmParams: SVMParams[SInt],
-      pcaVectorBufferParams: MemoryBufferParams[SInt],
       configurationMemoryParams: ConfigurationMemoryParams[SInt],
       goldenModelParameters: wellnessIntegrationParameterBundle, debug) should be (true)
   }
@@ -314,10 +307,10 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
   it should "pass the input through filters, compute features, and classify (FixedPoint)" in {
     val debug = 0
 
-    val nPts = 4
+    val windowLength = 4
 
     val dataWidth = 64
-    val dataBP = 8
+    val dataBP = 16
 
     val tap_count = scala.util.Random.nextInt(15) + 1
     val coefficients1 = mutable.ArrayBuffer[Double]()
@@ -331,44 +324,39 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
 
     val goldenModelParameters = new wellnessIntegrationParameterBundle {
       override val filter1Params: filterParamsTemplate = new filterParamsTemplate {
-        override val taps: Seq[Double] = coefficients1
+        val taps: Seq[Double] = coefficients1
       }
       override val lineLength1Params: lineLengthParamsTemplate = new lineLengthParamsTemplate {
-        override val windowSize = 2
+        val windowSize = windowLength
       }
       override val fftBufferParams:fftBufferParamsTemplate = new fftBufferParamsTemplate {
-        override val lanes: Int = 4
+        val lanes: Int = windowLength
       }
       override val fftConfig: fftConfigTemplate = new fftConfigTemplate {
-        override val nPts: Int = 4
+        val nPts: Int = windowLength
       }
-      // TODO: parameterize to match Chisel params below
       override val bandpower1Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
-        override val idxStartBin: Int = 0
-        override val idxEndBin: Int = 4
-        override val nBins: Int = 4
+        val idxStartBin: Int = 0
+        val idxEndBin: Int = 2
+        val nBins: Int = windowLength
       }
       override val bandpower2Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
-        override val idxStartBin: Int = 0
-        override val idxEndBin: Int = 2
-        override val nBins: Int = 4
+        val idxStartBin: Int = 0
+        val idxEndBin: Int = 2
+        val nBins: Int = windowLength
       }
       override val pcaParams:pcaParamsTemplate = new pcaParamsTemplate {
-        override val nDimensions: Int = 3
-        override val nFeatures: Int = 2
+        val nDimensions: Int = 3
+        val nFeatures: Int = 2
       }
       override val svmParams:svmParamsTemplate = new svmParamsTemplate {
-        override val nSupports = 2
-        override val nFeatures:Int = pcaParams.nFeatures
-        override val nClasses = 2
-        override val nDegree = 1
-        override val kernelType = "poly"
-        override val classifierType = "ovo"
-        override val codeBook:Seq[Seq[Int]] = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
-      }
-      override val pcaVectorBufferParams:pcaVectorBufferParamsTemplate = new pcaVectorBufferParamsTemplate {
-        override val nRows: Int = pcaParams.nFeatures
-        override val nColumns: Int = pcaParams.nDimensions
+        val nSupports: Int = 2
+        val nFeatures:Int = pcaParams.nFeatures
+        val nClasses: Int = 2
+        val nDegree: Int = 1
+        val kernelType: String = "poly"
+        val classifierType: String = "ovo"
+        val codeBook:Seq[Seq[Int]] = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
       }
       override val configurationMemoryParams: configurationMemoryParamsTemplate = new configurationMemoryParamsTemplate {
         object computeNClassifiers {
@@ -389,35 +377,35 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
             }
             else 1
         }
-        override val nDimensions: Int = pcaParams.nDimensions
-        override val nFeatures: Int = pcaParams.nFeatures
-        override val nSupports: Int = svmParams.nSupports
-        override val nClassifiers: Int = computeNClassifiers(svmParams)
+        val nDimensions: Int = pcaParams.nDimensions
+        val nFeatures: Int = pcaParams.nFeatures
+        val nSupports: Int = svmParams.nSupports
+        val nClassifiers: Int = computeNClassifiers(svmParams)
       }
     }
 
     val filter1Params = new FIRFilterParams[FixedPoint] {
-      override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
-      override val taps = coefficients1.map(ConvertableTo[FixedPoint].fromDouble(_))
+      val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+      val taps = coefficients1.map(ConvertableTo[FixedPoint].fromDouble(_))
     }
 
     val lineLength1Params = new lineLengthParams[FixedPoint] {
-      override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
-      override val windowSize = 2
+      val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+      val windowSize = windowLength
     }
 
     // FFTBufferParams
     val fftBufferParams = new FFTBufferParams[FixedPoint] {
       val protoData = FixedPoint(dataWidth.W,dataBP.BP)
-      val lanes = nPts
+      val lanes = windowLength
     }
 
     // FFTConfigs
     val fftConfig = FFTConfig(
       genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP)),
       genOut = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP)),
-      n = nPts,
-      lanes = nPts,
+      n = windowLength,
+      lanes = windowLength,
       pipelineDepth = 0,
       quadrature = false,
     )
@@ -425,23 +413,23 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
     // BandpowerParams
     val bandpower1Params = new BandpowerParams[FixedPoint] {
       val idxStartBin = 0
-      val idxEndBin = 4
-      val nBins = nPts
+      val idxEndBin = 2
+      val nBins = windowLength
       val genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP))
       val genOut = FixedPoint(dataWidth.W,dataBP.BP)
     }
     val bandpower2Params = new BandpowerParams[FixedPoint] {
       val idxStartBin = 0
       val idxEndBin = 2
-      val nBins = nPts
+      val nBins = windowLength
       val genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP))
       val genOut = FixedPoint(dataWidth.W,dataBP.BP)
     }
 
     val pcaParams = new PCAParams[FixedPoint] {
-      override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
-      override val nDimensions = 3 // input dimension, minimum 1
-      override val nFeatures = 2   // output dimension to SVM, minimum 1
+      val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+      val nDimensions = 3 // input dimension, minimum 1
+      val nFeatures = 2   // output dimension to SVM, minimum 1
     }
 
     val svmParams = new SVMParams[FixedPoint] {
@@ -453,12 +441,6 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       val kernelType = "poly"
       val classifierType = "ovo"
       val codeBook = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
-    }
-
-    val pcaVectorBufferParams = new MemoryBufferParams[FixedPoint] {
-      override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
-      override val nRows:Int = pcaParams.nFeatures
-      override val nColumns:Int = pcaParams.nDimensions
     }
 
     val configurationMemoryParams = new ConfigurationMemoryParams[FixedPoint] {
@@ -480,11 +462,11 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
           }
           else 1
       }
-      override val protoData = pcaParams.protoData.cloneType
-      override val nDimensions: Int = pcaParams.nDimensions
-      override val nFeatures: Int = pcaParams.nFeatures
-      override val nSupports: Int = svmParams.nSupports
-      override val nClassifiers: Int = computeNClassifiers(svmParams)
+      val protoData = pcaParams.protoData.cloneType
+      val nDimensions: Int = pcaParams.nDimensions
+      val nFeatures: Int = pcaParams.nFeatures
+      val nSupports: Int = svmParams.nSupports
+      val nClassifiers: Int = computeNClassifiers(svmParams)
     }
 
 
@@ -496,9 +478,230 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       bandpower2Params: BandpowerParams[FixedPoint],
       pcaParams: PCAParams[FixedPoint],
       svmParams: SVMParams[FixedPoint],
-      pcaVectorBufferParams: MemoryBufferParams[FixedPoint],
       configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
-      goldenModelParameters: wellnessIntegrationParameterBundle, debug) should be (true)
+      goldenModelParameters: wellnessIntegrationParameterBundle, debug, dataBP, 0) should be (true)
   }
 
+  if (integrated == 1) {
+    it should "work using the Python model generated files" in {
+      val debug = 0
+
+      val dataWidth = 64
+      val dataBP = 16
+
+      var fileContents = ArrayBuffer[Array[String]]()
+      var fileSource = io.Source.fromFile("scripts/generated_files/filter_taps.csv")
+      fileSource.getLines.foreach { line => fileContents += line.split(",").map(_.trim) }
+      fileSource.close()
+      val filter_taps = fileContents.flatMap(_.map(_.toDouble))
+
+      fileContents = ArrayBuffer[Array[String]]()
+      fileSource = io.Source.fromFile("scripts/generated_files/parameters.csv")
+      fileSource.getLines.foreach { line => fileContents += line.split(",").map(_.trim) }
+      fileSource.close()
+      val ArrayBuffer(windowLength, features, dimensions, supports, classes, degree) = fileContents.flatMap(_.map(_.toInt))
+      /* This is the order of parameters, as written in the Python file, for reference
+      fe.window,                  # windowSize, lanes, nPts, nBins
+      pca.components_.shape[0],   # nFeatures
+      pca.components_.shape[1],   # nDimensions
+      supports.shape[0],          # nSupports
+      classes,                    # nClasses
+      degree                      # nDegree
+      */
+
+      // this is my preliminary attempt to generalize the identification of bandpower indices
+      // looks cool :)
+      fileContents = ArrayBuffer[Array[String]]()
+      fileSource = io.Source.fromFile("scripts/generated_files/feature_list.csv")
+      fileSource.getLines.foreach { line => fileContents += line.split(",").map(_.trim) }
+      fileSource.close()
+      val feature_list = fileContents.flatten
+
+      var bandpower1Index = ArrayBuffer(0, 0)
+      var bandpower2Index = ArrayBuffer(0, 0)
+      val band_list = ArrayBuffer("delta", "theta", "alpha", "beta", "gamma")
+
+      for (i <- feature_list.indices) {
+        for (j <- band_list.indices) {
+          if (feature_list(i) == band_list(j)) {
+            fileContents = ArrayBuffer[Array[String]]()
+            fileSource = io.Source.fromFile(f"scripts/generated_files/${band_list(j)}%s_index.csv")
+            fileSource.getLines.foreach { line => fileContents += line.split(",").map(_.trim) }
+            fileSource.close()
+            if (i == 0) {
+              bandpower1Index = fileContents.flatMap(_.map(_.toInt))
+            } else {
+              bandpower2Index = fileContents.flatMap(_.map(_.toInt))
+            }
+          }
+        }
+      }
+
+      val goldenModelParameters = new wellnessIntegrationParameterBundle {
+        override val filter1Params: filterParamsTemplate = new filterParamsTemplate {
+          val taps: Seq[Double] = filter_taps
+        }
+        override val lineLength1Params: lineLengthParamsTemplate = new lineLengthParamsTemplate {
+          val windowSize = windowLength
+        }
+        override val fftBufferParams: fftBufferParamsTemplate = new fftBufferParamsTemplate {
+          val lanes: Int = windowLength
+        }
+        override val fftConfig: fftConfigTemplate = new fftConfigTemplate {
+          val nPts: Int = windowLength
+        }
+        override val bandpower1Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
+          val idxStartBin: Int = bandpower1Index(0)
+          val idxEndBin: Int = bandpower1Index(1)
+          val nBins: Int = windowLength
+        }
+        override val bandpower2Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
+          val idxStartBin: Int = bandpower2Index(0)
+          val idxEndBin: Int = bandpower2Index(1)
+          val nBins: Int = windowLength
+        }
+        override val pcaParams: pcaParamsTemplate = new pcaParamsTemplate {
+          val nDimensions: Int = dimensions
+          val nFeatures: Int = features
+        }
+        override val svmParams: svmParamsTemplate = new svmParamsTemplate {
+          val nSupports: Int = supports
+          val nFeatures: Int = pcaParams.nFeatures
+          val nClasses: Int = classes
+          val nDegree: Int = degree
+          val kernelType: String = "poly"
+          val classifierType: String = "ovo"
+          val codeBook: Seq[Seq[Int]] = Seq.fill(nClasses, nClasses * 2)((scala.util.Random.nextInt(2) * 2) - 1) // ignored for this test case
+        }
+        override val pcaVectorBufferParams: pcaVectorBufferParamsTemplate = new pcaVectorBufferParamsTemplate {
+          val nRows: Int = pcaParams.nFeatures
+          val nColumns: Int = pcaParams.nDimensions
+        }
+        override val configurationMemoryParams: configurationMemoryParamsTemplate = new configurationMemoryParamsTemplate {
+
+          object computeNClassifiers {
+            def apply(params: svmParamsTemplate with Object {
+              val nClasses: Int
+              val codeBook: Seq[Seq[Int]]
+              val classifierType: String
+            }): Int =
+              if (params.classifierType == "ovr") {
+                if (params.nClasses == 2) params.nClasses - 1
+                else 1
+              }
+              else if (params.classifierType == "ovo") {
+                (params.nClasses * (params.nClasses - 1)) / 2
+              }
+              else if (params.classifierType == "ecoc") {
+                params.codeBook.head.length
+              }
+              else 1
+          }
+
+          val nDimensions: Int = pcaParams.nDimensions
+          val nFeatures: Int = pcaParams.nFeatures
+          val nSupports: Int = svmParams.nSupports
+          val nClassifiers: Int = computeNClassifiers(svmParams)
+        }
+      }
+
+      val filter1Params = new FIRFilterParams[FixedPoint] {
+        val protoData = FixedPoint(dataWidth.W, dataBP.BP)
+        val taps = filter_taps.map(ConvertableTo[FixedPoint].fromDouble(_))
+      }
+
+      val lineLength1Params = new lineLengthParams[FixedPoint] {
+        val protoData = FixedPoint(dataWidth.W, dataBP.BP)
+        val windowSize = windowLength
+      }
+
+      // FFTBufferParams
+      val fftBufferParams = new FFTBufferParams[FixedPoint] {
+        val protoData = FixedPoint(dataWidth.W, dataBP.BP)
+        val lanes = windowLength
+      }
+
+      // FFTConfigs
+      val fftConfig = FFTConfig(
+        genIn = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP)),
+        genOut = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP)),
+        n = windowLength,
+        lanes = windowLength,
+        pipelineDepth = 0,
+        quadrature = false,
+      )
+
+      // BandpowerParams
+      val bandpower1Params = new BandpowerParams[FixedPoint] {
+        val idxStartBin = bandpower1Index(0)
+        val idxEndBin = bandpower1Index(1)
+        val nBins = windowLength
+        val genIn = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP))
+        val genOut = FixedPoint(dataWidth.W, dataBP.BP)
+      }
+      val bandpower2Params = new BandpowerParams[FixedPoint] {
+        val idxStartBin = bandpower2Index(0)
+        val idxEndBin = bandpower2Index(1)
+        val nBins = windowLength
+        val genIn = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP))
+        val genOut = FixedPoint(dataWidth.W, dataBP.BP)
+      }
+
+      val pcaParams = new PCAParams[FixedPoint] {
+        val protoData = FixedPoint(dataWidth.W, dataBP.BP)
+        val nDimensions = dimensions
+        val nFeatures = features
+      }
+
+      val svmParams = new SVMParams[FixedPoint] {
+        val protoData = FixedPoint(dataWidth.W, dataBP.BP)
+        val nSupports = supports
+        val nFeatures = pcaParams.nFeatures
+        val nClasses = classes
+        val nDegree = degree
+        val kernelType = "poly"
+        val classifierType = "ovo"
+        val codeBook = Seq.fill(nClasses, nClasses * 2)((scala.util.Random.nextInt(2) * 2) - 1) // ignored for this test case
+      }
+
+      val configurationMemoryParams = new ConfigurationMemoryParams[FixedPoint] {
+
+        object computeNClassifiers {
+          def apply(params: SVMParams[FixedPoint] with Object {
+            val nClasses: Int
+            val codeBook: Seq[Seq[Int]]
+            val classifierType: String
+          }): Int =
+            if (params.classifierType == "ovr") {
+              if (params.nClasses == 2) params.nClasses - 1
+              else 1
+            }
+            else if (params.classifierType == "ovo") {
+              (params.nClasses * (params.nClasses - 1)) / 2
+            }
+            else if (params.classifierType == "ecoc") {
+              params.codeBook.head.length
+            }
+            else 1
+        }
+
+        val protoData = pcaParams.protoData.cloneType
+        val nDimensions: Int = pcaParams.nDimensions
+        val nFeatures: Int = pcaParams.nFeatures
+        val nSupports: Int = svmParams.nSupports
+        val nClassifiers: Int = computeNClassifiers(svmParams)
+      }
+
+      WellnessIntegrationTesterFP(filter1Params: FIRFilterParams[FixedPoint],
+        lineLength1Params: lineLengthParams[FixedPoint],
+        fftBufferParams: FFTBufferParams[FixedPoint],
+        fftConfig: FFTConfig[FixedPoint],
+        bandpower1Params: BandpowerParams[FixedPoint],
+        bandpower2Params: BandpowerParams[FixedPoint],
+        pcaParams: PCAParams[FixedPoint],
+        svmParams: SVMParams[FixedPoint],
+        configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
+        goldenModelParameters: wellnessIntegrationParameterBundle, debug, dataBP, 1) should be(true)
+    }
+  }
 }

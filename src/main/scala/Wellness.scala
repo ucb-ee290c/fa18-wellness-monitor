@@ -20,6 +20,7 @@ import freechips.rocketchip.tilelink._
 import freechips.rocketchip.subsystem._
 
 import scala.collection.Seq
+import scala.collection.mutable.ArrayBuffer
 
 
 /**
@@ -172,7 +173,6 @@ class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1P
                                                  bandpower2Params: BandpowerParams[T],
                                                  pcaParams: PCAParams[T],
                                                  svmParams: SVMParams[T],
-                                                 pcaVectorBufferParams: MemoryBufferParams[T],
                                                  configurationMemoryParams: ConfigurationMemoryParams[T]) extends Bundle {
   var nClassifiers = svmParams.nClasses  // one vs rest default
   if (svmParams.classifierType == "ovr") {
@@ -197,7 +197,8 @@ class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1P
 
   // val filterValid = Output(Bool())
   val lineLengthValid = Output(Bool())
-  val bandpowerValid = Output(Bool())
+  val bandpower1Valid = Output(Bool())
+  val bandpower2Valid = Output(Bool())
 //  val fftBufferSync = Output(Bool())
 //  val fftValid = Output(Bool())
 
@@ -211,7 +212,6 @@ class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1P
                                                         bandpower2Params: BandpowerParams[T],
                                                         pcaParams: PCAParams[T],
                                                         svmParams: SVMParams[T],
-                                                        pcaVectorBufferParams: MemoryBufferParams[T],
                                                         configurationMemoryParams: ConfigurationMemoryParams[T]).asInstanceOf[this.type]
 }
 object WellnessModuleIO {
@@ -223,7 +223,6 @@ object WellnessModuleIO {
                                       bandpower2Params: BandpowerParams[T],
                                       pcaParams: PCAParams[T],
                                       svmParams: SVMParams[T],
-                                      pcaVectorBufferParams: MemoryBufferParams[T],
                                       configurationMemoryParams: ConfigurationMemoryParams[T]): WellnessModuleIO[T] =
     new WellnessModuleIO(filter1Params: FIRFilterParams[T],
       lineLength1Params: lineLengthParams[T],
@@ -233,7 +232,6 @@ object WellnessModuleIO {
       bandpower2Params: BandpowerParams[T],
       pcaParams: PCAParams[T],
       svmParams: SVMParams[T],
-      pcaVectorBufferParams: MemoryBufferParams[T],
       configurationMemoryParams: ConfigurationMemoryParams[T])
 }
 
@@ -246,7 +244,6 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   val bandpower2Params: BandpowerParams[T],
   val pcaParams: PCAParams[T],
   val svmParams: SVMParams[T],
-  val pcaVectorBufferParams: MemoryBufferParams[T],
   val configurationMemoryParams: ConfigurationMemoryParams[T])(implicit val p: Parameters) extends Module {
   val io = IO(WellnessModuleIO[T](  filter1Params: FIRFilterParams[T],
                                     lineLength1Params: lineLengthParams[T],
@@ -256,7 +253,6 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
                                     bandpower2Params: BandpowerParams[T],
                                     pcaParams: PCAParams[T],
                                     svmParams: SVMParams[T],
-                                    pcaVectorBufferParams: MemoryBufferParams[T],
                                     configurationMemoryParams: ConfigurationMemoryParams[T]) )
 
   // Block instantiation
@@ -295,9 +291,10 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
 
   // TODO: fails
   for (i <- fft.io.in.bits.indices) {
-    fft.io.in.bits(i).real := fftBuffer.io.out.bits(i)//.asTypeOf(fft.io.in.bits(i).real)
+    fft.io.in.bits(i).real := fftBuffer.io.out.bits(i).asTypeOf(fft.io.in.bits(i).real)
   }
-  fft.io.in.bits.foreach(_.imag := Ring[T].zero)
+  //fft.io.in.bits.foreach(_.imag := Ring[T].zero)
+  fft.io.in.bits.foreach(_.imag := ConvertableTo[T].fromInt(0))
 
 //  fft.io.in.bits.zip(fftBuffer.io.out.bits).map{ case (a, b) => a.real := b.asTypeOf(fft.io.in.bits(0).real) } // TODO: fails
 
@@ -354,7 +351,8 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   io.lineLengthValid := lineLength1.io.out.valid
 //  io.fftBufferSync := fftBuffer.io.out.sync
 //  io.fftValid := fft.io.out.valid
-  io.bandpowerValid := bandpower1.io.out.valid
+  io.bandpower1Valid := bandpower1.io.out.valid
+  io.bandpower2Valid := bandpower2.io.out.valid
 }
 
 
@@ -395,7 +393,6 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real :
       bandpower2Params: BandpowerParams[T],
       pcaParams: PCAParams[T],
       svmParams: SVMParams[T],
-      pcaVectorBufferParams: MemoryBufferParams[T],
       configurationMemoryParams: ConfigurationMemoryParams[T]))
 
     val configurationMemory = Module(new ConfigurationMemory(configurationMemoryParams))
@@ -493,14 +490,14 @@ object SIntWellnessParams {
   val nPts = 4
 
   val filter1Params = new FIRFilterParams[SInt] {
-    override val protoData = SInt(32.W)
-    override val taps = Seq(1.S, 2.S, 3.S, 4.S, 5.S, 0.S)
+    val protoData = SInt(32.W)
+    val taps = Seq(1.S, 2.S, 3.S, 4.S, 5.S, 0.S)
   }
 
   // lineLength params
   val lineLength1Params = new lineLengthParams[SInt] {
-    override val protoData = SInt(32.W)
-    override val windowSize = 2
+    val protoData = SInt(32.W)
+    val windowSize = 2
   }
 
   // FFTBufferParams
@@ -536,9 +533,9 @@ object SIntWellnessParams {
   }
 
   val pcaParams = new PCAParams[SInt] {
-    override val protoData = SInt(32.W)
-    override val nDimensions = 3 // input dimension, minimum 1
-    override val nFeatures = 2 // output dimension to SVM, minimum 1
+    val protoData = SInt(32.W)
+    val nDimensions = 3 // input dimension, minimum 1
+    val nFeatures = 2 // output dimension to SVM, minimum 1
   }
 
   val svmParams = new SVMParams[SInt] {
@@ -553,9 +550,9 @@ object SIntWellnessParams {
   }
 
   val pcaVectorBufferParams = new MemoryBufferParams[SInt] {
-    override val protoData = pcaParams.protoData.cloneType
-    override val nRows: Int = pcaParams.nFeatures
-    override val nColumns: Int = pcaParams.nDimensions
+    val protoData = pcaParams.protoData.cloneType
+    val nRows: Int = pcaParams.nFeatures
+    val nColumns: Int = pcaParams.nDimensions
   }
   val configurationMemoryParams = new ConfigurationMemoryParams[SInt] {
 
@@ -578,13 +575,12 @@ object SIntWellnessParams {
         else 1
     }
 
-    override val protoData = pcaParams.protoData.cloneType
-    override val nDimensions: Int = pcaParams.nDimensions
-    override val nFeatures: Int = pcaParams.nFeatures
-    override val nSupports: Int = svmParams.nSupports
-    override val nClassifiers: Int = computeNClassifiers(svmParams)
+    val protoData = pcaParams.protoData.cloneType
+    val nDimensions: Int = pcaParams.nDimensions
+    val nFeatures: Int = pcaParams.nFeatures
+    val nSupports: Int = svmParams.nSupports
+    val nClassifiers: Int = computeNClassifiers(svmParams)
   }
-
 }
 
 object FixedPointWellnessParams {
@@ -594,13 +590,13 @@ object FixedPointWellnessParams {
   val dataBP:Int = 8
 
   val filter1Params = new FIRFilterParams[FixedPoint] {
-    override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
-    override val taps = Seq(1, 2, 3, 4, 5, 0).map(ConvertableTo[FixedPoint].fromDouble(_))
+    val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    val taps = Seq(1, 2, 3, 4, 5, 0).map(ConvertableTo[FixedPoint].fromDouble(_))
   }
 
   val lineLength1Params = new lineLengthParams[FixedPoint] {
-    override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
-    override val windowSize = 2
+    val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    val windowSize = 2
   }
 
   // FFTBufferParams
@@ -636,9 +632,9 @@ object FixedPointWellnessParams {
   }
 
   val pcaParams = new PCAParams[FixedPoint] {
-    override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
-    override val nDimensions = 3 // input dimension, minimum 1
-    override val nFeatures = 2   // output dimension to SVM, minimum 1
+    val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    val nDimensions = 3 // input dimension, minimum 1
+    val nFeatures = 2   // output dimension to SVM, minimum 1
   }
 
   val svmParams = new SVMParams[FixedPoint] {
@@ -653,9 +649,9 @@ object FixedPointWellnessParams {
   }
 
   val pcaVectorBufferParams = new MemoryBufferParams[FixedPoint] {
-    override val protoData = FixedPoint(dataWidth.W,dataBP.BP)
-    override val nRows:Int = pcaParams.nFeatures
-    override val nColumns:Int = pcaParams.nDimensions
+    val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    val nRows:Int = pcaParams.nFeatures
+    val nColumns:Int = pcaParams.nDimensions
   }
 
   val configurationMemoryParams = new ConfigurationMemoryParams[FixedPoint] {
@@ -677,18 +673,162 @@ object FixedPointWellnessParams {
         }
         else 1
     }
-    override val protoData = pcaParams.protoData.cloneType
-    override val nDimensions: Int = pcaParams.nDimensions
-    override val nFeatures: Int = pcaParams.nFeatures
-    override val nSupports: Int = svmParams.nSupports
-    override val nClassifiers: Int = computeNClassifiers(svmParams)
+    val protoData = pcaParams.protoData.cloneType
+    val nDimensions: Int = pcaParams.nDimensions
+    val nFeatures: Int = pcaParams.nFeatures
+    val nSupports: Int = svmParams.nSupports
+    val nClassifiers: Int = computeNClassifiers(svmParams)
+  }
+
+}
+
+object FixedPointModelWellnessParams {
+
+  val dataWidth:Int = 64
+  val dataBP:Int = 16
+
+  var fileContents = ArrayBuffer[Array[String]]()
+  var fileSource = io.Source.fromFile("scripts/generated_files/filter_taps.csv")
+  fileSource.getLines.foreach { line => fileContents += line.split(",").map(_.trim) }
+  fileSource.close()
+  val filter_taps = fileContents.flatMap(_.map(_.toDouble))
+
+  fileContents = ArrayBuffer[Array[String]]()
+  fileSource = io.Source.fromFile("scripts/generated_files/parameters.csv")
+  fileSource.getLines.foreach { line => fileContents += line.split(",").map(_.trim) }
+  fileSource.close()
+  val ArrayBuffer(windowLength, features, dimensions, supports, classes, degree) = fileContents.flatMap(_.map(_.toInt))
+  /* This is the order of parameters, as written in the Python file, for reference
+  fe.window,                  # windowSize, lanes, nPts, nBins
+  pca.components_.shape[0],   # nFeatures
+  pca.components_.shape[1],   # nDimensions
+  supports.shape[0],          # nSupports
+  classes,                    # nClasses
+  degree                      # nDegree
+  */
+
+  // this is my preliminary attempt to generalize the identification of bandpower indices
+  // looks cool :)
+  fileContents = ArrayBuffer[Array[String]]()
+  fileSource = io.Source.fromFile("scripts/generated_files/feature_list.csv")
+  fileSource.getLines.foreach { line => fileContents += line.split(",").map(_.trim) }
+  fileSource.close()
+  val feature_list = fileContents.flatten
+
+  var bandpower1Index = ArrayBuffer(0,0)
+  var bandpower2Index = ArrayBuffer(0,0)
+  val band_list = ArrayBuffer("delta", "theta", "alpha", "beta", "gamma")
+
+  for (i <- feature_list.indices) {
+    for (j <- band_list.indices) {
+      if (feature_list(i) == band_list(j)){
+        fileContents = ArrayBuffer[Array[String]]()
+        fileSource = io.Source.fromFile(f"scripts/generated_files/${band_list(j)}%s_index.csv")
+        fileSource.getLines.foreach { line => fileContents += line.split(",").map(_.trim) }
+        fileSource.close()
+        if (i == 0) { bandpower1Index = fileContents.flatMap(_.map(_.toInt))
+        } else {      bandpower2Index = fileContents.flatMap(_.map(_.toInt))
+        }
+      }
+    }
+  }
+
+  val filter1Params = new FIRFilterParams[FixedPoint] {
+    val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    val taps = filter_taps.map(ConvertableTo[FixedPoint].fromDouble(_))
+  }
+
+  val lineLength1Params = new lineLengthParams[FixedPoint] {
+    val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    val windowSize = windowLength
+  }
+
+  // FFTBufferParams
+  val fftBufferParams = new FFTBufferParams[FixedPoint] {
+    val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    val lanes = windowLength
+  }
+
+  // FFTConfigs
+  val fftConfig = FFTConfig(
+    genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP)),
+    genOut = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP)),
+    n = windowLength,
+    lanes = windowLength,
+    pipelineDepth = 0,
+    quadrature = false,
+  )
+
+  // BandpowerParams
+  val bandpower1Params = new BandpowerParams[FixedPoint] {
+    val idxStartBin = bandpower1Index(0)
+    val idxEndBin = bandpower1Index(1)
+    val nBins = windowLength
+    val genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP))
+    val genOut = FixedPoint(dataWidth.W,dataBP.BP)
+  }
+  val bandpower2Params = new BandpowerParams[FixedPoint] {
+    val idxStartBin = bandpower2Index(0)
+    val idxEndBin = bandpower2Index(1)
+    val nBins = windowLength
+    val genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP))
+    val genOut = FixedPoint(dataWidth.W,dataBP.BP)
+  }
+
+  val pcaParams = new PCAParams[FixedPoint] {
+    val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    val nDimensions = dimensions
+    val nFeatures = features
+  }
+
+  val svmParams = new SVMParams[FixedPoint] {
+    val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    val nSupports = supports
+    val nFeatures = pcaParams.nFeatures
+    val nClasses = classes
+    val nDegree = degree
+    val kernelType = "poly"
+    val classifierType = "ovo"
+    val codeBook = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
+  }
+
+  val pcaVectorBufferParams = new MemoryBufferParams[FixedPoint] {
+    val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    val nRows:Int = pcaParams.nFeatures
+    val nColumns:Int = pcaParams.nDimensions
+  }
+
+  val configurationMemoryParams = new ConfigurationMemoryParams[FixedPoint] {
+    object computeNClassifiers {
+      def apply(params: SVMParams[FixedPoint] with Object {
+        val nClasses: Int
+        val codeBook: Seq[Seq[Int]]
+        val classifierType: String
+      }): Int =
+        if (params.classifierType == "ovr") {
+          if (params.nClasses == 2) params.nClasses - 1
+          else 1
+        }
+        else if (params.classifierType == "ovo") {
+          (params.nClasses*(params.nClasses - 1))/2
+        }
+        else if (params.classifierType == "ecoc") {
+          params.codeBook.head.length
+        }
+        else 1
+    }
+    val protoData = pcaParams.protoData.cloneType
+    val nDimensions: Int = pcaParams.nDimensions
+    val nFeatures: Int = pcaParams.nFeatures
+    val nSupports: Int = svmParams.nSupports
+    val nClassifiers: Int = computeNClassifiers(svmParams)
   }
 
 }
 
 trait HasPeripheryWellness extends BaseSubsystem {
 
-  val wellnessParams = FixedPointWellnessParams
+  val wellnessParams = FixedPointModelWellnessParams
 
   // Instantiate wellness monitor
   val wellness = LazyModule(new WellnessThing(

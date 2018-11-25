@@ -24,7 +24,7 @@ fs = 500
 numtaps = 6
 cutoff = [0, 150, 200, 250]
 
-features = ['linelength','theta','alpha']
+features = ['theta','alpha','linelength']
 # are we loading the data again? might take a while
 load_data = 1 # you can turn this off if the script has run once
 balance = 1 # to equalize number of seizure and nonseizure events
@@ -49,7 +49,7 @@ coef = 0
 # how many classes?
 classes = 2
 # set the classifier type: ovr, ovo, ecoc
-class_type = 'ovr'
+class_type = 'ovo'
 # maximum number of iterations for SVM training
 max_iter = 1e4
 # penalty term, higher = lesser number of support vectors = lesser accuracy
@@ -192,8 +192,10 @@ print("Accuracy from manual calculation: %f" % accuracy_score(y_test, y_manual))
 # Printing data to CSV files, to be read by Scala Tester
 #########################################
 if print_data == 1:
+    size_limit = 10
+    if silence == 0: print("Printing all configuration parameters to files under generated_files folder")
     fmt = '%.10f' # 10 decimal places as float
-    np.savetxt("generated_files/input.csv",X_test_raw.T,fmt=fmt,delimiter=',')
+    np.savetxt("generated_files/input.csv",X_test_raw[0:1000].T,fmt=fmt,delimiter=',')
     np.savetxt("generated_files/labels.csv",y_test_raw.T,fmt='%d',delimiter=',')
     
     np.savetxt("generated_files/filter_taps.csv",lpf,fmt=fmt,delimiter=',')
@@ -202,19 +204,30 @@ if print_data == 1:
     np.savetxt("generated_files/normalization_recipvar.csv",1/np.sqrt(X_train_var),fmt=fmt,delimiter=',')
     
     np.savetxt("generated_files/pca_vectors.csv",pca.components_,fmt=fmt,delimiter=',')
-    np.savetxt("generated_files/support_vectors.csv",supports,fmt=fmt,delimiter=',')
-    np.savetxt("generated_files/alpha_vectors.csv",alpha_vector,fmt=fmt,delimiter=',')
+    np.savetxt("generated_files/support_vectors.csv",supports[0:size_limit,:],fmt=fmt,delimiter=',')
+    np.savetxt("generated_files/alpha_vectors.csv",alpha_vector[:,0:size_limit],fmt=fmt,delimiter=',')
     np.savetxt("generated_files/intercepts.csv",intercept,fmt=fmt,delimiter=',')
     
     for i in features:
-        if i == 'delta': np.savetxt("generated_files/delta_index.csv",utils.get_idx(fe.delta_band,fe.window,fs),fmt=fmt,delimiter=',')
-        if i == 'theta': np.savetxt("generated_files/theta_index.csv",utils.get_idx(fe.theta_band,fe.window,fs),fmt=fmt,delimiter=',')
-        if i == 'alpha': np.savetxt("generated_files/alpha_index.csv",utils.get_idx(fe.alpha_band,fe.window,fs),fmt=fmt,delimiter=',')
-        if i == 'beta': np.savetxt("generated_files/beta_index.csv",utils.get_idx(fe.beta_band,fe.window,fs),fmt=fmt,delimiter=',')
-        if i == 'gamma': np.savetxt("generated_files/gamma_index.csv",utils.get_idx(fe.gamma_band,fe.window,fs),fmt=fmt,delimiter=',')
+        if i == 'delta': np.savetxt("generated_files/delta_index.csv",utils.get_idx(fe.delta_band,fe.window,fs),fmt='%d',delimiter=',')
+        if i == 'theta': np.savetxt("generated_files/theta_index.csv",utils.get_idx(fe.theta_band,fe.window,fs),fmt='%d',delimiter=',')
+        if i == 'alpha': np.savetxt("generated_files/alpha_index.csv",utils.get_idx(fe.alpha_band,fe.window,fs),fmt='%d',delimiter=',')
+        if i == 'beta': np.savetxt("generated_files/beta_index.csv",utils.get_idx(fe.beta_band,fe.window,fs),fmt='%d',delimiter=',')
+        if i == 'gamma': np.savetxt("generated_files/gamma_index.csv",utils.get_idx(fe.gamma_band,fe.window,fs),fmt='%d',delimiter=',')
     
     np.savetxt("generated_files/normalize_band.csv",[fe.band_normalize],fmt=fmt,delimiter=',')
     np.savetxt("generated_files/normalize_line.csv",[fe.line_normalize],fmt=fmt,delimiter=',')
+    
+    # list of all parameters used in this model, take note of the order, needs to be consistent for the Scala implementation
+    np.savetxt("generated_files/parameters.csv",[32,#fe.window, # windowSize, lanes, nPts, nBins
+                                                 pca.components_.shape[0],  # nFeatures
+                                                 pca.components_.shape[1],  # nDimensions
+                                                 supports[0:size_limit,:].shape[0],    # nSupports
+                                                 classes,   #nClasses
+                                                 degree    #nDegree
+                                                 ],fmt='%d',delimiter=',')
+    
+    np.savetxt("generated_files/feature_list.csv",features,fmt='%s',delimiter=',')
     
     if class_type == 'ecoc':
         np.savetxt("generated_files/codebook.csv",clf.code_book_,fmt=fmt,delimiter=',')
