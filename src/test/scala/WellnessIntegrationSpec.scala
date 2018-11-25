@@ -273,7 +273,6 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       val nClassifiers: Int = computeNClassifiers(svmParams)
     }
 
-
     WellnessIntegrationTesterSInt(filter1Params: FIRFilterParams[SInt],
       lineLength1Params: lineLengthParams[SInt],
       fftBufferParams: FFTBufferParams[SInt],
@@ -446,7 +445,6 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       val nSupports: Int = svmParams.nSupports
       val nClassifiers: Int = computeNClassifiers(svmParams)
     }
-
 
     WellnessIntegrationTesterFP(filter1Params: FIRFilterParams[FixedPoint],
       lineLength1Params: lineLengthParams[FixedPoint],
