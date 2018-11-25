@@ -194,7 +194,7 @@ print("Accuracy from manual calculation: %f" % accuracy_score(y_test, y_manual))
 if print_data == 1:
     fmt = '%.10f' # 10 decimal places as float
     np.savetxt("generated_files/input.csv",X_test_raw.T,fmt=fmt,delimiter=',')
-    np.savetxt("generated_files/labels.csv",y_test_raw.T,fmt=fmt,delimiter=',')
+    np.savetxt("generated_files/labels.csv",y_test_raw.T,fmt='%d',delimiter=',')
     
     np.savetxt("generated_files/filter_taps.csv",lpf,fmt=fmt,delimiter=',')
     
@@ -212,6 +212,9 @@ if print_data == 1:
         if i == 'alpha': np.savetxt("generated_files/alpha_index.csv",utils.get_idx(fe.alpha_band,fe.window,fs),fmt=fmt,delimiter=',')
         if i == 'beta': np.savetxt("generated_files/beta_index.csv",utils.get_idx(fe.beta_band,fe.window,fs),fmt=fmt,delimiter=',')
         if i == 'gamma': np.savetxt("generated_files/gamma_index.csv",utils.get_idx(fe.gamma_band,fe.window,fs),fmt=fmt,delimiter=',')
+    
+    np.savetxt("generated_files/normalize_band.csv",[fe.band_normalize],fmt=fmt,delimiter=',')
+    np.savetxt("generated_files/normalize_line.csv",[fe.line_normalize],fmt=fmt,delimiter=',')
     
     if class_type == 'ecoc':
         np.savetxt("generated_files/codebook.csv",clf.code_book_,fmt=fmt,delimiter=',')
