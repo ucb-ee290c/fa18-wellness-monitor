@@ -201,8 +201,6 @@ class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1P
 //  val fftBufferSync = Output(Bool())
 //  val fftValid = Output(Bool())
 
-  val fftIn = Input(Vec(fftConfig.lanes, fftConfig.genIn)) // TODO
-
   override def cloneType: this.type = WellnessModuleIO( filter1Params: FIRFilterParams[T],
                                                         lineLength1Params: lineLengthParams[T],
                                                         fftBufferParams: FFTBufferParams[T],
@@ -293,14 +291,6 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   }
   //fft.io.in.bits.foreach(_.imag := Ring[T].zero)
   fft.io.in.bits.foreach(_.imag := ConvertableTo[T].fromInt(0))
-
-//  fft.io.in.bits.zip(fftBuffer.io.out.bits).map{ case (a, b) => a.real := b.asTypeOf(fft.io.in.bits(0).real) } // TODO: fails
-
-  //fft.io.in.bits := io.fftIn // TODO: works
-
-//  for (i <- fft.io.in.bits.indices) { // TODO: works
-//    fft.io.in.bits(i).real := io.fftIn(i).real.asTypeOf(fft.io.in.bits(i).real)
-//  }
 
   fft.io.data_set_end_clear := false.B
 
@@ -577,7 +567,7 @@ object FixedPointWellnessParams {
 
   val nPts = 4
   val dataWidth:Int = 32
-  val dataBP:Int = 16
+  val dataBP:Int = 8
 
   val filter1Params = new FIRFilterParams[FixedPoint] {
     val protoData = FixedPoint(dataWidth.W,dataBP.BP)
@@ -667,8 +657,8 @@ object FixedPointWellnessParams {
 
 object FixedPointModelWellnessParams {
 
-  val dataWidth:Int = 62
-  val dataBP:Int = 16
+  val dataWidth:Int = 32
+  val dataBP:Int = 8
 
   var fileContents = ArrayBuffer[Array[String]]()
   var fileSource = io.Source.fromFile("scripts/generated_files/filter_taps.csv")

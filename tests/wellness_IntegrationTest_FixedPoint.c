@@ -9,6 +9,7 @@
 #include <math.h>
 
 #include "mmio.h"
+#include "arrays.h"
 
 /**
  * Make sure these #defines are correct for your chosen parameters.
@@ -18,12 +19,12 @@
 #define DATA_BP 8
 #define DATA_MASK ((1L << DATA_WIDTH)-1)
 
-#define DIMENSIONS 3         // number of channels going into the PCA
-#define FEATURES 2           // number of reduced dimensions going into the SVM
-#define SUPPORTS 2           // number of support vectors for SVM
+//#define DIMENSIONS 3         // number of channels going into the PCA
+//#define FEATURES 2           // number of reduced dimensions going into the SVM
+//#define SUPPORTS 2           // number of support vectors for SVM
 #define CLASSES 2            // number of classes
 
-#define CLASSIFIERS 1        // number of classifiers created
+//#define CLASSIFIERS 1        // number of classifiers created
 
 #define CONF_DATA_WIDTH 32
 #define CONF_DATA_BP 8
@@ -149,15 +150,15 @@ int main(void)
   int32_t data_out_0;
   int32_t data_out_1;
   double data_out_double;
-  double in[24] = {1,1,2.2,3,9,5.3,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
+  //double in[24] = {1,1,2.2,3,9,5.3,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
   double ex[24] = {5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,4,3,2,1};
   double tol = 0.5;
 
   // the array constants, must be consistent with Wellness.scala
-  double pcaVector[FEATURES][DIMENSIONS] = {{5.1,0.3,-2.15},{1,2,3}};
-  double SVMSupportVector[SUPPORTS][FEATURES] = {{1,2.21},{3.33,4}};
-  double SVMAlphaVector[CLASSIFIERS][SUPPORTS] = {{7,3.3}};
-  double SVMIntercept[CLASSIFIERS] = {4.1};
+  //double pcaVector[FEATURES][DIMENSIONS] = {{5.1,0.3,-2.15},{1,2,3}};
+  //double SVMSupportVector[SUPPORTS][FEATURES] = {{1,2.21},{3.33,4}};
+  //double SVMAlphaVector[CLASSIFIERS][SUPPORTS] = {{7,3.3}};
+  //double SVMIntercept[CLASSIFIERS] = {4.1};
 
   // TODO: Feed the computed features here
   double inputs[DIMENSIONS] = {
