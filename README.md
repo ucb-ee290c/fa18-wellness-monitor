@@ -68,9 +68,51 @@ Currently there are two C code tests in the [tests](https://github.com/ucberkele
 
 ### Application-specific and Comprehensive Test Setup
 A test framework was developed to enable application-specific testing given some raw data that needs to be classified. To process covers testing starting from SVM training all the way to C tests in a simulated RISC-V environment.
-* A [Python script](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/scripts/top.py) performs SVM training from the raw data while also calculating the expected accuracies after the model has been created. This is based on the SVM modelling script discussed [here](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/doc/svm_tutorial.md). All parameters, configuration matrices, and input vectors are then written to different [CSV files](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/scripts/generated_files).
 
-* The CSV files will then be read by the [top-level tester](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/src/test/scala/WellnessIntegrationTester.scala). The tester sets all submodule generator parameters accordingly and passes an actual input from the test dataset through the datapath chain. Afterwards, the expected values from the SVM classifier and the configuration matrices are written to a [C header file](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/tests/arrays.h).
+#### SVM training in Python
+A [Python script](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/scripts/top.py) performs SVM training from the raw data while also calculating the expected accuracies after the model has been created. This is based on the SVM modelling script discussed [here](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/doc/svm_tutorial.md). All parameters, configuration matrices, and input vectors are then written to different [CSV files](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/scripts/generated_files).
 
-* The C header file will be used in the C integration test where the wellness datapath is already integrated with a RISC-V core. This checks that the expected output from the Python model are consistent and are synthesizeable in hardware.
+* You would need to extract the [dataset](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/data.zip) to replicate this project. The data folder should be in the main tree ``fa18-wellness-monitor/data/``.
+
+* Setup the configuration parameters in the Python script. You can leave it as is to replicate the results of this project.
+
+* Run the Python script, all configuration files will be saved as CSV in ``fa18-wellness-monitor/scripts/generated_files/``
+
+#### Scala-based testing
+The CSV files will then be read by the [top-level tester](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/src/test/scala/WellnessIntegrationTester.scala). The tester sets all submodule generator parameters accordingly and passes an actual input from the test dataset through the datapath chain. Afterwards, the expected values from the SVM classifier and the configuration matrices are written to a [C header file](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/tests/arrays.h).
+
+* Make sure that there are files in the ``fa18-wellness-monitor/scripts/generated_files/`` directory. Else, you would need to run the Python script from the previous section.
+
+* Also make sure that the ``integrated`` flag has been set in the ``WellnessIntegrationSpec.scala``
+
+```
+class WellnessIntegrationSpec extends FlatSpec with Matchers {
+  behavior of "Wellness"
+
+  // set this to 1 to use the generated files from the Python model
+  val integrated = 1
+```
+
+* Run the ``WellnessIntegrationSpec`` either as stand-alone or through ``sbt test``. It will generate a C header file named ``fa18-wellness-monitor/tests/array.h``
+
+#### C-based integration test
+The C header file will be used in the C integration test where the wellness datapath is already integrated with a RISC-V core. This checks that the expected output from the Python model are consistent and are synthesizeable in hardware.
+
+* Make sure that the ``wellnessParams`` inside the ``fa18-wellness-monitor/src/test/scala/Wellness.scala`` is pointed to ``FixedPointModelWellnessParams``. This gets the parameters from the same files used in the Scala-based test.
+
+```
+trait HasPeripheryWellness extends BaseSubsystem {
+
+  val wellnessParams = FixedPointModelWellnessParams
+```
+
+* Build the project by running ``make`` inside the ``fa18-wellness-monitor/verisim`` folder. It will take a while. 
+
+* Create the executable for the C tester file ``wellness_IntegrationTest_FixedPoint.c`` by running ``make`` inside the ``fa18-wellness-monitor/tests`` folder. Make sure that the ``Makefile`` points to this C code.
+
+* Go back to the ``fa18-wellness-monitor/verisim`` folder and run the project:
+
+```
+./simulator-freechips.rocketchip.system-DefaultConfig ../tests/wellness_IntegrationTest_FixedPoint.riscv 
+```
 
