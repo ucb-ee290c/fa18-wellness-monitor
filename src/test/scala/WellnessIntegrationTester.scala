@@ -155,10 +155,10 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   }
 
   if (testType == 1) { // create the .h file to contain the reference arrays
-    val newFile = new File("tests/reference_array.h")
+    val newFile = new File("tests/arrays.h")
     if (newFile.exists) { newFile.delete() } // do an overwrite for this new test
 
-    val file = new FileWriter("tests/reference_array.h",true)
+    val file = new FileWriter("tests/arrays.h",true)
     // write out the preambles and define statements
     file.write( "#ifndef __ARRAY_H__\n" +
                       "#define __ARRAY_H__\n\n" +
@@ -290,7 +290,7 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   }
 
   if (testType == 1) { // write out the expected rawVotes to the file
-    val file = new FileWriter("tests/reference_array.h",true)
+    val file = new FileWriter("tests/arrays.h",true)
     file.write("static double ex[][2] = ")
     file.write(outputContainer.map(_.mkString("{", ", ", "}")).mkString("{", ", ", "};\n\n"))
 
