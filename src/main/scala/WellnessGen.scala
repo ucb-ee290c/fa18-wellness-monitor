@@ -43,12 +43,13 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   val io = IO(wellnessGenModuleIO[T](filter1Params: FIRFilterParams[T]))
 
   val testFilter = Module(new ConstantCoefficientFIRFilter(filter1Params))
+
   io.in.ready := true.B
   testFilter.io.in.valid := io.in.valid
   testFilter.io.in.sync := false.B
   testFilter.io.in.bits := io.in.bits.asTypeOf(filter1Params.protoData)
 
-  io.otherOut := testFilter.io.out.bits
+  // io.otherOut := testFilter.io.out.bits
 
   val modules = mutable.ArrayBuffer[ConstantCoefficientFIRFilter[T]]()
   val tap_count = 3
@@ -56,13 +57,14 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
 
   for (i <- 0 until x) {
 
-    val coefficients = mutable.ArrayBuffer[Int]()
-    for (j <- 0 until tap_count) coefficients += (-32 + scala.util.Random.nextInt(64))
+    // val coefficients = mutable.ArrayBuffer[Int]()
 
-    val params = new FIRFilterParams[UInt] {
-      val protoData = UInt(16.W)
-      val taps = coefficients.map(_.asUInt(16.W))
-    }
+    // picking coefficients at generation time!!!!
+    // for (j <- 0 until tap_count) coefficients += (scala.util.Random.nextInt(64))
+    // val genParams = new FIRFilterParams[UInt] {
+    //  val protoData = SInt(64.W)
+    //  val taps = coefficients.map(_.asSInt())
+    // }
 
     modules += Module(new ConstantCoefficientFIRFilter(filter1Params))
     modules(i).io.in.valid := io.in.valid
@@ -70,9 +72,15 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
     modules(i).io.in.bits := io.in.bits.asTypeOf(filter1Params.protoData)
   }
 
-  io.out.valid := modules(0).io.out.valid
-  io.out.sync := modules(0).io.out.sync
-  io.out.bits := modules(0).io.out.bits
+  // io.out.valid := modules(0).io.out.valid
+  // io.out.sync := modules(0).io.out.sync
+  // io.out.bits := modules(0).io.out.bits
+
+  io.out.valid := testFilter.io.out.valid
+  io.out.sync := testFilter.io.out.sync
+  io.out.bits := testFilter.io.out.bits
+
+  io.otherOut := modules(0).io.out.bits
 }
 
 

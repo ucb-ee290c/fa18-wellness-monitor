@@ -23,18 +23,17 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
 
   // Instantiate golden models
   val filter1 = new GoldenDoubleFIRFilter(goldenModelParameters.filter1Params.taps)
+  var filter1Result = filter1.poke(0)
 
   for (i <- 0 until 100) {
-    var filter1Result = filter1.poke(0)
-
-    var input = scala.util.Random.nextInt(16)
+    val input = scala.util.Random.nextInt(16)
     filter1Result = filter1.poke(input)
 
     poke(c.io.in.bits, input)
     poke(c.io.in.valid, 1)
     step(1)
 
-    expect(c.io.otherOut, filter1Result)
+    expect(c.io.out.bits, filter1Result)
   }
 }
 
