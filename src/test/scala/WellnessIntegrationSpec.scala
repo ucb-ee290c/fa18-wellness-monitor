@@ -455,7 +455,7 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       pcaParams: PCAParams[FixedPoint],
       svmParams: SVMParams[FixedPoint],
       configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
-      goldenModelParameters: wellnessIntegrationParameterBundle, debug, dataBP, 0) should be (true)
+      goldenModelParameters: wellnessIntegrationParameterBundle, debug, dataWidth, dataBP, 0) should be (true)
   }
 
   if (integrated == 1) {
@@ -673,7 +673,7 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
         pcaParams: PCAParams[FixedPoint],
         svmParams: SVMParams[FixedPoint],
         configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
-        goldenModelParameters: wellnessIntegrationParameterBundle, debug, dataBP, 1) should be(true)
+        goldenModelParameters: wellnessIntegrationParameterBundle, debug, dataWidth, dataBP, 1) should be(true)
     }
   }
 }

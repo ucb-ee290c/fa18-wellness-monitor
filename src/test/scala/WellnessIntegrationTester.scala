@@ -19,7 +19,7 @@ import freechips.rocketchip.config.Parameters
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.Seq
 
-class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParameters: wellnessIntegrationParameterBundle, dataBP: Int, testType: Int) extends DspTester(c) {
+class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParameters: wellnessIntegrationParameterBundle, dataWidth: Int, dataBP: Int, testType: Int) extends DspTester(c) {
 
   // Instantiate golden models
   val filter1 = new GoldenDoubleFIRFilter(goldenModelParameters.filter1Params.taps)
@@ -165,7 +165,13 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
                       f"#define DIMENSIONS ${c.configurationMemoryParams.nDimensions}         // number of channels going into the PCA\n" +
                       f"#define FEATURES ${c.configurationMemoryParams.nFeatures}           // number of reduced dimensions going into the SVM\n" +
                       f"#define SUPPORTS ${c.configurationMemoryParams.nSupports}           // number of support vectors for SVM\n" +
-                      f"#define CLASSIFIERS ${c.configurationMemoryParams.nClassifiers}        // number of classifiers created\n\n")
+                      f"#define CLASSIFIERS ${c.configurationMemoryParams.nClassifiers}        // number of classifiers created\n\n" +
+
+                      f"#define NUMTAPS ${goldenModelParameters.filter1Params.taps.length}         // number of filter taps, for output adjustment\n" +
+                      f"#define WINDOW ${goldenModelParameters.bandpower1Params.nBins}         // number of lanes/bins/window, for output adjustment\n\n" +
+
+                      f"#define DATA_WIDTH $dataWidth         // total bit size\n" +
+                      f"#define DATA_BP $dataBP         // number of fractional components\n\n")
 
     // write out all the configuration matrices to the file
     file.write("static double pcaVector[FEATURES][DIMENSIONS] = ")
@@ -283,10 +289,9 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
           expect(c.io.classVotes(i), svmResult(1)(i))
         }
       }
-
-      //outputContainer += svmResult(0).toArray // inside the valid checks
+      outputContainer += svmResult(0).toArray // inside the valid checks
     }
-    outputContainer += svmResult(0).toArray // outside the valid checks
+    //outputContainer += svmResult(0).toArray // outside the valid checks
   }
 
   if (testType == 1) { // write out the expected rawVotes to the file
@@ -323,7 +328,7 @@ object WellnessIntegrationTesterSInt {
         pcaParams: PCAParams[SInt],
         svmParams: SVMParams[SInt],
         configurationMemoryParams: ConfigurationMemoryParams[SInt])) {
-        c => new wellnessTester(c, goldenModelParameters, 0,0)
+        c => new wellnessTester(c, goldenModelParameters, 0,0,0)
       }
     } else {
       dsptools.Driver.execute(() => new WellnessModule(
@@ -337,7 +342,7 @@ object WellnessIntegrationTesterSInt {
         svmParams: SVMParams[SInt],
         configurationMemoryParams: ConfigurationMemoryParams[SInt]),
         TestSetup.dspTesterOptions) {
-        c => new wellnessTester(c, goldenModelParameters, 0, 0)
+        c => new wellnessTester(c, goldenModelParameters, 0,0, 0)
       }
     }
   }
@@ -354,7 +359,7 @@ object WellnessIntegrationTesterFP {
             pcaParams: PCAParams[FixedPoint],
             svmParams: SVMParams[FixedPoint],
             configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
-            goldenModelParameters: wellnessIntegrationParameterBundle, debug: Int, dataBP: Int, testType: Int): Boolean = {
+            goldenModelParameters: wellnessIntegrationParameterBundle, debug: Int, dataWidth: Int, dataBP: Int, testType: Int): Boolean = {
     if (debug == 1) {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new WellnessModule(
         filter1Params: FIRFilterParams[FixedPoint],
@@ -366,7 +371,7 @@ object WellnessIntegrationTesterFP {
         pcaParams: PCAParams[FixedPoint],
         svmParams: SVMParams[FixedPoint],
         configurationMemoryParams: ConfigurationMemoryParams[FixedPoint])) {
-        c => new wellnessTester(c, goldenModelParameters, dataBP, testType)
+        c => new wellnessTester(c, goldenModelParameters, dataWidth, dataBP, testType)
       }
     } else {
       dsptools.Driver.execute(() => new WellnessModule(
@@ -380,7 +385,7 @@ object WellnessIntegrationTesterFP {
         svmParams: SVMParams[FixedPoint],
         configurationMemoryParams: ConfigurationMemoryParams[FixedPoint]),
         TestSetup.dspTesterOptions) {
-        c => new wellnessTester(c, goldenModelParameters, dataBP, testType)
+        c => new wellnessTester(c, goldenModelParameters, dataWidth, dataBP, testType)
       }
     }
   }
