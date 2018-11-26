@@ -290,8 +290,8 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
 
     val windowLength = 32
 
-    val dataWidth = 62
-    val dataBP = 16
+    val dataWidth = 32
+    val dataBP = 8
 
     val tap_count = scala.util.Random.nextInt(15) + 1
     val coefficients1 = mutable.ArrayBuffer[Double]()
@@ -462,8 +462,8 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
     it should "work using the Python model generated files" in {
       val debug = 0
 
-      val dataWidth = 62
-      val dataBP = 16
+      val dataWidth = 32
+      val dataBP = 8
 
       var fileContents = ArrayBuffer[Array[String]]()
       var fileSource = io.Source.fromFile("scripts/generated_files/filter_taps.csv")

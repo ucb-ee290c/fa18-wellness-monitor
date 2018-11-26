@@ -567,7 +567,7 @@ object FixedPointWellnessParams {
 
   val nPts = 4
   val dataWidth:Int = 32
-  val dataBP:Int = 16
+  val dataBP:Int = 8
 
   val filter1Params = new FIRFilterParams[FixedPoint] {
     val protoData = FixedPoint(dataWidth.W,dataBP.BP)
@@ -657,8 +657,8 @@ object FixedPointWellnessParams {
 
 object FixedPointModelWellnessParams {
 
-  val dataWidth:Int = 62
-  val dataBP:Int = 16
+  val dataWidth:Int = 32
+  val dataBP:Int = 8
 
   var fileContents = ArrayBuffer[Array[String]]()
   var fileSource = io.Source.fromFile("scripts/generated_files/filter_taps.csv")

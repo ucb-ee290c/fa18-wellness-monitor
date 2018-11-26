@@ -9,7 +9,8 @@ class CustomFFTSpec extends FlatSpec with Matchers {
   behavior of "FFT"
 
   // FFT points, lanes, total width, fractional bits, pipeline depth
-  val test = Seq(64, 64, 62, 16, 0) // this works
+  val test = Seq(32, 32, 32, 8, 0)
+  //val test = Seq(64, 64, 62, 16, 0) // this works
   //val test = Seq(64, 64, 64, 16, 0) // this doesn't work, WTF?!
   val totalWidth = test(2)
   val fractionalBits = test(3)
