@@ -790,7 +790,6 @@ object FixedPointModelWellnessParams {
     val nSupports: Int = svmParams.nSupports
     val nClassifiers: Int = computeNClassifiers(svmParams)
   }
-
 }
 
 trait HasPeripheryWellness extends BaseSubsystem {

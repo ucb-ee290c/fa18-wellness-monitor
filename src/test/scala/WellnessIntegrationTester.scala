@@ -284,9 +284,9 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
         }
       }
 
-      outputContainer += svmResult(0).toArray // inside the valid checks
+      //outputContainer += svmResult(0).toArray // inside the valid checks
     }
-    //outputContainer += svmResult(0).toArray // outside the valid checks
+    outputContainer += svmResult(0).toArray // outside the valid checks
   }
 
   if (testType == 1) { // write out the expected rawVotes to the file
