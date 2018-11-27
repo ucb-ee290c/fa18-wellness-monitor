@@ -110,6 +110,10 @@ trait HasPeripheryWellness extends BaseSubsystem {
 
 * Create the executable for the C tester file ``wellness_IntegrationTest_FixedPoint.c`` by running ``make`` inside the ``fa18-wellness-monitor/tests`` folder. Make sure that the ``Makefile`` points to this C code.
 
+```
+PROGRAMS = wellness_IntegrationTest_FixedPoint
+```
+
 * Go back to the ``fa18-wellness-monitor/verisim`` folder and run the project:
 
 ```

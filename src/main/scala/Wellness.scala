@@ -21,7 +21,6 @@ import freechips.rocketchip.subsystem._
 import scala.collection.Seq
 import scala.collection.mutable.ArrayBuffer
 
-
 /**
   * The memory interface writes entries into the queue.
   * They stream out the streaming interface
@@ -103,8 +102,6 @@ abstract class ReadQueue
 
   lazy val module = new LazyModuleImp(this) {
     require(streamNode.in.length == 1)
-
-    // TODO
 
     // get the input bundle associated with the AXI4Stream node
     val in = streamNode.in(0)._1
@@ -285,7 +282,6 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   fft.io.in.valid := fftBuffer.io.out.sync
   fft.io.in.sync := false.B
 
-  // TODO: fails
   for (i <- fft.io.in.bits.indices) {
     fft.io.in.bits(i).real := fftBuffer.io.out.bits(i).asTypeOf(fft.io.in.bits(i).real)
   }
@@ -563,11 +559,22 @@ object SIntWellnessParams {
   }
 }
 
+object utilities {
+  // function to read CSVs and return data in 2D format (in Strings, need to convert after calling if needed)
+  def readCSV(fileLoc: String): Seq[Seq[String]] = {
+    val fileContents = ArrayBuffer[Array[String]]()
+    val fileSource = io.Source.fromFile(fileLoc)
+    fileSource.getLines.foreach { line => fileContents += line.split(",").map(_.trim) }
+    fileSource.close()
+    fileContents.map(_.toSeq)
+  }
+}
+
 object FixedPointWellnessParams {
 
   val nPts = 4
-  val dataWidth:Int = 32
-  val dataBP:Int = 8
+
+  val Seq(dataWidth, dataBP) = utilities.readCSV("scripts/generated_files/datasize.csv").flatMap(_.map(_.toInt))
 
   val filter1Params = new FIRFilterParams[FixedPoint] {
     val protoData = FixedPoint(dataWidth.W,dataBP.BP)
@@ -657,50 +664,36 @@ object FixedPointWellnessParams {
 
 object FixedPointModelWellnessParams {
 
-  val dataWidth:Int = 32
-  val dataBP:Int = 8
+  // determine the dataWidth and dataBP parameters
+  val Seq(dataWidth, dataBP) = utilities.readCSV("scripts/generated_files/datasize.csv").flatMap(_.map(_.toInt))
 
-  var fileContents = ArrayBuffer[Array[String]]()
-  var fileSource = io.Source.fromFile("scripts/generated_files/filter_taps.csv")
-  fileSource.getLines.foreach { line => fileContents += line.split(",").map(_.trim) }
-  fileSource.close()
-  val filter_taps = fileContents.flatMap(_.map(_.toDouble))
+  val filter_taps = utilities.readCSV("scripts/generated_files/filter_taps.csv").flatMap(_.map(_.toDouble))
 
-  fileContents = ArrayBuffer[Array[String]]()
-  fileSource = io.Source.fromFile("scripts/generated_files/parameters.csv")
-  fileSource.getLines.foreach { line => fileContents += line.split(",").map(_.trim) }
-  fileSource.close()
-  val ArrayBuffer(windowLength, features, dimensions, supports, classes, degree) = fileContents.flatMap(_.map(_.toInt))
+  val Seq(windowLength, features, dimensions, supports, classes, degree) =
   /* This is the order of parameters, as written in the Python file, for reference
   fe.window,                  # windowSize, lanes, nPts, nBins
   pca.components_.shape[0],   # nFeatures
   pca.components_.shape[1],   # nDimensions
   supports.shape[0],          # nSupports
   classes,                    # nClasses
-  degree                      # nDegree
-  */
+  degree                      # nDegree */
+    utilities.readCSV("scripts/generated_files/parameters.csv").flatMap(_.map(_.toInt))
 
   // this is my preliminary attempt to generalize the identification of bandpower indices
   // looks cool :)
-  fileContents = ArrayBuffer[Array[String]]()
-  fileSource = io.Source.fromFile("scripts/generated_files/feature_list.csv")
-  fileSource.getLines.foreach { line => fileContents += line.split(",").map(_.trim) }
-  fileSource.close()
-  val feature_list = fileContents.flatten
+  val feature_list = utilities.readCSV("scripts/generated_files/feature_list.csv").flatten
 
-  var bandpower1Index = ArrayBuffer(0,0)
-  var bandpower2Index = ArrayBuffer(0,0)
-  val band_list = ArrayBuffer("delta", "theta", "alpha", "beta", "gamma")
+  var bandpower1Index = Seq(0, 0)
+  var bandpower2Index = Seq(0, 0)
+  val band_list = Seq("delta", "theta", "alpha", "beta", "gamma")
 
   for (i <- feature_list.indices) {
     for (j <- band_list.indices) {
-      if (feature_list(i) == band_list(j)){
-        fileContents = ArrayBuffer[Array[String]]()
-        fileSource = io.Source.fromFile(f"scripts/generated_files/${band_list(j)}%s_index.csv")
-        fileSource.getLines.foreach { line => fileContents += line.split(",").map(_.trim) }
-        fileSource.close()
-        if (i == 0) { bandpower1Index = fileContents.flatMap(_.map(_.toInt))
-        } else {      bandpower2Index = fileContents.flatMap(_.map(_.toInt))
+      if (feature_list(i) == band_list(j)) {
+        if (i == 0) {
+          bandpower1Index = utilities.readCSV(f"scripts/generated_files/${band_list(j)}%s_index.csv").flatMap(_.map(_.toInt))
+        } else {
+          bandpower2Index = utilities.readCSV(f"scripts/generated_files/${band_list(j)}%s_index.csv").flatMap(_.map(_.toInt))
         }
       }
     }

@@ -17,9 +17,7 @@
  */
 #define DATA_MASK ((1L << DATA_WIDTH)-1)
 
-#define CONF_DATA_WIDTH 32
-#define CONF_DATA_BP 8
-#define CONF_DATA_MASK ((1L << CONF_DATA_WIDTH)-1)
+#define CONF_DATA_MASK ((1L << DATA_WIDTH)-1)
 #define CONF_ADDR_WIDTH 2
 #define CONF_ADDR_MASK ((1L << CONF_ADDR_WIDTH)-1)
 
@@ -47,13 +45,13 @@ uint64_t pack_data(double x) {
 }
 
 uint64_t pack_conf_data(int addr,double data) {
-    int64_t dataint = (int64_t)(data * (1L << CONF_DATA_BP));
+    int64_t dataint = (int64_t)(data * (1L << DATA_BP));
     int64_t addrint = (int64_t)(addr);
 
     uint64_t datapack = ((uint64_t) dataint) & CONF_DATA_MASK;
     uint64_t addrpack = ((uint64_t) addrint) & CONF_ADDR_MASK;
 
-    return (addrpack << CONF_DATA_WIDTH) | datapack;
+    return (addrpack << DATA_WIDTH) | datapack;
 }
 
 int32_t unpack_pca_0(uint64_t packed) {
@@ -134,7 +132,7 @@ int main(void)
         printDouble(ex[i-(WINDOW+NUMTAPS)][1],4); // adjust starting index 0
         if ((data_out_1double <= ex[i-(WINDOW+NUMTAPS)][1]*(1+tol)) && // tolerance check
             (data_out_1double >= ex[i-(WINDOW+NUMTAPS)][1]*(1-tol))) {
-            printf(" PASSED (within 10\%)");
+            printf(" PASSED (within %d\%)", (int)(tol*100));
             }
         printf("\n");
     }

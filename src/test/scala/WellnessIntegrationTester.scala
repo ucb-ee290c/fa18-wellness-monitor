@@ -19,7 +19,7 @@ import freechips.rocketchip.config.Parameters
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.Seq
 
-class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParameters: wellnessIntegrationParameterBundle, dataWidth: Int, dataBP: Int, testType: Int) extends DspTester(c) {
+class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParameters: wellnessIntegrationParameterBundle, testType: Int) extends DspTester(c) {
 
   // Instantiate golden models
   val filter1 = new GoldenDoubleFIRFilter(goldenModelParameters.filter1Params.taps)
@@ -64,29 +64,10 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   var referenceSVMIntercept = Seq(4.0)
 
   if (testType == 1) { // this is the file loading sequence for the configuration parameters
-    var rows = ArrayBuffer[Array[String]]()
-    var fileSource = io.Source.fromFile("scripts/generated_files/pca_vectors.csv")
-    fileSource.getLines.foreach { line => rows += line.split(",").map(_.trim) }
-    fileSource.close()
-    referencePCAVector = rows.map(_.map(_.toDouble).toSeq)
-
-    rows = ArrayBuffer[Array[String]]()
-    fileSource = io.Source.fromFile("scripts/generated_files/support_vectors.csv")
-    fileSource.getLines.foreach { line => rows += line.split(",").map(_.trim) }
-    fileSource.close()
-    referenceSVMSupportVector = rows.map(_.map(_.toDouble).toSeq)
-
-    rows = ArrayBuffer[Array[String]]()
-    fileSource = io.Source.fromFile("scripts/generated_files/alpha_vectors.csv")
-    fileSource.getLines.foreach { line => rows += line.split(",").map(_.trim) }
-    fileSource.close()
-    referenceSVMAlphaVector = rows.map(_.map(_.toDouble).toSeq)
-
-    rows = ArrayBuffer[Array[String]]()
-    fileSource = io.Source.fromFile("scripts/generated_files/intercepts.csv")
-    fileSource.getLines.foreach { line => rows += line.split(",").map(_.trim) }
-    fileSource.close()
-    referenceSVMIntercept = rows.flatMap(_.map(_.toDouble).toSeq)
+    referencePCAVector = utilities.readCSV("scripts/generated_files/pca_vectors.csv").map(_.map(_.toDouble))
+    referenceSVMSupportVector = utilities.readCSV("scripts/generated_files/support_vectors.csv").map(_.map(_.toDouble))
+    referenceSVMAlphaVector = utilities.readCSV("scripts/generated_files/alpha_vectors.csv").map(_.map(_.toDouble))
+    referenceSVMIntercept = utilities.readCSV("scripts/generated_files/intercepts.csv").flatMap(_.map(_.toDouble))
   }
 
   val pcaVectorMemoryParams = new MemoryBufferParams[T] {
@@ -144,21 +125,21 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   var svmResult = SVM.poke(pcaResult.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),
     referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
 
-  var rows = ArrayBuffer[Array[String]]()
-  var referenceInput = ArrayBuffer(0.0)
+  var dataWidth = 0
+  var dataBP = 0
+  // determine the dataWidth and dataBP parameters
+  if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.FixedPoint") {
+    dataWidth = utilities.readCSV("scripts/generated_files/datasize.csv").flatMap(_.map(_.toInt)).head
+    dataBP = utilities.readCSV("scripts/generated_files/datasize.csv").flatMap(_.map(_.toInt)).last
+  }
 
+  var referenceInput = Seq(0.0)
   if (testType == 1) { // load the input matrix
-    val fileSource = io.Source.fromFile("scripts/generated_files/input.csv")
-    fileSource.getLines.foreach { line => rows += line.split(",").map(_.trim) }
-    fileSource.close()
-    referenceInput = rows.flatMap(_.map(_.toDouble).toSeq)
+    referenceInput = utilities.readCSV("scripts/generated_files/input.csv").flatMap(_.map(_.toDouble))
   }
 
   if (testType == 1) { // create the .h file to contain the reference arrays
-    val newFile = new File("tests/arrays.h")
-    if (newFile.exists) { newFile.delete() } // do an overwrite for this new test
-
-    val file = new FileWriter("tests/arrays.h",true)
+    val file = new FileWriter(new File("tests/arrays.h"))
     // write out the preambles and define statements
     file.write( "#ifndef __ARRAY_H__\n" +
                       "#define __ARRAY_H__\n\n" +
@@ -175,19 +156,19 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
 
     // write out all the configuration matrices to the file
     file.write("static double pcaVector[FEATURES][DIMENSIONS] = ")
-    file.write(referencePCAVector.map(_.mkString("{", ", ", "}")).mkString("{", ", ", "};\n"))
+    file.write(referencePCAVector.map(_.mkString("{", ", ", "}")).mkString("{", ", ", "};\n\n"))
 
     file.write("static double SVMSupportVector[SUPPORTS][FEATURES] = ")
-    file.write(referenceSVMSupportVector.map(_.mkString("{", ", ", "}")).mkString("{", ", ", "};\n"))
+    file.write(referenceSVMSupportVector.map(_.mkString("{", ", ", "}")).mkString("{", ", ", "};\n\n"))
 
     file.write("static double SVMAlphaVector[CLASSIFIERS][SUPPORTS] = ")
-    file.write(referenceSVMAlphaVector.map(_.mkString("{", ", ", "}")).mkString("{", ", ", "};\n"))
+    file.write(referenceSVMAlphaVector.map(_.mkString("{", ", ", "}")).mkString("{", ", ", "};\n\n"))
 
     file.write("static double SVMIntercept[CLASSIFIERS] = ")
-    file.write(referenceSVMIntercept.mkString("{", ", ", "};\n"))
+    file.write(referenceSVMIntercept.mkString("{", ", ", "};\n\n"))
 
     file.write("static double in[] = ")
-    file.write(referenceInput.mkString("{", ", ", "};\n"))
+    file.write(referenceInput.mkString("{", ", ", "};\n\n"))
 
     file.close()
   }
@@ -289,9 +270,9 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
           expect(c.io.classVotes(i), svmResult(1)(i))
         }
       }
-      outputContainer += svmResult(0).toArray // inside the valid checks
+      outputContainer += svmResult(0).toArray // inside the valid checks, only the valid outputs are recorded
     }
-    //outputContainer += svmResult(0).toArray // outside the valid checks
+    //outputContainer += svmResult(0).toArray // outside the valid checks, if you want to include the false outputs
   }
 
   if (testType == 1) { // write out the expected rawVotes to the file
@@ -299,7 +280,7 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     file.write("static double ex[][2] = ")
     file.write(outputContainer.map(_.mkString("{", ", ", "}")).mkString("{", ", ", "};\n\n"))
 
-    file.write("#endif") // the end of the .h file
+    file.write("#endif\n") // the end of the .h file
 
     file.close()
   }
@@ -328,7 +309,7 @@ object WellnessIntegrationTesterSInt {
         pcaParams: PCAParams[SInt],
         svmParams: SVMParams[SInt],
         configurationMemoryParams: ConfigurationMemoryParams[SInt])) {
-        c => new wellnessTester(c, goldenModelParameters, 0,0,0)
+        c => new wellnessTester(c, goldenModelParameters,0)
       }
     } else {
       dsptools.Driver.execute(() => new WellnessModule(
@@ -342,7 +323,7 @@ object WellnessIntegrationTesterSInt {
         svmParams: SVMParams[SInt],
         configurationMemoryParams: ConfigurationMemoryParams[SInt]),
         TestSetup.dspTesterOptions) {
-        c => new wellnessTester(c, goldenModelParameters, 0,0, 0)
+        c => new wellnessTester(c, goldenModelParameters, 0)
       }
     }
   }
@@ -359,7 +340,7 @@ object WellnessIntegrationTesterFP {
             pcaParams: PCAParams[FixedPoint],
             svmParams: SVMParams[FixedPoint],
             configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
-            goldenModelParameters: wellnessIntegrationParameterBundle, debug: Int, dataWidth: Int, dataBP: Int, testType: Int): Boolean = {
+            goldenModelParameters: wellnessIntegrationParameterBundle, debug: Int, testType: Int): Boolean = {
     if (debug == 1) {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new WellnessModule(
         filter1Params: FIRFilterParams[FixedPoint],
@@ -371,7 +352,7 @@ object WellnessIntegrationTesterFP {
         pcaParams: PCAParams[FixedPoint],
         svmParams: SVMParams[FixedPoint],
         configurationMemoryParams: ConfigurationMemoryParams[FixedPoint])) {
-        c => new wellnessTester(c, goldenModelParameters, dataWidth, dataBP, testType)
+        c => new wellnessTester(c, goldenModelParameters, testType)
       }
     } else {
       dsptools.Driver.execute(() => new WellnessModule(
@@ -385,7 +366,7 @@ object WellnessIntegrationTesterFP {
         svmParams: SVMParams[FixedPoint],
         configurationMemoryParams: ConfigurationMemoryParams[FixedPoint]),
         TestSetup.dspTesterOptions) {
-        c => new wellnessTester(c, goldenModelParameters, dataWidth, dataBP, testType)
+        c => new wellnessTester(c, goldenModelParameters, testType)
       }
     }
   }
