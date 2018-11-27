@@ -1,5 +1,7 @@
 package wellness
 
+import java.io._
+
 import chisel3._
 import chisel3.core.FixedPoint
 import dsptools.numbers._
@@ -10,7 +12,6 @@ import org.scalatest.{FlatSpec, Matchers}
 import pca._
 import svm._
 
-import scala.collection.mutable.ArrayBuffer
 import scala.collection.{Seq, mutable}
 
 abstract class filterParamsTemplate {
@@ -137,7 +138,6 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       override val fftConfig: fftConfigTemplate = new fftConfigTemplate {
         val nPts: Int = windowLength
       }
-      // TODO: parameterize to match Chisel params below
       override val bandpower1Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
         val idxStartBin: Int = 0
         val idxEndBin: Int = 2
@@ -292,6 +292,12 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
 
     val dataWidth = 32
     val dataBP = 8
+
+    // write out the dataWidth and dataBP to a file
+    // these values need to be consistent between WellnessIntegrationTester, Wellness, and the C code
+    val file = new FileWriter(new File("scripts/generated_files/datasize.csv"))
+    file.write(f"$dataWidth,$dataBP")
+    file.close()
 
     val tap_count = scala.util.Random.nextInt(15) + 1
     val coefficients1 = mutable.ArrayBuffer[Double]()
@@ -455,59 +461,51 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       pcaParams: PCAParams[FixedPoint],
       svmParams: SVMParams[FixedPoint],
       configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
-      goldenModelParameters: wellnessIntegrationParameterBundle, debug, dataBP, 0) should be (true)
+      goldenModelParameters: wellnessIntegrationParameterBundle, debug, 0) should be (true)
   }
 
   if (integrated == 1) {
     it should "work using the Python model generated files" in {
-      val debug = 0
+      val debug = 1
 
       val dataWidth = 32
       val dataBP = 8
 
-      var fileContents = ArrayBuffer[Array[String]]()
-      var fileSource = io.Source.fromFile("scripts/generated_files/filter_taps.csv")
-      fileSource.getLines.foreach { line => fileContents += line.split(",").map(_.trim) }
-      fileSource.close()
-      val filter_taps = fileContents.flatMap(_.map(_.toDouble))
+      // write out the dataWidth and dataBP to a file
+      // these values need to be consistent between WellnessIntegrationTester, Wellness, and the C code
+      val file = new FileWriter(new File("scripts/generated_files/datasize.csv"))
+      file.write(f"$dataWidth,$dataBP")
+      file.close()
 
-      fileContents = ArrayBuffer[Array[String]]()
-      fileSource = io.Source.fromFile("scripts/generated_files/parameters.csv")
-      fileSource.getLines.foreach { line => fileContents += line.split(",").map(_.trim) }
-      fileSource.close()
-      val ArrayBuffer(windowLength, features, dimensions, supports, classes, degree) = fileContents.flatMap(_.map(_.toInt))
+      // get the filter taps from the file, generated in Python
+      val filter_taps = utilities.readCSV("scripts/generated_files/filter_taps.csv").flatMap(_.map(_.toDouble))
+
+      // get the parameter values from the file, generated in Python as well
+      val Seq(windowLength, features, dimensions, supports, classes, degree) =
       /* This is the order of parameters, as written in the Python file, for reference
       fe.window,                  # windowSize, lanes, nPts, nBins
       pca.components_.shape[0],   # nFeatures
       pca.components_.shape[1],   # nDimensions
       supports.shape[0],          # nSupports
       classes,                    # nClasses
-      degree                      # nDegree
-      */
+      degree                      # nDegree */
+        utilities.readCSV("scripts/generated_files/parameters.csv").flatMap(_.map(_.toInt))
 
       // this is my preliminary attempt to generalize the identification of bandpower indices
       // looks cool :)
-      fileContents = ArrayBuffer[Array[String]]()
-      fileSource = io.Source.fromFile("scripts/generated_files/feature_list.csv")
-      fileSource.getLines.foreach { line => fileContents += line.split(",").map(_.trim) }
-      fileSource.close()
-      val feature_list = fileContents.flatten
+      val feature_list = utilities.readCSV("scripts/generated_files/feature_list.csv").flatten
 
-      var bandpower1Index = ArrayBuffer(0, 0)
-      var bandpower2Index = ArrayBuffer(0, 0)
-      val band_list = ArrayBuffer("delta", "theta", "alpha", "beta", "gamma")
+      var bandpower1Index = Seq(0, 0)
+      var bandpower2Index = Seq(0, 0)
+      val band_list = Seq("delta", "theta", "alpha", "beta", "gamma")
 
       for (i <- feature_list.indices) {
         for (j <- band_list.indices) {
           if (feature_list(i) == band_list(j)) {
-            fileContents = ArrayBuffer[Array[String]]()
-            fileSource = io.Source.fromFile(f"scripts/generated_files/${band_list(j)}%s_index.csv")
-            fileSource.getLines.foreach { line => fileContents += line.split(",").map(_.trim) }
-            fileSource.close()
             if (i == 0) {
-              bandpower1Index = fileContents.flatMap(_.map(_.toInt))
+              bandpower1Index = utilities.readCSV(f"scripts/generated_files/${band_list(j)}%s_index.csv").flatMap(_.map(_.toInt))
             } else {
-              bandpower2Index = fileContents.flatMap(_.map(_.toInt))
+              bandpower2Index = utilities.readCSV(f"scripts/generated_files/${band_list(j)}%s_index.csv").flatMap(_.map(_.toInt))
             }
           }
         }
@@ -673,7 +671,7 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
         pcaParams: PCAParams[FixedPoint],
         svmParams: SVMParams[FixedPoint],
         configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
-        goldenModelParameters: wellnessIntegrationParameterBundle, debug, dataBP, 1) should be(true)
+        goldenModelParameters: wellnessIntegrationParameterBundle, debug, 1) should be(true)
     }
   }
 }

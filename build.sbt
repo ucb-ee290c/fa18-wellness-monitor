@@ -14,9 +14,11 @@ scalacOptions ++= Seq(
 
 parallelExecution in Test := false
 
+/*
 libraryDependencies ++= Seq(
   "edu.berkeley.cs" %% "rocket-dsptools" % "1.2-102318-SNAPSHOT"
 )
+*/
 
 resolvers ++= Seq(
   Resolver.sonatypeRepo("snapshots"),
