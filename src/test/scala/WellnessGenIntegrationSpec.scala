@@ -15,6 +15,9 @@ import scala.collection.{Seq, mutable}
 abstract class filterGenParamsTemplate {
   val taps:Seq[Double]
 }
+abstract class lineLengthGenParamsTemplate {
+  val windowSize:Int
+}
 
 
 class wellnessGenIntegrationParameterBundle {
@@ -24,6 +27,10 @@ class wellnessGenIntegrationParameterBundle {
   // the 'requires' are not even being checked!
   val filter1Params:filterGenParamsTemplate = new filterGenParamsTemplate {
     val taps = Seq(0.toDouble)
+  }
+  val lineLength1Params:lineLengthGenParamsTemplate = new lineLengthGenParamsTemplate {
+    val protoData = SInt(64.W)
+    val windowSize = 5
   }
 }
 
@@ -36,25 +43,24 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
 
     val debug = 0
 
-    val tap_count = 3
-    val coefficients1 = mutable.ArrayBuffer[Int]()
-    for(j <- 0 until tap_count) {
-      coefficients1 += j
-       }
+    val tap_count = 5
+    val coefficients1 = Seq(1,2,3,4,5)
 
     val goldenModelParameters = new wellnessGenIntegrationParameterBundle {
       override val filter1Params: filterGenParamsTemplate = new filterGenParamsTemplate {
         val taps: Seq[Double] = coefficients1.map(_.toDouble)
       }
+      override val lineLength1Params: lineLengthGenParamsTemplate = new lineLengthGenParamsTemplate {
+        override val windowSize: Int = 5
+      }
     }
 
-    val filter1Params = new FIRFilterParams[SInt] {
+    val wellnessGenParams1 = new wellnessGenParams[SInt] {
       val protoData = SInt(64.W)
-      val taps = coefficients1.map(_.asSInt())
     }
 
-    wellnessGenIntegrationTesterSInt(filter1Params: FIRFilterParams[SInt],
-      3,
+
+    wellnessGenIntegrationTesterSInt(wellnessGenParams1: wellnessGenParams[SInt],
       goldenModelParameters: wellnessGenIntegrationParameterBundle, debug) should be (true)
   }
 }
