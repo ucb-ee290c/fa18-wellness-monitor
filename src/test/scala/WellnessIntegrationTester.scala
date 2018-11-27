@@ -342,7 +342,7 @@ object WellnessIntegrationTesterFP {
             configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
             goldenModelParameters: wellnessIntegrationParameterBundle, debug: Int, testType: Int): Boolean = {
     if (debug == 1) {
-      chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new WellnessModule(
+      chisel3.iotesters.Driver.execute(Array("-tbn", "verilator", "-fiwv"), () => new WellnessModule(
         filter1Params: FIRFilterParams[FixedPoint],
         lineLength1Params: lineLengthParams[FixedPoint],
         fftBufferParams: FFTBufferParams[FixedPoint],
