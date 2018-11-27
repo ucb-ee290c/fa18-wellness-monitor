@@ -192,7 +192,7 @@ print("Accuracy from manual calculation: %f" % accuracy_score(y_test, y_manual))
 # Printing data to CSV files, to be read by Scala Tester
 #########################################
 if print_data == 1:
-    size_limit = 10
+    size_limit = -1
     if silence == 0: print("Printing all configuration parameters to files under generated_files folder")
     fmt = '%.10f' # 10 decimal places as float
     np.savetxt("generated_files/input.csv",X_test_raw[0:1000].T,fmt=fmt,delimiter=',')
@@ -219,7 +219,7 @@ if print_data == 1:
     np.savetxt("generated_files/normalize_line.csv",[fe.line_normalize],fmt=fmt,delimiter=',')
     
     # list of all parameters used in this model, take note of the order, needs to be consistent for the Scala implementation
-    np.savetxt("generated_files/parameters.csv",[32,#fe.window, # windowSize, lanes, nPts, nBins
+    np.savetxt("generated_files/parameters.csv",[fe.window, # windowSize, lanes, nPts, nBins
                                                  pca.components_.shape[0],  # nFeatures
                                                  pca.components_.shape[1],  # nDimensions
                                                  supports[0:size_limit,:].shape[0],    # nSupports
