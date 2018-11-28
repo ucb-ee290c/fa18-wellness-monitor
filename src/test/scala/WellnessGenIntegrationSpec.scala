@@ -20,6 +20,7 @@ abstract class lineLengthGenParamsTemplate {
 }
 
 
+
 class wellnessGenIntegrationParameterBundle {
 
   // the numbers here are actually irrelevant, you just need to put something
