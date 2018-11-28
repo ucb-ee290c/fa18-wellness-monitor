@@ -44,9 +44,9 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
 ( val genParams: wellnessGenParams[T])(implicit val p: Parameters) extends Module {
   val io = IO(wellnessGenModuleIO[T](genParams: wellnessGenParams[T]))
 
-  val tap_count = 5
-  val windowLength = 4
-  val coefficients1 = Seq(1,2,3,4)
+  val tap_count = 2
+  val windowLength = 2
+  val coefficients1 = Seq(1,1)
 
   // val coefficients1 = mutable.ArrayBuffer[Int]()
   // for(j <- 0 until tap_count) {
@@ -118,14 +118,14 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
           {
             case "FIR" =>
             {
-              FIRBucket(datapathGenSeq (i)._2).io.in.valid :=  FIRBucket(datapathGenSeq (i)._2).io.out.valid
-              FIRBucket(datapathGenSeq (i)._2).io.in.bits  :=  FIRBucket(datapathGenSeq (i)._2).io.out.bits
+              FIRBucket(datapathGenSeq (i)._2).io.in.valid :=  FIRBucket(datapathGenSeq (i-1)._2).io.out.valid
+              FIRBucket(datapathGenSeq (i)._2).io.in.bits  :=  FIRBucket(datapathGenSeq (i-1)._2).io.out.bits
               FIRBucket(datapathGenSeq (i)._2).io.in.sync  :=  false.B
             }
             case "lineLength" =>
             {
-              FIRBucket(datapathGenSeq (i)._2).io.in.valid := lineLengthBucket (datapathGenSeq (i)._2).io.out.valid
-              FIRBucket(datapathGenSeq (i)._2).io.in.bits  := lineLengthBucket (datapathGenSeq (i)._2).io.out.bits
+              FIRBucket(datapathGenSeq (i)._2).io.in.valid := lineLengthBucket (datapathGenSeq (i-1)._2).io.out.valid
+              FIRBucket(datapathGenSeq (i)._2).io.in.bits  := lineLengthBucket (datapathGenSeq (i-1)._2).io.out.bits
               FIRBucket(datapathGenSeq (i)._2).io.in.sync  := false.B
             }
           }
@@ -136,14 +136,14 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
           {
             case "FIR" =>
             {
-              lineLengthBucket(datapathGenSeq (i)._2).io.in.valid :=  FIRBucket(datapathGenSeq (i)._2).io.out.valid
-              lineLengthBucket(datapathGenSeq (i)._2).io.in.bits  :=  FIRBucket(datapathGenSeq (i)._2).io.out.bits
+              lineLengthBucket(datapathGenSeq (i)._2).io.in.valid :=  FIRBucket(datapathGenSeq (i-1)._2).io.out.valid
+              lineLengthBucket(datapathGenSeq (i)._2).io.in.bits  :=  FIRBucket(datapathGenSeq (i-1)._2).io.out.bits
               lineLengthBucket(datapathGenSeq (i)._2).io.in.sync  :=  false.B
             }
             case "lineLength" =>
             {
-              lineLengthBucket(datapathGenSeq (i)._2).io.in.valid := lineLengthBucket (datapathGenSeq (i)._2).io.out.valid
-              lineLengthBucket(datapathGenSeq (i)._2).io.in.bits  := lineLengthBucket (datapathGenSeq (i)._2).io.out.bits
+              lineLengthBucket(datapathGenSeq (i)._2).io.in.valid := lineLengthBucket (datapathGenSeq (i-1)._2).io.out.valid
+              lineLengthBucket(datapathGenSeq (i)._2).io.in.bits  := lineLengthBucket (datapathGenSeq (i-1)._2).io.out.bits
               lineLengthBucket(datapathGenSeq (i)._2).io.in.sync  := false.B
             }
           }
@@ -164,7 +164,7 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
         {
           io.out.valid := lineLengthBucket(datapathGenSeq(i)._2).io.out.valid
           io.out.bits  := lineLengthBucket(datapathGenSeq(i)._2).io.out.bits
-          io.out.sync  := lineLengthBucket(datapathGenSeq(i)._2).io.out.sync
+          io.out.sync  := false.B
         }
       }
     }

@@ -44,15 +44,15 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
 
     val debug = 0
 
-    val tap_count = 4
-    val coefficients1 = Seq(1,2,3,4)
+    val tap_count = 2
+    val coefficients1 = Seq(1,1)
 
     val goldenModelParameters = new wellnessGenIntegrationParameterBundle {
       override val filter1Params: filterGenParamsTemplate = new filterGenParamsTemplate {
         val taps: Seq[Double] = coefficients1.map(_.toDouble)
       }
       override val lineLength1Params: lineLengthGenParamsTemplate = new lineLengthGenParamsTemplate {
-        override val windowSize: Int = 4
+        override val windowSize: Int = 2
       }
     }
 
