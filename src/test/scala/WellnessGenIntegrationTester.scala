@@ -38,7 +38,7 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
 
   val datapathSeq : mutable.ArrayBuffer[(Int,Int)] = mutable.ArrayBuffer()
   val bucketSeq = Seq(FIRBucket,FIRBucket,FIRBucket,lineLengthBucket)
-  var resultSeq = Seq(FIRResultBucket,IIRResultBucket,FFTResultBucket,lineLengthBucket)
+  val resultSeq = Seq(FIRResultBucket,IIRResultBucket,FFTResultBucket,lineLengthResultBucket)
 
 
   for (i <- 0 until pathSeq.length)
@@ -78,14 +78,11 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
           {
             case 0 =>
             {
-              resultSeq(modi)(modj) match {
-                case Double => val temp = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleFIRFilter].poke(input)
-              }
+              resultSeq(modi)(modj) = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleFIRFilter].poke(input)
             }
             case 1 =>
             {
-              val temp = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleFIRFilter].poke(input)
-              //resultSeq(modi)(modj) = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleLineLength].poke(input)
+              resultSeq(modi)(modj) = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleLineLength].poke(input)
             }
           }
         }
@@ -97,13 +94,11 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
           {
             case 0 =>
             {
-              val temp = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleFIRFilter].poke(input)
-              //resultSeq(modi)(modj) = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleFIRFilter].poke(resultSeq(prev_modi)(prev_modj).asInstanceOf[Double])
+              resultSeq(modi)(modj) = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleFIRFilter].poke(resultSeq(prev_modi)(prev_modj))
             }
             case 1 =>
             {
-              val temp = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleFIRFilter].poke(input)
-              //resultSeq(modi)(modj) = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleLineLength].poke(resultSeq(prev_modi)(prev_modj).asInstanceOf[Double])
+              resultSeq(modi)(modj) = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleLineLength].poke(resultSeq(prev_modi)(prev_modj))
             }
           }
         }
