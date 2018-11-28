@@ -47,21 +47,20 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
       {
         case "FIR" =>
         { // FIR
-          FIRBucket += new GoldenDoubleFIRFilter(pathSeq(i)._2.asInstanceOf[Seq[Double]])
-          datapathSeq += ((0,FIRBucket.length))
+          FIRBucket += new GoldenDoubleFIRFilter(pathSeq(i)._2.asInstanceOf[filterGenParamsTemplate].taps)
+          datapathSeq += ((0,FIRBucket.length-1))
           FIRResultBucket += 0.toDouble
         }
         case "lineLength" =>
         { // lineLength
-          lineLengthBucket += new GoldenDoubleLineLength(pathSeq(i)._2.asInstanceOf[Int],wellnessGenParams1.protoData.getClass.getTypeName)
-          datapathSeq += ((3,lineLengthBucket.length))
+          lineLengthBucket += new GoldenDoubleLineLength(pathSeq(i)._2.asInstanceOf[lineLengthGenParamsTemplate].
+            windowSize,wellnessGenParams1.protoData.getClass.getTypeName)
+          datapathSeq += ((3,lineLengthBucket.length-1))
           lineLengthResultBucket += 0.toDouble
         }
       }
     }
 
-  // val filter1 = new GoldenDoubleFIRFilter(goldenModelParameters.filter1Params.taps)
-  // var filter1Result = filter1.poke(0)
 
   for (i <- 0 until 100)
   {
@@ -73,14 +72,13 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
         val modj = datapathSeq(j)._2
         if (j == (datapathSeq.length - 1))
         {
-          val guava = Seq(ArrayBuffer[Double]()).getClass
           modi match
           {
             case 0 =>
             {
               resultSeq(modi)(modj) = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleFIRFilter].poke(input)
             }
-            case 1 =>
+            case 3 =>
             {
               resultSeq(modi)(modj) = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleLineLength].poke(input)
             }
@@ -96,7 +94,7 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
             {
               resultSeq(modi)(modj) = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleFIRFilter].poke(resultSeq(prev_modi)(prev_modj))
             }
-            case 1 =>
+            case 3 =>
             {
               resultSeq(modi)(modj) = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleLineLength].poke(resultSeq(prev_modi)(prev_modj))
             }
@@ -108,7 +106,10 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
     poke(c.io.in.valid, 1)
     step(1)
 
-    // expect(c.io.out.bits, filter1Result)
+    val endBlock = datapathSeq.length-1
+    val lasti = datapathSeq(endBlock)._1
+    val lastj = datapathSeq(endBlock)._2
+    expect(c.io.out.bits, resultSeq(lasti)(lastj))
   }
 }
 
