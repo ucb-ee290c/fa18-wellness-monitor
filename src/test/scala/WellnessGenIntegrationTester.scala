@@ -31,14 +31,14 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
   val FIRBucket = mutable.ArrayBuffer[GoldenDoubleFIRFilter]()
   val lineLengthBucket = mutable.ArrayBuffer[GoldenDoubleLineLength]()
 
-  val FIRResultBucket = mutable.ArrayBuffer[Double]()
-  val IIRResultBucket = mutable.ArrayBuffer[Double]()
-  val FFTResultBucket = mutable.ArrayBuffer[Double]()
-  val lineLengthResultBucket = mutable.ArrayBuffer[Double]()
+  var FIRResultBucket = mutable.ArrayBuffer[Double]()
+  var IIRResultBucket = mutable.ArrayBuffer[Double]()
+  var FFTResultBucket = mutable.ArrayBuffer[Double]()
+  var lineLengthResultBucket = mutable.ArrayBuffer[Double]()
 
   val datapathSeq : mutable.ArrayBuffer[(Int,Int)] = mutable.ArrayBuffer()
   val bucketSeq = Seq(FIRBucket,FIRBucket,FIRBucket,lineLengthBucket)
-  val resultSeq : Seq[mutable.ArrayBuffer[Double]] = Seq(FIRResultBucket,IIRResultBucket,FFTResultBucket,lineLengthBucket)
+  var resultSeq = Seq(FIRResultBucket,IIRResultBucket,FFTResultBucket,lineLengthBucket)
 
 
   for (i <- 0 until pathSeq.length)
@@ -79,13 +79,13 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
             case 0 =>
             {
               resultSeq(modi)(modj) match {
-                case _: Double => val temp = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleFIRFilter].poke(input)
+                case Double => val temp = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleFIRFilter].poke(input)
               }
             }
             case 1 =>
             {
               val temp = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleFIRFilter].poke(input)
-              resultSeq(modi)(modj) = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleLineLength].poke(input)
+              //resultSeq(modi)(modj) = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleLineLength].poke(input)
             }
           }
         }
@@ -98,12 +98,12 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
             case 0 =>
             {
               val temp = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleFIRFilter].poke(input)
-              resultSeq(modi)(modj) = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleFIRFilter].poke(resultSeq(prev_modi)(prev_modj).asInstanceOf[Double])
+              //resultSeq(modi)(modj) = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleFIRFilter].poke(resultSeq(prev_modi)(prev_modj).asInstanceOf[Double])
             }
             case 1 =>
             {
               val temp = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleFIRFilter].poke(input)
-              resultSeq(modi)(modj) = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleLineLength].poke(resultSeq(prev_modi)(prev_modj).asInstanceOf[Double])
+              //resultSeq(modi)(modj) = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleLineLength].poke(resultSeq(prev_modi)(prev_modj).asInstanceOf[Double])
             }
           }
         }
