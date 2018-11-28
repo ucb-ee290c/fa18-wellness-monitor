@@ -45,8 +45,8 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   val io = IO(wellnessGenModuleIO[T](genParams: wellnessGenParams[T]))
 
   val tap_count = 5
-  val windowLength = 5
-  val coefficients1 = Seq(1,2,3,4,5)
+  val windowLength = 4
+  val coefficients1 = Seq(1,2,3,4)
 
   // val coefficients1 = mutable.ArrayBuffer[Int]()
   // for(j <- 0 until tap_count) {
@@ -64,27 +64,26 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
     val windowSize = windowLength
   }
 
-  val datapathSeq = Seq((0,filter1Params), (1,lineLength1Params))
+  val datapathSeq = Seq(("FIR",filter1Params), ("lineLength",lineLength1Params))
 
 
   val FIRBucket = mutable.ArrayBuffer[ConstantCoefficientFIRFilter[SInt]]()
   val lineLengthBucket = mutable.ArrayBuffer[lineLength[SInt]]()
-  val datapathGenSeq : mutable.ArrayBuffer[(Int,Int)] = mutable.ArrayBuffer()
+  val datapathGenSeq : mutable.ArrayBuffer[(String,Int)] = mutable.ArrayBuffer()
 
   for(i <- 0 until datapathSeq.length)
   {
     datapathSeq(i)._1 match
     {
-      case 0 =>
+      case "FIR" =>
       { // FIR
         FIRBucket += Module(new ConstantCoefficientFIRFilter(datapathSeq(i)._2.asInstanceOf[FIRFilterParams[SInt]]))
-        datapathGenSeq += ((0,FIRBucket.length))
-
+        datapathGenSeq += (("FIR",FIRBucket.length-1))
       }
-      case 1 =>
+      case "lineLength" =>
       { // lineLength
         lineLengthBucket += Module(new lineLength(datapathSeq(i)._2.asInstanceOf[lineLengthParams[SInt]]))
-        datapathGenSeq += ((1,lineLengthBucket.length))
+        datapathGenSeq += (("lineLength",lineLengthBucket.length-1))
       }
     }
   }
@@ -95,13 +94,13 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
     {
       datapathGenSeq(i)._1 match
       {
-      case 0 =>
+      case "FIR" =>
         {
           FIRBucket(datapathGenSeq(i)._2).io.in.valid := io.in.valid
           FIRBucket(datapathGenSeq(i)._2).io.in.bits := io.in.bits
           FIRBucket(datapathGenSeq(i)._2).io.in.sync := false.B
         }
-      case 1 =>
+      case "lineLength" =>
         {
           lineLengthBucket(datapathGenSeq(i)._2).io.in.valid := io.in.valid
           lineLengthBucket(datapathGenSeq(i)._2).io.in.bits := io.in.bits
@@ -109,46 +108,66 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
         }
       }
     }
-
-
-    datapathGenSeq(i)._1 match
+    else
     {
-      case 0 =>
+      datapathGenSeq(i)._1 match
       {
-        datapathGenSeq(i-1)._1 match
+        case "FIR" =>
         {
-          case 0 =>
+          datapathGenSeq(i-1)._1 match
           {
-            FIRBucket(datapathGenSeq (i)._2).io.in.valid :=  FIRBucket(datapathGenSeq (i)._2).io.out.valid
-            FIRBucket(datapathGenSeq (i)._2).io.in.bits  :=  FIRBucket(datapathGenSeq (i)._2).io.out.bits
-            FIRBucket(datapathGenSeq (i)._2).io.in.sync  :=  false.B
-          }
-          case 1 =>
-          {
-            FIRBucket(datapathGenSeq (i)._2).io.in.valid := lineLengthBucket (datapathGenSeq (i)._2).io.out.valid
-            FIRBucket(datapathGenSeq (i)._2).io.in.bits  := lineLengthBucket (datapathGenSeq (i)._2).io.out.bits
-            FIRBucket(datapathGenSeq (i)._2).io.in.sync  := false.B
+            case "FIR" =>
+            {
+              FIRBucket(datapathGenSeq (i)._2).io.in.valid :=  FIRBucket(datapathGenSeq (i)._2).io.out.valid
+              FIRBucket(datapathGenSeq (i)._2).io.in.bits  :=  FIRBucket(datapathGenSeq (i)._2).io.out.bits
+              FIRBucket(datapathGenSeq (i)._2).io.in.sync  :=  false.B
+            }
+            case "lineLength" =>
+            {
+              FIRBucket(datapathGenSeq (i)._2).io.in.valid := lineLengthBucket (datapathGenSeq (i)._2).io.out.valid
+              FIRBucket(datapathGenSeq (i)._2).io.in.bits  := lineLengthBucket (datapathGenSeq (i)._2).io.out.bits
+              FIRBucket(datapathGenSeq (i)._2).io.in.sync  := false.B
+            }
           }
         }
-      }
-      case 1 =>
-      {
-        datapathGenSeq(i-1)._1 match
+        case "lineLength" =>
         {
-          case 0 =>
+          datapathGenSeq(i-1)._1 match
           {
-            lineLengthBucket(datapathGenSeq (i)._2).io.in.valid :=  FIRBucket(datapathGenSeq (i)._2).io.out.valid
-            lineLengthBucket(datapathGenSeq (i)._2).io.in.bits  :=  FIRBucket(datapathGenSeq (i)._2).io.out.bits
-            lineLengthBucket(datapathGenSeq (i)._2).io.in.sync  :=  false.B
-          }
-          case 1 =>
-          {
-            lineLengthBucket(datapathGenSeq (i)._2).io.in.valid := lineLengthBucket (datapathGenSeq (i)._2).io.out.valid
-            lineLengthBucket(datapathGenSeq (i)._2).io.in.bits  := lineLengthBucket (datapathGenSeq (i)._2).io.out.bits
-            lineLengthBucket(datapathGenSeq (i)._2).io.in.sync  := false.B
+            case "FIR" =>
+            {
+              lineLengthBucket(datapathGenSeq (i)._2).io.in.valid :=  FIRBucket(datapathGenSeq (i)._2).io.out.valid
+              lineLengthBucket(datapathGenSeq (i)._2).io.in.bits  :=  FIRBucket(datapathGenSeq (i)._2).io.out.bits
+              lineLengthBucket(datapathGenSeq (i)._2).io.in.sync  :=  false.B
+            }
+            case "lineLength" =>
+            {
+              lineLengthBucket(datapathGenSeq (i)._2).io.in.valid := lineLengthBucket (datapathGenSeq (i)._2).io.out.valid
+              lineLengthBucket(datapathGenSeq (i)._2).io.in.bits  := lineLengthBucket (datapathGenSeq (i)._2).io.out.bits
+              lineLengthBucket(datapathGenSeq (i)._2).io.in.sync  := false.B
+            }
           }
         }
       }
     }
+    if (i == datapathGenSeq.length-1)
+    {
+      datapathGenSeq(i)._1 match
+      {
+        case "FIR" =>
+        {
+          io.out.valid := FIRBucket(datapathGenSeq(i)._2).io.out.valid
+          io.out.bits  := FIRBucket(datapathGenSeq(i)._2).io.out.bits
+          io.out.sync  := false.B
+        }
+        case "lineLength" =>
+        {
+          io.out.valid := lineLengthBucket(datapathGenSeq(i)._2).io.out.valid
+          io.out.bits  := lineLengthBucket(datapathGenSeq(i)._2).io.out.bits
+          io.out.sync  := lineLengthBucket(datapathGenSeq(i)._2).io.out.sync
+        }
+      }
+    }
   }
+  io.in.ready := true.B
 }

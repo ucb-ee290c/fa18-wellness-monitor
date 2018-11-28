@@ -262,7 +262,8 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   val pca = Module(new PCA(pcaParams))
   val svm = Module(new SVM(svmParams))
 
-  io.in.ready := true.B
+
+
 
   // Input to Filters
   filter1.io.in.valid := io.in.valid
