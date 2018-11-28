@@ -1,24 +1,18 @@
 package wellness
 
-import chisel3._
-import chisel3.core.FixedPoint
-import chisel3.util._
-import dspblocks._
-import dspjunctions.ValidWithSync
-import dsptools.numbers._
 import firFilter._
-import fft._
+import iirFilter._
 import features._
-import pca._
-import svm._
-import freechips.rocketchip.amba.axi4stream._
-import freechips.rocketchip.config.Parameters
-import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.regmapper._
-import freechips.rocketchip.tilelink._
-import freechips.rocketchip.subsystem._
-import scala.collection._
 
+import chisel3._
+import chisel3.util._
+import dsptools.numbers._
+import dspjunctions.ValidWithSync
+import freechips.rocketchip.config.Parameters
+
+import scala.collection._
+import scala.collection.mutable._
+import scala.collection.mutable.Seq
 
 trait wellnessGenParams[T <: Data] {
   val protoData: T
@@ -44,27 +38,40 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
 ( val genParams: wellnessGenParams[T])(implicit val p: Parameters) extends Module {
   val io = IO(wellnessGenModuleIO[T](genParams: wellnessGenParams[T]))
 
-  val tap_count = 2
-  val windowLength = 2
-  val coefficients1 = Seq(1,1)
 
-  // val coefficients1 = mutable.ArrayBuffer[Int]()
-  // for(j <- 0 until tap_count) {
-  //   coefficients1 += j
-  // }
+  val dataType = SInt(64.W)
+  val nFFT: Int = 2
 
+  val ch0DatapathsArr: ArrayBuffer[Seq[(String, Any)]] = ArrayBuffer()
+  val ch0LL1FilterTapsA: Seq[Double] = Seq(1.0, 1.0)
+  val ch0LL1FilterTapsB: Seq[Double] = Seq(0.0, 0.0)
+  ch0DatapathsArr += makeLineLength(0, 2, 0, ch0LL1FilterTapsA, ch0LL1FilterTapsB)
 
-  val filter1Params = new FIRFilterParams[SInt] {
-    val protoData = SInt(64.W)
-    val taps = coefficients1.map(_.asSInt())
+  def makeLineLength(channel: Int, windowLength: Int, filterTypeIdx: Int, filterTapsA: Seq[Double], filterTapsB: Seq[Double]): Seq[(String, Any)] = {
+    val filterParams =
+      if (filterTypeIdx == 0) // FIRFilter
+        new FIRFilterParams[SInt] {
+          val protoData = dataType
+          val taps = filterTapsA.map(ConvertableTo[SInt].fromDouble(_))
+        }
+      else if (filterTypeIdx == 1) // IIRFilter
+        new IIRFilterParams[SInt] {
+          val protoData = dataType
+          val consts_A = filterTapsA.map(ConvertableTo[SInt].fromDouble(_))
+          val consts_B = filterTapsB.map(ConvertableTo[SInt].fromDouble(_))
+        }
+
+    val lineLengthParams = new lineLengthParams[SInt] {
+      val protoData = dataType
+      val windowSize = windowLength
+    }
+
+    val lineLengthDatapath: Seq[(String, Any)] = Seq(("FIRFilter", filterParams), ("LineLength", lineLengthParams))
+    lineLengthDatapath
   }
 
-  val lineLength1Params = new lineLengthParams[SInt] {
-    val protoData = SInt(64.W)
-    val windowSize = windowLength
-  }
 
-  val datapathSeq = Seq(("FIR",filter1Params), ("lineLength",lineLength1Params))
+  val datapathSeq = ch0DatapathsArr(0)
 
 
   val FIRBucket = mutable.ArrayBuffer[ConstantCoefficientFIRFilter[SInt]]()
