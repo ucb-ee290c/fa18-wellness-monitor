@@ -60,18 +60,19 @@ class FFTBuffer[T <: chisel3.Data : Ring](val params: FFTBufferParams[T]) extend
     shift_en := true.B
     when(counter === params.lanes.asUInt() ) {
       counter := 1.U
-      io.out.valid := true.B
+      io.out.sync := true.B
     } .otherwise {
       counter := counter + 1
-      io.out.valid := false.B
+      io.out.sync := false.B
     }
   } .otherwise{
     shift_en := false.B
-    io.out.valid := false.B
+    io.out.sync := false.B
   }
   for(i <- 0 until params.lanes) {
     io.out.bits(i) := regs(i)
   }
-  io.out.sync := (ShiftRegisterWithReset(io.in.sync, params.lanes, false.B, shift_en) && shift_en)
+  //io.out.sync := (ShiftRegisterWithReset(io.in.sync, params.lanes, false.B, shift_en) && shift_en)
+  io.out.valid := (ShiftRegisterWithReset(io.in.valid, params.lanes, false.B, shift_en) && shift_en)
 
 }

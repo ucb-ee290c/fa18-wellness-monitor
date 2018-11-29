@@ -216,7 +216,7 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     step(1)
 
     // Expect Results
-    if (peek(c.io.svmOutValid)) {
+    if (peek(c.io.out.valid)) {
       val tolerance = 0.1 // tolerate 10% error
 
       if (c.lineLength1Params.protoData.getClass.getTypeName == "chisel3.core.SInt") {

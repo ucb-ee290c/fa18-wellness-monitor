@@ -57,7 +57,8 @@ class FFTBufferTester[T <: chisel3.Data](c: FFTBuffer[T], lanes: Int, dataBP: In
 
     step(1)
 
-    expect(c.io.out.valid, goldenModelResult.valid, s"i $i, input $input, gm ${goldenModelResult.valid}, ${peek(c.io.out.valid)}")
+    //expect(c.io.out.valid, goldenModelResult.valid, s"i $i, input $input, gm ${goldenModelResult.valid}, ${peek(c.io.out.valid)}")
+    expect(c.io.out.sync, goldenModelResult.valid, s"i $i, input $input, gm ${goldenModelResult.valid}, ${peek(c.io.out.valid)}")
     for(i <- 0 until lanes) {
       if (c.params.protoData.getClass.getTypeName == "chisel3.core.SInt") {
         expect(c.io.out.bits(i), goldenModelResult.regs(i), s"i $i, input $input, gm ${goldenModelResult.regs}, ${peek(c.io.out.bits)}")

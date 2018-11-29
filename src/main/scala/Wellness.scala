@@ -193,8 +193,6 @@ class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1P
   val filterOut = Output(filter1Params.protoData)
   val pcaOut = Output(Vec(pcaParams.nFeatures, pcaParams.protoData))
 
-  val svmOutValid = Output(Bool())
-
   override def cloneType: this.type = WellnessModuleIO( filter1Params: FIRFilterParams[T],
                                                         lineLength1Params: lineLengthParams[T],
                                                         fftBufferParams: FFTBufferParams[T],
@@ -275,19 +273,15 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
 
   // FIR Filters to FFT Buffers
   fftBuffer.io.in.valid := filter1.io.out.valid
-  //fftBuffer.io.in.sync := false.B
-  fftBuffer.io.in.sync := filter1.io.out.valid
+  fftBuffer.io.in.sync := false.B
   fftBuffer.io.in.bits := filter1.io.out.bits.asTypeOf(fftBufferParams.protoData)
 
   // FFT Buffers to FFTs
-  //fft.io.in.valid := fftBuffer.io.out.valid
-  fft.io.in.valid := fftBuffer.io.out.sync
+  fft.io.in.valid := fftBuffer.io.out.valid
   fft.io.in.sync := false.B
-
   for (i <- fft.io.in.bits.indices) {
     fft.io.in.bits(i).real := fftBuffer.io.out.bits(i).asTypeOf(fft.io.in.bits(i).real)
   }
-  //fft.io.in.bits.foreach(_.imag := Ring[T].zero)
   fft.io.in.bits.foreach(_.imag := ConvertableTo[T].fromInt(0))
 
   fft.io.data_set_end_clear := false.B
@@ -301,7 +295,7 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   bandpower2.io.in.sync := false.B
   bandpower2.io.in.bits := fft.io.out.bits
 
-  // TOP LEVEL INTEGRATION TRIALS
+  // Features to PCA
   val pcaInVector = Wire(Vec(3,pcaParams.protoData))
   pcaInVector(0) := lineLength1.io.out.bits.asTypeOf(pcaParams.protoData)
   pcaInVector(1) := bandpower1.io.out.bits.asTypeOf(pcaParams.protoData)
@@ -318,6 +312,7 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   svm.io.supportVector := io.inConf.bits.confSVMSupportVector
   svm.io.alphaVector := io.inConf.bits.confSVMAlphaVector
   svm.io.intercept := io.inConf.bits.confSVMIntercept
+
   // SVM to Output
   io.out.valid := svm.io.out.valid
   io.out.sync := svm.io.out.sync
@@ -334,7 +329,6 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   io.bandpower2Out := bandpower2.io.out.bits
   io.pcaOut := pca.io.out.bits
 
-  io.svmOutValid := svm.io.out.valid
 }
 
 
