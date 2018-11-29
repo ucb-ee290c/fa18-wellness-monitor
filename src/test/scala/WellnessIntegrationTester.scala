@@ -70,6 +70,8 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     referenceSVMIntercept = utilities.readCSV("scripts/generated_files/intercepts.csv").flatMap(_.map(_.toDouble))
   }
 
+  poke(c.io.inConf.bits.confInputMuxSel, 0)
+
   val pcaVectorMemoryParams = new MemoryBufferParams[T] {
     val protoData: T = c.configurationMemoryParams.protoData.cloneType
     val nRows: Int = c.configurationMemoryParams.nDimensions

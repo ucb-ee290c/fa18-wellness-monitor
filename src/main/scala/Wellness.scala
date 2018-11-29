@@ -154,6 +154,7 @@ class WellnessConfigurationBundle[T <: Data](params: ConfigurationMemoryParams[T
   val confSVMSupportVector = Vec(params.nSupports,Vec(params.nFeatures,params.protoData))
   val confSVMAlphaVector = Vec(params.nClassifiers,Vec(params.nSupports,params.protoData))
   val confSVMIntercept = Vec(params.nClassifiers,params.protoData)
+  val confInputMuxSel = Bool()
 
   override def cloneType: this.type = WellnessConfigurationBundle(params).asInstanceOf[this.type]
 }
@@ -178,6 +179,7 @@ class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1P
   } else if (svmParams.classifierType == "ecoc") {  // error correcting output code
     nClassifiers = svmParams.codeBook.head.length // # columns = # classifiers
   }
+  val streamIn = Flipped(ValidWithSync(filter1Params.protoData.cloneType))
   val in = Flipped(DecoupledIO(filter1Params.protoData.cloneType))
   val inConf = Flipped(ValidWithSync(WellnessConfigurationBundle(configurationMemoryParams)))
   val out = ValidWithSync(Bool())
@@ -261,10 +263,15 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
 
   io.in.ready := true.B
 
+  val inStream = Wire(ValidWithSync(filter1Params.protoData))
+  inStream.bits := Mux(io.inConf.bits.confInputMuxSel,io.streamIn.bits.asTypeOf(filter1Params.protoData),io.in.bits.asTypeOf(filter1Params.protoData))
+  inStream.valid := Mux(io.inConf.bits.confInputMuxSel,io.streamIn.valid,io.in.valid)
+  inStream.sync := Mux(io.inConf.bits.confInputMuxSel,io.streamIn.sync,false.B)
+
   // Input to Filters
-  filter1.io.in.valid := io.in.valid
-  filter1.io.in.sync := false.B
-  filter1.io.in.bits := io.in.bits.asTypeOf(filter1Params.protoData)
+  filter1.io.in.valid := inStream.valid
+  filter1.io.in.sync := inStream.sync
+  filter1.io.in.bits := inStream.bits
 
   // FIR Filters to Line length blocks
   lineLength1.io.in.valid := filter1.io.out.valid
@@ -392,7 +399,7 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real :
     configurationMemory.io.in.valid := inConf.valid
     configurationMemory.io.in.sync := false.B
     configurationMemory.io.in.bits.wrdata := inConf.bits.data(configurationMemory.io.in.bits.wrdata.getWidth-1,0).asTypeOf(configurationMemory.io.in.bits.wrdata)
-    configurationMemory.io.in.bits.wraddr := inConf.bits.data(configurationMemory.io.in.bits.wrdata.getWidth+1,configurationMemory.io.in.bits.wrdata.getWidth).asTypeOf(configurationMemory.io.in.bits.wraddr)
+    configurationMemory.io.in.bits.wraddr := inConf.bits.data(configurationMemory.io.in.bits.wrdata.getWidth+2,configurationMemory.io.in.bits.wrdata.getWidth).asTypeOf(configurationMemory.io.in.bits.wraddr)
     wellness.io.inConf := configurationMemory.io.out
   }
 }
@@ -804,4 +811,16 @@ trait HasPeripheryWellness extends BaseSubsystem {
   pbus.toVariableWidthSlave(Some("wellnessWrite")) { wellness.writeQueue.mem.get }
   pbus.toVariableWidthSlave(Some("wellnessConfigurationWrite")) { wellness.writeConfigurationQueue.mem.get }
   pbus.toVariableWidthSlave(Some("wellnessRead")) { wellness.readQueue.mem.get }
+}
+
+trait HasPeripheryWellnessModuleImp extends LazyModuleImp {
+  implicit val p: Parameters
+  val outer: HasPeripheryWellness
+
+  val streamIn = IO(Flipped(ValidWithSync(outer.wellnessParams.filter1Params.protoData.cloneType)))
+
+  outer.wellness.wellness.module.wellness.io.streamIn.sync := streamIn.sync
+  outer.wellness.wellness.module.wellness.io.streamIn.valid := streamIn.valid
+  outer.wellness.wellness.module.wellness.io.streamIn.bits := streamIn.bits
+
 }

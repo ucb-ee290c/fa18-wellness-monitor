@@ -19,7 +19,7 @@ trait ConfigurationMemoryParams[T <: Data] {
 
 class ConfigurationMemoryBundle[T <: Data](params: ConfigurationMemoryParams[T]) extends Bundle {
   val wrdata: T = params.protoData
-  val wraddr = UInt(2.W)
+  val wraddr = UInt(3.W)
 
   override def cloneType: this.type = ConfigurationMemoryBundle(params).asInstanceOf[this.type]
 }
@@ -52,6 +52,7 @@ class ConfigurationMemory[T <: chisel3.Data : Real : Order : BinaryRepresentatio
   val svmSupportVectorMemoryAddr = 1.U
   val svmAlphaVectorMemoryAddr = 2.U
   val svmInterceptMemoryAddr = 3.U
+  val inputMuxSelAddr = 4.U
 
   val pcaVectorMemoryParams = new MemoryBufferParams[T] {
     override val protoData: T = params.protoData.cloneType
@@ -100,5 +101,9 @@ class ConfigurationMemory[T <: chisel3.Data : Real : Order : BinaryRepresentatio
   svmInterceptMemory.io.in.sync := false.B
   svmInterceptMemory.io.in.valid := io.in.valid && (addr === svmInterceptMemoryAddr)
   io.out.bits.confSVMIntercept := svmInterceptMemory.io.out.bits.head
+
+  val inputMuxSel = RegInit(false.B)
+  when(io.in.valid && (addr === inputMuxSelAddr)){inputMuxSel := io.in.bits.wrdata.asUInt()(0)}
+  io.out.bits.confInputMuxSel := inputMuxSel
 
 }
