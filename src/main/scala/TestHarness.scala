@@ -18,6 +18,10 @@ class TestHarness()(implicit p: Parameters) extends Module {
   dut.tieOffInterrupts()
   dut.connectSimAXIMem()
   Debug.connectDebug(dut.debug, clock, reset.toBool(), io.success)
+
+  dut.streamIn.valid := true.B
+  dut.streamIn.sync := true.B
+  dut.streamIn.bits := UInt(0.W)
 }
 
 object Generator extends GeneratorApp {
