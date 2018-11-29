@@ -66,7 +66,7 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
       val windowSize = windowLength
     }
 
-    val lineLengthDatapath: Seq[(String, Any)] = Seq(("FIRFilter", filterParams), ("LineLength", lineLengthParams))
+    val lineLengthDatapath: Seq[(String, Any)] = Seq(("FIR", filterParams), ("lineLength", lineLengthParams))
     lineLengthDatapath
   }
 
