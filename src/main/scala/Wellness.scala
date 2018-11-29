@@ -340,6 +340,11 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real :
       configurationMemoryParams: ConfigurationMemoryParams[T]))
 
     val configurationMemory = Module(new ConfigurationMemory(configurationMemoryParams))
+    val streamIn = IO(Flipped(ValidWithSync(filter1Params.protoData.cloneType)))
+
+    wellness.io.streamIn.bits := streamIn.bits
+    wellness.io.streamIn.valid := streamIn.valid
+    wellness.io.streamIn.sync := streamIn.sync
 
     in.ready := wellness.io.in.ready
     // Input to Wellness
@@ -412,7 +417,13 @@ class WellnessThing[T <: Data : Real : Order : BinaryRepresentation]
   readQueue.streamNode := wellness.streamNode := writeQueue.streamNode
   wellness.streamNode := writeConfigurationQueue.streamNode
 
-  lazy val module = new LazyModuleImp(this)
+  lazy val module = new LazyModuleImp(this) {
+    val streamIn = IO(Flipped(ValidWithSync(filter1Params.protoData.cloneType)))
+
+    wellness.module.streamIn.bits := streamIn.bits
+    wellness.module.streamIn.valid := streamIn.valid
+    wellness.module.streamIn.sync := streamIn.sync
+  }
 }
 
 trait HasPeripheryWellness extends BaseSubsystem {
@@ -442,8 +453,8 @@ trait HasPeripheryWellnessModuleImp extends LazyModuleImp {
 
   val streamIn = IO(Flipped(ValidWithSync(outer.wellnessParams.filter1Params.protoData.cloneType)))
 
-  outer.wellness.wellness.module.wellness.io.streamIn.sync := streamIn.sync
-  outer.wellness.wellness.module.wellness.io.streamIn.valid := streamIn.valid
-  outer.wellness.wellness.module.wellness.io.streamIn.bits := streamIn.bits
+  outer.wellness.module.streamIn.sync := streamIn.sync
+  outer.wellness.module.streamIn.valid := streamIn.valid
+  outer.wellness.module.streamIn.bits := streamIn.bits
 
 }
