@@ -2,12 +2,8 @@ package wellness
 
 import memorybuffer._
 import chisel3._
-import chisel3.util.{RegEnable, log2Ceil}
-import dspblocks.ShiftRegisterWithReset
 import dspjunctions.ValidWithSync
 import dsptools.numbers._
-
-import scala.collection._
 
 trait ConfigurationMemoryParams[T <: Data] {
   val protoData: T

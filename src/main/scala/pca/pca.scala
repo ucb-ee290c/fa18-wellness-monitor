@@ -1,6 +1,7 @@
 package pca
 
 import chisel3._
+import chisel3.util.RegEnable
 import dsptools.numbers._
 import dspjunctions.ValidWithSync
 
@@ -34,7 +35,11 @@ class PCA[T <: chisel3.Data : Real](val params: PCAParams[T]) extends Module {
     reduced(i) := io.in.bits.zip(io.PCAVector(i)).map{ case (a,b) => a * b}.reduce(_ + _)
   }
 
-  io.out.bits := reduced
-  io.out.valid := io.in.valid
-  io.out.sync := io.in.sync
+  val outReg = RegEnable(reduced, io.in.valid)
+  val valReg = RegNext(io.in.valid)
+  val syncReg = RegNext(io.in.sync)
+
+  io.out.bits := outReg
+  io.out.valid := valReg
+  io.out.sync := syncReg
 }

@@ -193,12 +193,7 @@ class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1P
   val filterOut = Output(filter1Params.protoData)
   val pcaOut = Output(Vec(pcaParams.nFeatures, pcaParams.protoData))
 
-  // val filterValid = Output(Bool())
-  val lineLengthValid = Output(Bool())
-  val bandpower1Valid = Output(Bool())
-  val bandpower2Valid = Output(Bool())
-//  val fftBufferSync = Output(Bool())
-//  val fftValid = Output(Bool())
+  val svmOutValid = Output(Bool())
 
   override def cloneType: this.type = WellnessModuleIO( filter1Params: FIRFilterParams[T],
                                                         lineLength1Params: lineLengthParams[T],
@@ -339,11 +334,7 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   io.bandpower2Out := bandpower2.io.out.bits
   io.pcaOut := pca.io.out.bits
 
-  io.lineLengthValid := lineLength1.io.out.valid
-//  io.fftBufferSync := fftBuffer.io.out.sync
-//  io.fftValid := fft.io.out.valid
-  io.bandpower1Valid := bandpower1.io.out.valid
-  io.bandpower2Valid := bandpower2.io.out.valid
+  io.svmOutValid := svm.io.out.valid
 }
 
 

@@ -2,7 +2,6 @@
 
 package fft
 
-import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
 import breeze.math.{Complex}
 import breeze.signal.{fourierTr}
 import breeze.linalg._
@@ -11,23 +10,14 @@ import chisel3.experimental._
 import chisel3.util._
 import chisel3.iotesters._
 import firrtl_interpreter.InterpreterOptions
-import dsptools.numbers.{DspReal, SIntOrder, SIntRing}
-import dsptools.{DspContext, DspTester, Grow}
+import dsptools.{DspTester}
 import org.scalatest.{FlatSpec, Matchers}
-import chisel3.iotesters.{PeekPokeTester, TesterOptionsManager}
 
-// comment when using FixedPoint, uncomment for DspReal
-// import dsptools.numbers.implicits._
 
-import dsptools.numbers.{DspComplex, Real}
+import dsptools.numbers.{DspComplex}
 import scala.util.Random
-import scala.math.{pow, abs, round}
+import scala.math.{pow, abs}
 import org.scalatest.Tag
-import dspjunctions._
-import dspblocks._
-
-import craft._
-import dsptools._
 import freechips.rocketchip.config.Parameters
 
 object LocalTest extends Tag("edu.berkeley.tags.LocalTest")
@@ -74,12 +64,13 @@ object spectrumTester {
     for (i <- 0 until test_length) {
       // repeat end of signal
       groupedSignal(min(i, groupedSignal.size-1)).zip(io.in.bits).foreach { case(sig, port) => dut.poke(port, sig) }
+      dut.step(1)
       val valid = dut.peek(io.out.valid)
       if (!synced && (valid & !last_valid)) { synced = true; println(s"synced on cycle $i") }
       if (synced || config.bp == 1) { io.out.bits.foreach(x => retval += dut.peek(x)) }
       if (!synced && dut.peek(io.out.sync) && config.bp != 1) { synced = true; println(s"synced on cycle $i") }
       last_valid = valid
-      dut.step(1)
+
     }
 
     // return unscrambled output
@@ -218,7 +209,7 @@ class FFTSpec extends FlatSpec with Matchers {
 
     val tests = Seq(
       // (FFT points, lanes, total width, fractional bits, pipeline depth)
-      Seq(8, 8, 35, 19, 0),
+      Seq(8, 8, 62, 16, 0),
       // Seq(64, 64, 35, 19, 0),
 
       // Seq(128, 16, 27, 16, 17),

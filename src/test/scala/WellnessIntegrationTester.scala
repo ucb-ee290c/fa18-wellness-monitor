@@ -115,6 +115,11 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     poke(c.io.inConf.bits.confSVMIntercept(y), referenceSVMIntercept(y))
   }
 
+  // poke initial values, as well as the declaration of the variables, set to 0 first
+  var svmResult = SVM.poke(Seq.fill(goldenModelParameters.svmParams.nFeatures)(0.0), referenceSVMSupportVector.map(_.map(_.toDouble)),
+    referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
+  var pcaResult = PCA.poke(Seq(0,0,0),referencePCAVector.map(_.map(_.toDouble)))
+
   var bandpower1Result = bandpower1.poke(Seq.fill(goldenModelParameters.bandpower1Params.nBins)(Complex(0.0, 0.0)))
   var bandpower2Result = bandpower2.poke(Seq.fill(goldenModelParameters.bandpower2Params.nBins)(Complex(0.0, 0.0)))
   var fftResult = fft.poke(Seq.fill(goldenModelParameters.fftConfig.nPts)(Complex(0.0, 0.0)))
@@ -124,13 +129,10 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   var filter1Result = filter1.poke(0)
 
   var pcaInputBundle = Seq(lineLength1Result, bandpower1Result, bandpower2Result)
-  var pcaResult = PCA.poke(Seq(0,0,0),referencePCAVector.map(_.map(_.toDouble)))
-  var svmResult = SVM.poke(pcaResult.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),
-    referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
 
   var dataWidth = 0
   var dataBP = 0
-  // determine the dataWidth and dataBP parameters
+  // determine the dataWidth and dataBP parameters override for Fixed Point numbers
   if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.FixedPoint") {
     dataWidth = utilities.readCSV("scripts/generated_files/datasize.csv").flatMap(_.map(_.toInt)).head
     dataBP = utilities.readCSV("scripts/generated_files/datasize.csv").flatMap(_.map(_.toInt)).last
@@ -194,6 +196,12 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     }
 
     // Poke inputs to golden models
+    // THIS SHOULD STRICTLY BE DONE IN REVERSE ORDER, FROM THE OUTPUT SIDE TO THE INPUT SIDE
+    svmResult = SVM.poke(pcaResult.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),
+      referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
+    pcaInputBundle = Seq(lineLength1Result, bandpower1Result, bandpower2Result)
+    pcaResult = PCA.poke(pcaInputBundle, referencePCAVector.map(_.map(_.toDouble)))
+
     bandpower1Result = bandpower1.poke(fftResult)
     bandpower2Result = bandpower2.poke(fftResult)
     fftResult = fft.poke(fftBufferResult.regs.map(x => Complex(x.toDouble, 0.0)))
@@ -202,20 +210,15 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     lineLength1Result = lineLength1.poke(value = filter1Result)
     filter1Result = filter1.poke(input)
 
-    pcaInputBundle = Seq(lineLength1Result, bandpower1Result, bandpower2Result)
-    pcaResult = PCA.poke(pcaInputBundle, referencePCAVector.map(_.map(_.toDouble)))
-    svmResult = SVM.poke(pcaResult.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),
-      referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
-
     // Poke inputs to real thing
     poke(c.io.in.bits, input)
     poke(c.io.in.valid, 1)
     step(1)
 
     // Expect Results
-    if (peek(c.io.lineLengthValid) && peek(c.io.bandpower1Valid) && peek(c.io.bandpower2Valid)) {
-      //val tolerance = dataBP + 6
+    if (peek(c.io.svmOutValid)) {
       val tolerance = 0.1 // tolerate 10% error
+
       if (c.lineLength1Params.protoData.getClass.getTypeName == "chisel3.core.SInt") {
         expect(c.io.filterOut, filter1Result)
         expect(c.io.lineOut, lineLength1Result)

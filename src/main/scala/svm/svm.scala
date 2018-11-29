@@ -1,6 +1,7 @@
 package svm
 
 import chisel3._
+import chisel3.util.RegEnable
 import chisel3.util._
 import dsptools.numbers._
 import dspjunctions.ValidWithSync
@@ -112,8 +113,8 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
   }
   // using this decision function, we can now perform classification, which depends on the type
 
-  val actualVotes = Seq.fill(params.nClasses)(Wire(params.protoData)) // summed raw votes, in case of a tie
-  val normalizedVotes = Seq.fill(params.nClasses)(Wire(UInt((log2Ceil(io.nClassifiers) + 1).W))) // sum of votes / class
+  val actualVotes = Wire(Vec(params.nClasses, params.protoData)) // summed raw votes, in case of a tie
+  val normalizedVotes = Wire(Vec(params.nClasses, UInt((log2Ceil(io.nClassifiers) + 1).W))) // sum of votes / class
 
   // #############################################################
   // for one vs rest classifier implementation
@@ -207,14 +208,15 @@ class SVM[T <: chisel3.Data : Real](val params: SVMParams[T]) extends Module {
   }
 
   // put for output probing and checking for computation accuracy
-  io.rawVotes := actualVotes      // sometimes you end up with ties, this is for tie breaking classifications
-  io.classVotes := normalizedVotes  // normally, you just find the max value of normalized votes per classifier
+  val rawVotesReg = RegEnable(actualVotes, io.in.valid) // sometimes you end up with ties, this is for tie breaking classifications
+  val classVotesReg = RegEnable(normalizedVotes, io.in.valid) // normally, you just find the max value of normalized votes per classifier
+  val outReg = RegEnable(0.U, io.in.valid) // TODO: out is meant to contain the final vote, if it's hard, just check rawVotes and classVotes instead
+  val valReg = RegNext(io.in.valid)
+  val syncReg = RegNext(io.in.sync)
 
-  // TODO: out is meant to contain the final vote, if it's hard, just check rawVotes and classVotes instead
-  io.out.bits := 0.U
-
-  // technically, this isn't needed because everything is combinational right now
-  // TODO: you might want to implement some sequential logic (pipelines) to reduce the critical path
-  io.out.valid := io.in.valid
-  io.out.sync := io.in.sync
+  io.rawVotes := rawVotesReg
+  io.classVotes := classVotesReg
+  io.out.bits := outReg
+  io.out.valid := valReg
+  io.out.sync := syncReg
 }
