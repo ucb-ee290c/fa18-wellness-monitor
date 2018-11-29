@@ -430,7 +430,7 @@ class FFT[T<:Data:Real](val config: FFTConfig[T])(implicit val p: Parameters) ex
     genTwiddle = genTwiddleDirect,
     genOutFull = genOutDirect
   ))
-  io.out <> direct.io.out
+//  io.out <> direct.io.out
 
   if (config.n != config.lanes_new) {
     val biplex = Module(new BiplexFFT[T](config, genMid, genTwiddleBiplex))
@@ -439,4 +439,12 @@ class FFT[T<:Data:Real](val config: FFTConfig[T])(implicit val p: Parameters) ex
   } else {
     direct.io.in <> in
   }
+
+  val outReg = RegEnable(direct.io.out.bits, io.in.valid)
+  val valReg = RegNext(io.in.valid)
+  val syncReg = RegNext(io.in.sync)
+
+  io.out.bits := outReg
+  io.out.valid := valReg
+  io.out.sync := syncReg
 }

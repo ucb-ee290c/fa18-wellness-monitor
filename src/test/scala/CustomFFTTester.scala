@@ -12,16 +12,15 @@ import breeze.signal.fourierTr
 import breeze.linalg.DenseVector
 import chisel3.util.log2Ceil
 
-class GoldenDoubleFFT {
+class GoldenDoubleFFT(n: Int) {
   def poke(tone: Seq[Complex]): Seq[Complex] = {
-    val expected = fourierTr(DenseVector(tone.toArray)).toArray
-    expected
+    fourierTr(DenseVector(tone.toArray)).toArray
   }
 }
 
 class CustomFFTTester[T <: Data](c: FFT[T], config: FFTConfig[FixedPoint], dataBP: Int) extends DspTester(c) {
 
-  val fft = new GoldenDoubleFFT
+  val fft = new GoldenDoubleFFT(config.n)
   for (i <- 0 until 10) {
     val tone = (0 until config.n).map(x => Complex(Random.nextDouble() * 100 - 50, 0.0))
     val expected = fft.poke(tone)
@@ -29,6 +28,7 @@ class CustomFFTTester[T <: Data](c: FFT[T], config: FFTConfig[FixedPoint], dataB
     tone.zip(c.io.in.bits).foreach { case (sig, port) => poke(port, sig) }
     poke(c.io.in.valid, value = 1)
     step(1)
+
     for (i <- c.io.out.bits.indices) {
       val tolerance = 0.1
       fixTolLSBs.withValue(log2Ceil((expected(i).abs*tolerance).toInt+1)+dataBP+1) {

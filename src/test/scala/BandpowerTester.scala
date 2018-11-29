@@ -21,7 +21,8 @@ class GoldenDoubleBandpower(nBins: Int, idxStartBin: Int, idxEndBin: Int, dataTy
     val p1 = Seq(p2(0)) ++ p1Scaled ++ Seq(p2(nBins / 2))
     // Sum and divide by num of bins of interest squared
     val output = p1.slice(idxStartBin, idxEndBin).sum
-    if((dataType == "chisel3.core.SInt") || (dataType == "chisel3.core.UInt")) floor(output/((idxEndBin - idxStartBin) * (idxEndBin - idxStartBin)))
+
+    if ((dataType == "chisel3.core.SInt") || (dataType == "chisel3.core.UInt")) floor(output/((idxEndBin - idxStartBin) * (idxEndBin - idxStartBin)))
     else output/((idxEndBin - idxStartBin) * (idxEndBin - idxStartBin))
   }
 }
@@ -43,6 +44,7 @@ class BandpowerTester[T <: Data](c: Bandpower[T], params: BandpowerParams[T], da
   input.zip(c.io.in.bits).foreach { case(sig, port) => poke(port, sig) }
   poke(c.io.in.valid, value = 1)
   step(1)
+
 
   if ((dataType == "chisel3.core.SInt") || (dataType == "chisel3.core.UInt")) {
     expect(c.io.out.bits, goldenModelResult, msg = s"Input: $input, Golden: $goldenModelResult, ${peek(c.io.out.bits)}")
