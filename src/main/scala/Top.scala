@@ -23,5 +23,9 @@ class ExampleTopModule[+L <: ExampleTop](l: L) extends RocketSubsystemModuleImp(
 class ExampleTopWithWellness(implicit p: Parameters) extends ExampleTop
   // Mix in wellness monitor
   with HasPeripheryWellness {
-    override lazy val module = new ExampleTopModule(this)
+    //override lazy val module = new ExampleTopModule(this)
+    override lazy val module = new ExampleTopWithWellnessModule(this)
   }
+
+class ExampleTopWithWellnessModule(l: ExampleTopWithWellness)
+  extends ExampleTopModule(l) with HasPeripheryWellnessModuleImp
