@@ -116,10 +116,10 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   var fftBufferResult = fftBuffer.poke(0.0)
   var lineLength1Result = lineLength1.poke(value = 0)
   var filter1Result = filter1.poke(0)
-
-  var fftResult = fft.poke(Seq.fill(goldenModelParameters.fftConfig.nPts)(Complex(0.0, 0.0)))
   var bandpower1Result = bandpower1.poke(Seq.fill(goldenModelParameters.bandpower1Params.nBins)(Complex(0.0, 0.0)))
   var bandpower2Result = bandpower2.poke(Seq.fill(goldenModelParameters.bandpower2Params.nBins)(Complex(0.0, 0.0)))
+
+  var fftResult = fft.poke(Seq.fill(goldenModelParameters.fftConfig.nPts)(Complex(0.0, 0.0)))
   var pcaInputBundle = Seq(lineLength1Result, bandpower1Result, bandpower2Result)
   var pcaResult = PCA.poke(Seq(0,0,0),referencePCAVector.map(_.map(_.toDouble)))
   var svmResult = SVM.poke(pcaResult.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),
@@ -194,10 +194,10 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     fftBufferResult = fftBuffer.poke(filter1Result)
     lineLength1Result = lineLength1.poke(value = filter1Result)
     filter1Result = filter1.poke(input)
-
-    fftResult = fft.poke(fftBufferResult.regs.map(x => Complex(x.toDouble, 0.0)))
     bandpower1Result = bandpower1.poke(fftResult)
     bandpower2Result = bandpower2.poke(fftResult)
+
+    fftResult = fft.poke(fftBufferResult.regs.map(x => Complex(x.toDouble, 0.0)))
     pcaInputBundle = Seq(lineLength1Result, bandpower1Result, bandpower2Result)
     pcaResult = PCA.poke(pcaInputBundle, referencePCAVector.map(_.map(_.toDouble)))
     svmResult = SVM.poke(pcaResult.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),

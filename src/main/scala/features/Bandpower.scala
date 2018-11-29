@@ -1,6 +1,7 @@
 package features
 
 import chisel3._
+import chisel3.util._
 import dsptools.numbers._
 import dspjunctions._
 import breeze.numerics.log2
@@ -34,17 +35,20 @@ class Bandpower[T <: Data : Real : BinaryRepresentation](val params: BandpowerPa
 
   val io = IO(new BandpowerIO[T](params))
 
-  val inReg = RegNext(io.in.bits)
-
   // Take mag squared of FFT output
-  val p2 = inReg.map(_.abssq())
+  val p2 = io.in.bits.map(_.abssq())
   // Except for DC and sampling freq, 2x for 2-sided to 1-sided
   val p1Scaled = p2.slice(1, params.nBins/2 - 1).map(_ * 2)
   // Concatenate back in unscaled DC and sampling freq elems
   val p1 = VecInit(p2(0)) ++ p1Scaled ++ VecInit(p2(params.nBins/2))
   // Sum and divide by num of bins of interest squared
-  io.out.bits := p1.slice(params.idxStartBin, params.idxEndBin).reduce(_ + _) >> (2 * log2(params.idxEndBin - params.idxStartBin).toInt)
+  val outNext = p1.slice(params.idxStartBin, params.idxEndBin).reduce(_ + _) >> (2 * log2(params.idxEndBin - params.idxStartBin).toInt)
 
-  io.out.valid := io.in.valid
-  io.out.sync := io.in.sync
+  val outReg = RegEnable(outNext, io.in.valid)
+  val valReg = RegNext(io.in.valid)
+  val syncReg = RegNext(io.in.sync)
+
+  io.out.bits := outReg
+  io.out.valid := valReg
+  io.out.sync := syncReg
 }
