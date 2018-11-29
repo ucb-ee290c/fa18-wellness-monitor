@@ -26,22 +26,23 @@ object BandpowerIO {
 }
 
 class Bandpower[T <: Data : Real : BinaryRepresentation](val params: BandpowerParams[T]) extends Module {
-  require( params.idxEndBin > params.idxStartBin, f"End index ${params.idxEndBin} must be greater than start index ${params.idxStartBin}")
-  require( ( (params.idxEndBin - params.idxStartBin) & (params.idxEndBin - params.idxStartBin - 1)) == 0 ,
-                f"Difference between the two indices must be a power of 2, currently ${params.idxEndBin - params.idxStartBin}")
-  require( params.nBins/2 >= params.idxEndBin,
-                f"End index ${params.idxEndBin} must be at most half of the total number of bins ${params.nBins}")
+  require(params.idxEndBin > params.idxStartBin, f"End index ${params.idxEndBin} must be greater than start index ${params.idxStartBin}")
+  require(((params.idxEndBin - params.idxStartBin) & (params.idxEndBin - params.idxStartBin - 1)) == 0,
+    f"Difference between the two indices must be a power of 2, currently ${params.idxEndBin - params.idxStartBin}")
+  require(params.nBins/2 >= params.idxEndBin,
+    f"End index ${params.idxEndBin} must be at most half of the total number of bins ${params.nBins}")
 
   val io = IO(new BandpowerIO[T](params))
 
+  val inReg = RegNext(io.in.bits)
+
   // Take mag squared of FFT output
-  val p2 = io.in.bits.map(_.abssq())
+  val p2 = inReg.map(_.abssq())
   // Except for DC and sampling freq, 2x for 2-sided to 1-sided
   val p1Scaled = p2.slice(1, params.nBins/2 - 1).map(_ * 2)
   // Concatenate back in unscaled DC and sampling freq elems
   val p1 = VecInit(p2(0)) ++ p1Scaled ++ VecInit(p2(params.nBins/2))
   // Sum and divide by num of bins of interest squared
-//  io.out.bits := p1.slice(params.idxStartBin, params.idxEndBin).reduce(_ + _) >> (log10(params.idxEndBin - params.idxStartBin + 1) / log10(2)).toInt
   io.out.bits := p1.slice(params.idxStartBin, params.idxEndBin).reduce(_ + _) >> (2 * log2(params.idxEndBin - params.idxStartBin).toInt)
 
   io.out.valid := io.in.valid
