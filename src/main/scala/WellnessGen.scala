@@ -1,24 +1,21 @@
 package wellness
 
-import chisel3._
-import chisel3.core.FixedPoint
-import chisel3.util._
-import dspblocks._
-import dspjunctions.ValidWithSync
-import dsptools.numbers._
 import firFilter._
 import iirFilter._
 import fft._
 import features._
 import pca._
 import svm._
-import freechips.rocketchip.amba.axi4stream._
+
+import chisel3._
+import chisel3.util._
+import dsptools.numbers._
+import dspjunctions.ValidWithSync
 import freechips.rocketchip.config.Parameters
-import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.regmapper._
-import freechips.rocketchip.tilelink._
-import freechips.rocketchip.subsystem._
+
 import scala.collection._
+import scala.collection.mutable._
+import scala.collection.mutable.Seq
 
 
 trait wellnessGenParams[T <: Data] {
@@ -27,7 +24,6 @@ trait wellnessGenParams[T <: Data] {
 
 // Right now wellnessGen is just a testbed for making a high level scala generator class
 // First up is generating an arbitrary number of filters and driving them with the same input
-
 
 class wellnessGenModuleIO[T <: Data : Real : Order : BinaryRepresentation](genParams: wellnessGenParams[T])  extends Bundle {
   val in = Flipped(DecoupledIO(genParams.protoData.cloneType))
@@ -45,23 +41,40 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
 ( val genParams: wellnessGenParams[T])(implicit val p: Parameters) extends Module {
   val io = IO(wellnessGenModuleIO[T](genParams: wellnessGenParams[T]))
 
-  // TODO: remove manual params and whatnot
+  val dataType = SInt(64.W)
+  val nFFT: Int = 2
 
-  val tap_count = 2
-  val windowLength = 2
-  val coefficients1 = Seq(1,1)
+  val ch0DatapathsArr: ArrayBuffer[Seq[(String, Any)]] = ArrayBuffer()
+  val ch0LL1FilterTapsA: Seq[Double] = Seq(1.0, 1.0)
+  val ch0LL1FilterTapsB: Seq[Double] = Seq(0.0, 0.0)
+  ch0DatapathsArr += makeLineLength(0, 2, 0, ch0LL1FilterTapsA, ch0LL1FilterTapsB)
 
-  val filter1Params = new FIRFilterParams[SInt] {
-    val protoData = SInt(64.W)
-    val taps = coefficients1.map(_.asSInt())
+  def makeLineLength(channel: Int, windowLength: Int, filterTypeIdx: Int, filterTapsA: Seq[Double], filterTapsB: Seq[Double]): Seq[(String, Any)] = {
+    val filterParams =
+      if (filterTypeIdx == 0) // FIRFilter
+        new FIRFilterParams[SInt] {
+          val protoData = dataType
+          val taps = filterTapsA.map(ConvertableTo[SInt].fromDouble(_))
+        }
+      else if (filterTypeIdx == 1) // IIRFilter
+        new IIRFilterParams[SInt] {
+          val protoData = dataType
+          val consts_A = filterTapsA.map(ConvertableTo[SInt].fromDouble(_))
+          val consts_B = filterTapsB.map(ConvertableTo[SInt].fromDouble(_))
+        }
+
+    val lineLengthParams = new lineLengthParams[SInt] {
+      val protoData = dataType
+      val windowSize = windowLength
+    }
+
+    val lineLengthDatapath: Seq[(String, Any)] = Seq(("FIR", filterParams), ("lineLength", lineLengthParams))
+    lineLengthDatapath
   }
 
-  val lineLength1Params = new lineLengthParams[SInt] {
-    val protoData = SInt(64.W)
-    val windowSize = windowLength
-  }
 
-  val datapathSeq = Seq(("FIR",filter1Params), ("lineLength",lineLength1Params))
+  val datapathSeq = ch0DatapathsArr(0)
+
 
   val FIRBucket       = mutable.ArrayBuffer[ConstantCoefficientFIRFilter[T]]()
   val IIRBucket       = mutable.ArrayBuffer[ConstantCoefficientIIRFilter[T]]()
@@ -70,7 +83,6 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   val BandpowerBucket = mutable.ArrayBuffer[Bandpower[T]]()
   val lineLengthBucket = mutable.ArrayBuffer[lineLength[T]]()
   val datapathGenSeq : mutable.ArrayBuffer[(String,Int)] = mutable.ArrayBuffer()
-
 
 
   for(i <- 0 until datapathSeq.length)
