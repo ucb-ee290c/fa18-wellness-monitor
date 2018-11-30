@@ -18,12 +18,15 @@ import scala.collection.mutable.ArrayBuffer
 import scala.collection.{Seq, mutable}
 
 class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
+                                           pcaParams: PCAParams[T],
+                                           svmParams: SVMParams[T],
+                                           configurationMemoryParams: ConfigurationMemoryParams[T],
                                            goldenModelParameters: wellnessGenIntegrationParameterBundle,
                                            dataBP: Int, testType: Int) extends DspTester(c) {
 
   // Instantiate golden models
   val wellnessGenParams1 = new wellnessGenParams[SInt] {
-    val protoData = SInt(64.W)
+    val dataType = SInt(64.W)
   }
 
   val datapathParamsSeqs = Seq(Seq(("FIR",goldenModelParameters.filter1Params),("lineLength",goldenModelParameters.lineLength1Params)),
@@ -37,6 +40,22 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
   var generatedDatapathResults  : mutable.ArrayBuffer[mutable.ArrayBuffer[Double]] = mutable.ArrayBuffer()
   var generatedFFTResults       : mutable.ArrayBuffer[mutable.ArrayBuffer[Seq[Complex]]] = mutable.ArrayBuffer()
 
+  val SVM = new GoldenSVM(
+    goldenModelParameters.svmParams.nSupports,
+    goldenModelParameters.svmParams.nFeatures,
+    goldenModelParameters.svmParams.nClasses,
+    goldenModelParameters.svmParams.nDegree,
+    goldenModelParameters.svmParams.kernelType,
+    goldenModelParameters.svmParams.classifierType,
+    goldenModelParameters.svmParams.codeBook,
+    flag = 0,
+    c.svmParams.protoData.getClass.getTypeName)
+  val PCA = new GoldenIntPCA(goldenModelParameters.pcaParams.nDimensions,goldenModelParameters.pcaParams.nFeatures)
+
+  var referencePCAVector = Seq(Seq(5.0, 0.0, -2.0), Seq(1.0, 2.0, 3.0))
+  var referenceSVMSupportVector = Seq(Seq(1.0, 2.0), Seq(3.0, 4.0))
+  var referenceSVMAlphaVector = Seq(Seq(7.0, 3.0))
+  var referenceSVMIntercept = Seq(4.0)
 
   for (k <- 0 until datapathParamsSeqs.length)
   {
@@ -58,7 +77,7 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
         case "lineLength" =>
         { // lineLength
           generatedSinglePath     += (("lineLength", new GoldenDoubleLineLength(singlePathParamsSeq(i)._2.asInstanceOf[lineLengthGenParamsTemplate].
-            windowSize,wellnessGenParams1.protoData.getClass.getTypeName)))
+            windowSize,wellnessGenParams1.dataType.getClass.getTypeName)))
           genSinglePathResults += 0.toDouble
           genSingleFFTResults     += Seq.fill(goldenModelParameters.bandpower1Params.nBins)(Complex(0.0, 0.0))
         }
@@ -79,7 +98,7 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
           generatedSinglePath     += (("Bandpower", new GoldenDoubleBandpower(goldenModelParameters.bandpower1Params.nBins,
                                           goldenModelParameters.bandpower1Params.idxStartBin,
                                           goldenModelParameters.bandpower1Params.idxEndBin,
-                                          wellnessGenParams1.protoData.getClass.getTypeName)))
+                                          wellnessGenParams1.dataType.getClass.getTypeName)))
           genSinglePathResults    += 0.toDouble
           genSingleFFTResults     += Seq.fill(goldenModelParameters.bandpower1Params.nBins)(Complex(0.0, 0.0))
         }
@@ -91,18 +110,40 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
   }
 
 
+  var PCA_inputs = Seq.fill(generatedDatapaths.length)(0.toDouble)
+  var pcaResult = PCA.poke(PCA_inputs, referencePCAVector.map(_.map(_.toDouble)))
+  var svmResult = SVM.poke(pcaResult.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),
+    referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
+
 
   for (i <- 0 until 100)
   {
     val input = scala.util.Random.nextDouble * 32
 
+    // poke SVM with PCA output
+    svmResult = SVM.poke(pcaResult.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),
+      referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
+
+    // make a sequence of results to poke into PCA
+    for (x <- 0 until generatedDatapathResults.length)
+    {
+        PCA_inputs(x) = generatedDatapathResults(x)(generatedDatapathResults(x).length - 1)
+    }
+    pcaResult = PCA.poke(PCA_inputs, referencePCAVector.map(_.map(_.toDouble)))
+
     for (k <- 0 until generatedDatapaths.length)
       {
+
         val generatedSinglePath = generatedDatapaths(k)
         val genSinglePathResult = generatedDatapathResults(k)
         for (j <- (generatedSinglePath.length - 1) to 0 by -1)
         {
           val name = generatedSinglePath(j)._1
+
+          if (j == (generatedSinglePath.length - 1))
+            {
+
+            }
 
           if (j == 0)
           {
@@ -142,10 +183,23 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
 
     if (peek(c.io.out.valid) == true)
       {
-        //expect(c.io.out.bits, generatedDatapathResults(check_i)(check_j))
-        fixTolLSBs.withValue(1)
-        {
-          expect(c.io.out.bits, generatedDatapathResults(check_i)(check_j), s"valid ${peek(c.io.out.valid)}")
+        //fixTolLSBs.withValue(1)
+        //{
+        //  expect(c.io.out.bits, generatedDatapathResults(check_i)(check_j), s"valid ${peek(c.io.out.valid)}")
+        //}
+        val tolerance = 0.1 // tolerate 10% error
+        for (i <- 0 until goldenModelParameters.svmParams.nClasses) {
+          if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.SInt" || c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
+            expect(c.io.rawVotes(i), svmResult(0)(i))
+            expect(c.io.classVotes(i), svmResult(1)(i))
+          } else {
+            // due to the series of multiply and accumulates, error actually blows up, let's be lenient
+            fixTolLSBs.withValue(log2Ceil((svmResult(0)(i).abs*tolerance).toInt+1)+dataBP+1) { // +-16, 4 extra bits after the binary point
+              expect(c.io.rawVotes(i), svmResult(0)(i))
+            }
+            // strict check for the class votes
+            expect(c.io.classVotes(i), svmResult(1)(i))
+          }
         }
       }
     //expect(c.io.out.valid, false.B)
@@ -157,17 +211,33 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
 object wellnessGenIntegrationTesterSInt {
   implicit val p: Parameters = null
   def apply(wellnessGenParams1: wellnessGenParams[SInt],
+            pcaParams: PCAParams[SInt],
+            svmParams: SVMParams[SInt],
+            configurationMemoryParams: ConfigurationMemoryParams[SInt],
             goldenModelParameters: wellnessGenIntegrationParameterBundle, debug: Int): Boolean = {
     if (debug == 1) {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new wellnessGenModule(
-        wellnessGenParams1: wellnessGenParams[SInt])) {
-        c => new wellnessGenTester(c, goldenModelParameters, 0,0)
+        wellnessGenParams1,
+        pcaParams,
+        svmParams,
+        configurationMemoryParams)) {
+        c => new wellnessGenTester(c,
+          pcaParams,
+          svmParams,
+          configurationMemoryParams, goldenModelParameters, 0,0)
       }
     } else {
       dsptools.Driver.execute(() => new wellnessGenModule(
-        wellnessGenParams1: wellnessGenParams[SInt]),
+        wellnessGenParams1,
+        pcaParams,
+        svmParams,
+        configurationMemoryParams),
         TestSetup.dspTesterOptions) {
-        c => new wellnessGenTester(c, goldenModelParameters, 0, 0)
+        c => new wellnessGenTester(c,
+          pcaParams,
+          svmParams,
+          configurationMemoryParams,
+          goldenModelParameters, 0, 0)
       }
     }
   }
