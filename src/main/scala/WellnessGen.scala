@@ -21,17 +21,17 @@ trait wellnessGenParams[T <: Data] {
 }
 
 
-class WellnessConfigurationBundle[T <: Data](params: ConfigurationMemoryParams[T]) extends Bundle {
+class WellnessConfigurationGenBundle[T <: Data](params: ConfigurationMemoryParams[T]) extends Bundle {
   val confPCAVector = Vec(params.nFeatures,Vec(params.nDimensions,params.protoData))
   val confSVMSupportVector = Vec(params.nSupports,Vec(params.nFeatures,params.protoData))
   val confSVMAlphaVector = Vec(params.nClassifiers,Vec(params.nSupports,params.protoData))
   val confSVMIntercept = Vec(params.nClassifiers,params.protoData)
 
-  override def cloneType: this.type = WellnessConfigurationBundle(params).asInstanceOf[this.type]
+  override def cloneType: this.type = WellnessConfigurationGenBundle(params).asInstanceOf[this.type]
 }
-object WellnessConfigurationBundle {
-  def apply[T <: Data](params: ConfigurationMemoryParams[T]): WellnessConfigurationBundle[T]
-    = new WellnessConfigurationBundle(params)
+object WellnessConfigurationGenBundle {
+  def apply[T <: Data](params: ConfigurationMemoryParams[T]): WellnessConfigurationGenBundle[T]
+    = new WellnessConfigurationGenBundle(params)
 }
 
 
@@ -50,7 +50,7 @@ extends Bundle {
     nClassifiers = svmParams.codeBook.head.length // # columns = # classifiers
   }
 
-  val inConf = Flipped(ValidWithSync(WellnessConfigurationBundle(configurationMemoryParams)))
+  val inConf = Flipped(ValidWithSync(WellnessConfigurationGenBundle(configurationMemoryParams)))
 
   val in = Flipped(DecoupledIO(genParams.dataType.cloneType))
   val out = ValidWithSync(Bool())
@@ -90,9 +90,9 @@ extends Module {
     svmParams: SVMParams[T],
     configurationMemoryParams: ConfigurationMemoryParams[T]))
 
-  val tap_count = 4
-  val windowLength = 32
-  val coefficients1 = Seq(2,4,5,6)
+  val tap_count = 2
+  val windowLength = 4
+  val coefficients1 = Seq(2,2)
 
   val filter1Params = new FIRFilterParams[SInt] {
     val protoData = SInt(64.W)
@@ -108,6 +108,7 @@ extends Module {
   // Ch x (params): seq of param datapaths
   // Each param datapath: seq of (block type, block params)
   val datapathParamsSeqs = Seq(Seq(("FIR",filter1Params), ("lineLength",lineLength1Params)),
+    Seq(("FIR",filter1Params), ("lineLength",lineLength1Params)),
     Seq(("FIR",filter1Params), ("lineLength",lineLength1Params)))
   // Ch x (modules): arr of module datapaths
   // Each module datapath: arr of (block type, gen'd module)
@@ -161,8 +162,8 @@ extends Module {
     generatedDatapaths += generatedSinglePath
   }
 
-  val pcaInVector = Wire(Vec(pcaParams.nFeatures, pcaParams.protoData))
-  val pcaInValVec = Wire(Vec(pcaParams.nFeatures, Bool()))
+  val pcaInVector = Wire(Vec(pcaParams.nDimensions, pcaParams.protoData))
+  val pcaInValVec = Wire(Vec(pcaParams.nDimensions, Bool()))
   // For each (ith) module datapath in ch x, connect up modules
   for(i <- 0 until generatedDatapaths.length)
     {
@@ -282,7 +283,7 @@ extends Module {
           }
         }
         // Connect output to last module
-        if ((i == 0) & (j == genDatapath.length-1))
+        if (j == genDatapath.length-1)
         {
           genDatapath(j)._1 match
           {
