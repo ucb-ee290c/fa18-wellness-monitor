@@ -37,9 +37,9 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
 ( val genParams: wellnessGenParams[T])(implicit val p: Parameters) extends Module {
   val io = IO(wellnessGenModuleIO[T](genParams: wellnessGenParams[T]))
 
-  val tap_count = 2
-  val windowLength = 2
-  val coefficients1 = Seq(1,1)
+  val tap_count = 4
+  val windowLength = 32
+  val coefficients1 = Seq(2,4,5,6)
 
   val filter1Params = new FIRFilterParams[SInt] {
     val protoData = SInt(64.W)
@@ -122,17 +122,17 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
           genDatapath(j)._1 match
           {
             case "FIR" =>
-              genDatapath(j).asInstanceOf[ConstantCoefficientFIRFilter].io.in.valid := io.in.valid
-              genDatapath(j).asInstanceOf[ConstantCoefficientFIRFilter].io.in.bits := io.in.bits
-              genDatapath(j).asInstanceOf[ConstantCoefficientFIRFilter].io.in.sync := false.B
+              genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.valid := io.in.valid
+              genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.bits := io.in.bits
+              genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.sync := false.B
             case "IIR" =>
-              genDatapath(j).asInstanceOf[ConstantCoefficientIIRFilter].io.in.valid := io.in.valid
-              genDatapath(j).asInstanceOf[ConstantCoefficientIIRFilter].io.in.bits := io.in.bits
-              genDatapath(j).asInstanceOf[ConstantCoefficientIIRFilter].io.in.sync := false.B
+              genDatapath(j)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.in.valid := io.in.valid
+              genDatapath(j)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.in.bits := io.in.bits
+              genDatapath(j)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.in.sync := false.B
             case "FFTBuffer" =>
-              genDatapath(j).asInstanceOf[FFTBuffer].io.in.valid := io.in.valid
-              genDatapath(j).asInstanceOf[FFTBuffer].io.in.bits := io.in.bits
-              genDatapath(j).asInstanceOf[FFTBuffer].io.in.sync := false.B
+              genDatapath(j)._2.asInstanceOf[FFTBuffer[T]].io.in.valid := io.in.valid
+              genDatapath(j)._2.asInstanceOf[FFTBuffer[T]].io.in.bits := io.in.bits
+              genDatapath(j)._2.asInstanceOf[FFTBuffer[T]].io.in.sync := false.B
           }
         }
         // Other than first module, connect module to previous module
@@ -146,15 +146,15 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
               {
                 case "FIR" =>
                 {
-                  genDatapath(j).asInstanceOf[ConstantCoefficientFIRFilter].io.in.valid :=  genDatapath(j-1).asInstanceOf[ConstantCoefficientFIRFilter].io.out.valid
-                  genDatapath(j).asInstanceOf[ConstantCoefficientFIRFilter].io.in.bits  :=  genDatapath(j-1).asInstanceOf[ConstantCoefficientFIRFilter].io.out.bits
-                  genDatapath(j).asInstanceOf[ConstantCoefficientFIRFilter].io.in.sync  :=  false.B
+                  genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.valid :=  genDatapath(j-1)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.valid
+                  genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.bits  :=  genDatapath(j-1)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.bits
+                  genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.sync  :=  false.B
                 }
                 case "IIR" =>
                 {
-                  genDatapath(j).asInstanceOf[ConstantCoefficientFIRFilter].io.in.valid := genDatapath(j-1).asInstanceOf[ConstantCoefficientIIRFilter].io.out.valid
-                  genDatapath(j).asInstanceOf[ConstantCoefficientFIRFilter].io.in.bits  := genDatapath(j-1).asInstanceOf[ConstantCoefficientIIRFilter].io.out.bits
-                  genDatapath(j).asInstanceOf[ConstantCoefficientFIRFilter].io.in.sync  := false.B
+                  genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.valid := genDatapath(j-1)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.out.valid
+                  genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.bits  := genDatapath(j-1)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.out.bits
+                  genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.sync  := false.B
                 }
               }
             }
@@ -164,15 +164,15 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
               {
                 case "FIR" =>
                 {
-                  genDatapath(j).asInstanceOf[ConstantCoefficientIIRFilter].io.in.valid :=  genDatapath(j-1).asInstanceOf[ConstantCoefficientFIRFilter].io.out.valid
-                  genDatapath(j).asInstanceOf[ConstantCoefficientIIRFilter].io.in.bits  :=  genDatapath(j-1).asInstanceOf[ConstantCoefficientFIRFilter].io.out.bits
-                  genDatapath(j).asInstanceOf[ConstantCoefficientIIRFilter].io.in.sync  :=  false.B
+                  genDatapath(j)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.in.valid :=  genDatapath(j-1)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.valid
+                  genDatapath(j)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.in.bits  :=  genDatapath(j-1)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.bits
+                  genDatapath(j)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.in.sync  :=  false.B
                 }
                 case "IIR" =>
                 {
-                  genDatapath(j).asInstanceOf[ConstantCoefficientIIRFilter].io.in.valid := genDatapath(j-1).asInstanceOf[ConstantCoefficientIIRFilter].io.out.valid
-                  genDatapath(j).asInstanceOf[ConstantCoefficientIIRFilter].io.in.bits  := genDatapath(j-1).asInstanceOf[ConstantCoefficientIIRFilter].io.out.bits
-                  genDatapath(j).asInstanceOf[ConstantCoefficientIIRFilter].io.in.sync  := false.B
+                  genDatapath(j)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.in.valid := genDatapath(j-1)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.out.valid
+                  genDatapath(j)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.in.bits  := genDatapath(j-1)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.out.bits
+                  genDatapath(j)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.in.sync  := false.B
                 }
               }
             }
@@ -182,23 +182,23 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
               {
                 case "FIR" =>
                 {
-                  genDatapath(j).asInstanceOf[FFTBuffer].io.in.valid :=  genDatapath(j-1).asInstanceOf[ConstantCoefficientFIRFilter].io.out.valid
-                  genDatapath(j).asInstanceOf[FFTBuffer].io.in.bits  :=  genDatapath(j-1).asInstanceOf[ConstantCoefficientFIRFilter].io.out.bits
-                  genDatapath(j).asInstanceOf[FFTBuffer].io.in.sync  :=  false.B
+                  genDatapath(j)._2.asInstanceOf[FFTBuffer[T]].io.in.valid :=  genDatapath(j-1)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.valid
+                  genDatapath(j)._2.asInstanceOf[FFTBuffer[T]].io.in.bits  :=  genDatapath(j-1)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.bits
+                  genDatapath(j)._2.asInstanceOf[FFTBuffer[T]].io.in.sync  :=  false.B
                 }
                 case "IIR" =>
                 {
-                  genDatapath(j).asInstanceOf[FFTBuffer].io.in.valid :=  genDatapath(j-1).asInstanceOf[ConstantCoefficientIIRFilter].io.out.valid
-                  genDatapath(j).asInstanceOf[FFTBuffer].io.in.bits  :=  genDatapath(j-1).asInstanceOf[ConstantCoefficientIIRFilter].io.out.bits
-                  genDatapath(j).asInstanceOf[FFTBuffer].io.in.sync  :=  false.B
+                  genDatapath(j)._2.asInstanceOf[FFTBuffer[T]].io.in.valid :=  genDatapath(j-1)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.out.valid
+                  genDatapath(j)._2.asInstanceOf[FFTBuffer[T]].io.in.bits  :=  genDatapath(j-1)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.out.bits
+                  genDatapath(j)._2.asInstanceOf[FFTBuffer[T]].io.in.sync  :=  false.B
                 }
               }
             }
             case "FFT" =>
             {
-              genDatapath(j).asInstanceOf[FFT].io.in.valid := genDatapath(j-1).asInstanceOf[FFTBuffer].io.out.valid
-              genDatapath(j).asInstanceOf[FFT].io.in.bits  := genDatapath(j-1).asInstanceOf[FFTBuffer].io.out.bits
-              genDatapath(j).asInstanceOf[FFT].io.in.sync  := false.B
+              genDatapath(j)._2.asInstanceOf[FFT[T]].io.in.valid := genDatapath(j-1)._2.asInstanceOf[FFTBuffer[T]].io.out.valid
+              genDatapath(j)._2.asInstanceOf[FFT[T]].io.in.bits  := genDatapath(j-1)._2.asInstanceOf[FFTBuffer[T]].io.out.bits
+              genDatapath(j)._2.asInstanceOf[FFT[T]].io.in.sync  := false.B
             }
             case "lineLength" =>
             {
@@ -206,53 +206,53 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
               {
                 case "FIR" =>
                 {
-                  genDatapath(j).asInstanceOf[lineLength].io.in.valid :=  genDatapath(j-1).asInstanceOf[ConstantCoefficientFIRFilter].io.out.valid
-                  genDatapath(j).asInstanceOf[lineLength].io.in.bits  :=  genDatapath(j-1).asInstanceOf[ConstantCoefficientFIRFilter].io.out.bits
-                  genDatapath(j).asInstanceOf[lineLength].io.in.sync  :=  false.B
+                  genDatapath(j)._2.asInstanceOf[lineLength[T]].io.in.valid :=  genDatapath(j-1)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.valid
+                  genDatapath(j)._2.asInstanceOf[lineLength[T]].io.in.bits  :=  genDatapath(j-1)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.bits
+                  genDatapath(j)._2.asInstanceOf[lineLength[T]].io.in.sync  :=  false.B
                 }
                 case "IIR" =>
                 {
-                  genDatapath(j).asInstanceOf[lineLength].io.in.valid :=  genDatapath(j-1).asInstanceOf[ConstantCoefficientIIRFilter].io.out.valid
-                  genDatapath(j).asInstanceOf[lineLength].io.in.bits  :=  genDatapath(j-1).asInstanceOf[ConstantCoefficientIIRFilter].io.out.bits
-                  genDatapath(j).asInstanceOf[lineLength].io.in.sync  :=  false.B
+                  genDatapath(j)._2.asInstanceOf[lineLength[T]].io.in.valid :=  genDatapath(j-1)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.out.valid
+                  genDatapath(j)._2.asInstanceOf[lineLength[T]].io.in.bits  :=  genDatapath(j-1)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.out.bits
+                  genDatapath(j)._2.asInstanceOf[lineLength[T]].io.in.sync  :=  false.B
                 }
               }
             }
             case "Bandpower" =>
             {
-              genDatapath(j).asInstanceOf[Bandpower].io.in.valid := genDatapath(j-1).asInstanceOf[FFT].io.out.valid
-              genDatapath(j).asInstanceOf[Bandpower].io.in.bits  := genDatapath(j-1).asInstanceOf[FFT].io.out.bits
-              genDatapath(j).asInstanceOf[Bandpower].io.in.sync  := false.B
+              genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.in.valid := genDatapath(j-1)._2.asInstanceOf[FFT[T]].io.out.valid
+              genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.in.bits  := genDatapath(j-1)._2.asInstanceOf[FFT[T]].io.out.bits
+              genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.in.sync  := false.B
             }
           }
         }
         // Connect output to last module
-        if (j == genDatapath.length-1)
+        if ((i == 0) & (j == genDatapath.length-1))
         {
           genDatapath(j)._1 match
           {
             case "FIR" =>
             {
-              io.out.valid := genDatapath(j).asInstanceOf[ConstantCoefficientFIRFilter].io.out.valid
-              io.out.bits  := genDatapath(j).asInstanceOf[ConstantCoefficientFIRFilter].io.out.bits
+              io.out.valid := genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.valid
+              io.out.bits  := genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.bits
               io.out.sync  := false.B
             }
             case "IIR" =>
             {
-              io.out.valid := genDatapath(j).asInstanceOf[ConstantCoefficientIIRFilter].io.out.valid
-              io.out.bits  := genDatapath(j).asInstanceOf[ConstantCoefficientIIRFilter].io.out.bits
+              io.out.valid := genDatapath(j)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.out.valid
+              io.out.bits  := genDatapath(j)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.out.bits
               io.out.sync  := false.B
             }
             case "lineLength" =>
             {
-              io.out.valid := genDatapath(j).asInstanceOf[lineLength].io.out.valid
-              io.out.bits  := genDatapath(j).asInstanceOf[lineLength].io.out.bits
+              io.out.valid := genDatapath(j)._2.asInstanceOf[lineLength[T]].io.out.valid
+              io.out.bits  := genDatapath(j)._2.asInstanceOf[lineLength[T]].io.out.bits
               io.out.sync  := false.B
             }
             case "Bandpower" =>
             {
-              io.out.valid := genDatapath(j).asInstanceOf[Bandpower].io.out.valid
-              io.out.bits  := genDatapath(j).asInstanceOf[Bandpower].io.out.bits
+              io.out.valid := genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.out.valid
+              io.out.bits  := genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.out.bits
               io.out.sync  := false.B
             }
           }

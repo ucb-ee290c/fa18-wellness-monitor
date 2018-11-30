@@ -61,9 +61,9 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
 
 
 
-  for (i <- 0 until 10)
+  for (i <- 0 until 100)
   {
-    val input = scala.util.Random.nextDouble * 16
+    val input = scala.util.Random.nextDouble * 32
 
     for (k <- 0 until generatedDatapaths.length)
       {
@@ -78,9 +78,9 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
             name match
             {
               case "FIR" =>
-                genSinglePathResult(j) = generatedSinglePath(j).asInstanceOf[GoldenDoubleFIRFilter].poke(input)
+                genSinglePathResult(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenDoubleFIRFilter].poke(input)
               case "lineLength" =>
-                genSinglePathResult(j) = generatedSinglePath(j).asInstanceOf[GoldenDoubleLineLength].poke(input)
+                genSinglePathResult(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenDoubleLineLength].poke(input)
               //case "FFTBuffer" =>
               //  genSinglePathResult(j) = genSinglePath(j).asInstanceOf[GoldenFFTBuffer].poke(input)
             }
@@ -91,11 +91,11 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
             {
               case "FIR" =>
               {
-                genSinglePathResult(j) = generatedSinglePath(j).asInstanceOf[GoldenDoubleFIRFilter].poke(genSinglePathResult(j-1))
+                genSinglePathResult(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenDoubleFIRFilter].poke(genSinglePathResult(j-1))
               }
               case "lineLength" =>
               {
-                genSinglePathResult(j) = generatedSinglePath(j).asInstanceOf[GoldenDoubleLineLength].poke(genSinglePathResult(j-1))
+                genSinglePathResult(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenDoubleLineLength].poke(genSinglePathResult(j-1))
               }
             }
           }
@@ -109,10 +109,16 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
     val check_i = 0
     val check_j = generatedDatapathResults(check_i).length-1
 
-    if (c.io.out.valid == true.B)
+    if (peek(c.io.out.valid) == true)
       {
-        expect(c.io.out.bits, generatedDatapathResults(check_i)(check_j))
+        //expect(c.io.out.bits, generatedDatapathResults(check_i)(check_j))
+        fixTolLSBs.withValue(1)
+        {
+          expect(c.io.out.bits, generatedDatapathResults(check_i)(check_j), s"valid ${peek(c.io.out.valid)}")
+        }
       }
+    //expect(c.io.out.valid, false.B)
+    //expect(c.io.out.bits, generatedDatapathResults(check_i)(check_j))
   }
 }
 

@@ -19,15 +19,15 @@ abstract class lineLengthGenParamsTemplate {
   val windowSize:Int
 }
 
-abstract class fftBufferParamsTemplate {
+abstract class fftBufferGenParamsTemplate {
   val lanes:Int
 }
 
-abstract class fftConfigTemplate {
+abstract class fftConfigGenTemplate {
   val nPts: Int
 }
 
-abstract class bandpowerParamsTemplate {
+abstract class bandpowerParamsGenTemplate {
   val idxStartBin: Int
   val idxEndBin: Int
   val nBins: Int
@@ -45,18 +45,18 @@ class wellnessGenIntegrationParameterBundle {
     val protoData = SInt(64.W)
     val windowSize = 4
   }
-  val fftBufferParams:fftBufferParamsTemplate = new fftBufferParamsTemplate {
+  val fftBufferParams:fftBufferGenParamsTemplate = new fftBufferGenParamsTemplate {
     val lanes: Int = 0
   }
-  val fftConfig: fftConfigTemplate = new fftConfigTemplate {
+  val fftConfig: fftConfigGenTemplate = new fftConfigGenTemplate {
     val nPts: Int = 0
   }
-  val bandpower1Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
+  val bandpower1Params: bandpowerParamsGenTemplate = new bandpowerParamsGenTemplate {
     val idxStartBin: Int = 0
     val idxEndBin: Int = 0
     val nBins: Int = 0
   }
-  val bandpower2Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
+  val bandpower2Params: bandpowerParamsGenTemplate = new bandpowerParamsGenTemplate {
     val idxStartBin: Int = 0
     val idxEndBin: Int = 0
     val nBins: Int = 0
@@ -70,9 +70,9 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
 
     val debug = 0
 
-    val tap_count = 2
-    val coefficients1 = Seq(1,1)
-    val windowLength = 4
+    val tap_count = 4
+    val coefficients1 = Seq(2,4,5,6)
+    val windowLength = 32
 
     val goldenModelParameters = new wellnessGenIntegrationParameterBundle {
       override val filter1Params: filterGenParamsTemplate = new filterGenParamsTemplate {
@@ -81,19 +81,19 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
       override val lineLength1Params: lineLengthGenParamsTemplate = new lineLengthGenParamsTemplate {
         override val windowSize: Int = windowLength
       }
-      override val fftBufferParams:fftBufferParamsTemplate = new fftBufferParamsTemplate {
+      override val fftBufferParams:fftBufferGenParamsTemplate = new fftBufferGenParamsTemplate {
         val lanes: Int = windowLength
       }
-      override val fftConfig: fftConfigTemplate = new fftConfigTemplate {
+      override val fftConfig: fftConfigGenTemplate = new fftConfigGenTemplate {
         val nPts: Int = windowLength
       }
       // TODO: parameterize to match Chisel params
-      override val bandpower1Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
+      override val bandpower1Params: bandpowerParamsGenTemplate = new bandpowerParamsGenTemplate {
         val idxStartBin: Int = 0
         val idxEndBin: Int = 2
         val nBins: Int = windowLength
       }
-      override val bandpower2Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
+      override val bandpower2Params: bandpowerParamsGenTemplate = new bandpowerParamsGenTemplate {
         val idxStartBin: Int = 0
         val idxEndBin: Int = 2
         val nBins: Int = windowLength
