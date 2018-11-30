@@ -33,6 +33,28 @@ abstract class bandpowerParamsGenTemplate {
   val nBins: Int
 }
 
+abstract class pcaParamsGenTemplate {
+  val nDimensions:Int
+  val nFeatures:Int
+}
+
+abstract class svmParamsGenTemplate {
+  val nSupports:Int
+  val nFeatures:Int
+  val nClasses:Int
+  val nDegree:Int
+  val kernelType:String
+  val classifierType:String
+  val codeBook:Seq[Seq[Int]]
+}
+
+abstract class configurationMemoryParamsGenTemplate {
+  val nDimensions:Int
+  val nFeatures:Int
+  val nSupports:Int
+  val nClassifiers:Int
+}
+
 class wellnessGenIntegrationParameterBundle {
 
   // the numbers here are actually irrelevant, you just need to put something
@@ -60,6 +82,25 @@ class wellnessGenIntegrationParameterBundle {
     val idxStartBin: Int = 0
     val idxEndBin: Int = 0
     val nBins: Int = 0
+  }
+  val pcaParams:pcaParamsGenTemplate = new pcaParamsGenTemplate {
+    val nDimensions: Int = 0
+    val nFeatures: Int = 0
+  }
+  val svmParams:svmParamsGenTemplate = new svmParamsGenTemplate {
+    val nSupports: Int = 0
+    val nFeatures:Int = 0
+    val nClasses: Int = 0
+    val nDegree: Int = 0
+    val kernelType: String = "adel"
+    val classifierType: String = "adel"
+    val codeBook:Seq[Seq[Int]] = Seq.fill(1,1)(0)
+  }
+  val configurationMemoryParams:configurationMemoryParamsGenTemplate = new configurationMemoryParamsGenTemplate {
+    val nDimensions: Int = 0
+    val nFeatures: Int = 0
+    val nSupports: Int = 0
+    val nClassifiers: Int = 0
   }
 }
 
