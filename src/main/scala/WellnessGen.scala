@@ -17,25 +17,78 @@ import scala.collection._
 
 
 trait wellnessGenParams[T <: Data] {
-  val protoData: T
+  val dataType: T
 }
 
-class wellnessGenModuleIO[T <: Data : Real : Order : BinaryRepresentation](genParams: wellnessGenParams[T])  extends Bundle {
-  val in = Flipped(DecoupledIO(genParams.protoData.cloneType))
-  val out = ValidWithSync(genParams.protoData.cloneType)
 
-  override def cloneType: this.type = wellnessGenModuleIO(genParams: wellnessGenParams[T]).asInstanceOf[this.type]
+class WellnessConfigurationBundle[T <: Data](params: ConfigurationMemoryParams[T]) extends Bundle {
+  val confPCAVector = Vec(params.nFeatures,Vec(params.nDimensions,params.protoData))
+  val confSVMSupportVector = Vec(params.nSupports,Vec(params.nFeatures,params.protoData))
+  val confSVMAlphaVector = Vec(params.nClassifiers,Vec(params.nSupports,params.protoData))
+  val confSVMIntercept = Vec(params.nClassifiers,params.protoData)
+
+  override def cloneType: this.type = WellnessConfigurationBundle(params).asInstanceOf[this.type]
+}
+object WellnessConfigurationBundle {
+  def apply[T <: Data](params: ConfigurationMemoryParams[T]): WellnessConfigurationBundle[T]
+    = new WellnessConfigurationBundle(params)
 }
 
+
+class wellnessGenModuleIO[T <: Data : Real : Order : BinaryRepresentation]
+(genParams: wellnessGenParams[T],
+ pcaParams: PCAParams[T],
+ svmParams: SVMParams[T],
+ configurationMemoryParams: ConfigurationMemoryParams[T])
+extends Bundle {
+  var nClassifiers = svmParams.nClasses  // one vs rest default
+  if (svmParams.classifierType == "ovr") {
+    if (svmParams.nClasses == 2) nClassifiers = svmParams.nClasses - 1
+  } else if (svmParams.classifierType == "ovo") {   // one vs one
+    nClassifiers = (svmParams.nClasses*(svmParams.nClasses - 1))/2
+  } else if (svmParams.classifierType == "ecoc") {  // error correcting output code
+    nClassifiers = svmParams.codeBook.head.length // # columns = # classifiers
+  }
+
+  val inConf = Flipped(ValidWithSync(WellnessConfigurationBundle(configurationMemoryParams)))
+
+  val in = Flipped(DecoupledIO(genParams.dataType.cloneType))
+  val out = ValidWithSync(Bool())
+  val rawVotes = Output(Vec(svmParams.nClasses, svmParams.protoData))
+  val classVotes = Output(Vec(svmParams.nClasses,UInt((log2Ceil(nClassifiers)+1).W)))
+
+  override def cloneType: this.type = wellnessGenModuleIO(
+    genParams: wellnessGenParams[T],
+    pcaParams: PCAParams[T],
+    svmParams: SVMParams[T],
+    configurationMemoryParams: ConfigurationMemoryParams[T]).asInstanceOf[this.type]
+}
 object wellnessGenModuleIO {
-  def apply[T <: chisel3.Data : Real : Order : BinaryRepresentation](genParams: wellnessGenParams[T]):
-  wellnessGenModuleIO[T] = new wellnessGenModuleIO(genParams: wellnessGenParams[T])
+  def apply[T <: chisel3.Data : Real : Order : BinaryRepresentation](
+    genParams: wellnessGenParams[T],
+    pcaParams: PCAParams[T],
+    svmParams: SVMParams[T],
+    configurationMemoryParams: ConfigurationMemoryParams[T]):
+  wellnessGenModuleIO[T] = new wellnessGenModuleIO(
+    genParams: wellnessGenParams[T],
+    pcaParams: PCAParams[T],
+    svmParams: SVMParams[T],
+    configurationMemoryParams: ConfigurationMemoryParams[T])
 }
 
 
 class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
-( val genParams: wellnessGenParams[T])(implicit val p: Parameters) extends Module {
-  val io = IO(wellnessGenModuleIO[T](genParams: wellnessGenParams[T]))
+(val genParams: wellnessGenParams[T],
+ val pcaParams: PCAParams[T],
+ val svmParams: SVMParams[T],
+ val configurationMemoryParams: ConfigurationMemoryParams[T])
+(implicit val p: Parameters)
+extends Module {
+  val io = IO(wellnessGenModuleIO[T](
+    genParams: wellnessGenParams[T],
+    pcaParams: PCAParams[T],
+    svmParams: SVMParams[T],
+    configurationMemoryParams: ConfigurationMemoryParams[T]))
 
   val tap_count = 4
   val windowLength = 32
@@ -108,6 +161,8 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
     generatedDatapaths += generatedSinglePath
   }
 
+  val pcaInVector = Wire(Vec(pcaParams.nFeatures, pcaParams.protoData))
+  val pcaInValVec = Wire(Vec(pcaParams.nFeatures, Bool()))
   // For each (ith) module datapath in ch x, connect up modules
   for(i <- 0 until generatedDatapaths.length)
     {
@@ -233,31 +288,52 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
           {
             case "FIR" =>
             {
-              io.out.valid := genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.valid
-              io.out.bits  := genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.bits
-              io.out.sync  := false.B
+              pcaInValVec(i) := genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.valid
+              pcaInVector(i) := genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.bits
             }
             case "IIR" =>
             {
-              io.out.valid := genDatapath(j)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.out.valid
-              io.out.bits  := genDatapath(j)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.out.bits
-              io.out.sync  := false.B
+              pcaInValVec(i) := genDatapath(j)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.out.valid
+              pcaInVector(i) := genDatapath(j)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.out.bits
             }
             case "lineLength" =>
             {
-              io.out.valid := genDatapath(j)._2.asInstanceOf[lineLength[T]].io.out.valid
-              io.out.bits  := genDatapath(j)._2.asInstanceOf[lineLength[T]].io.out.bits
-              io.out.sync  := false.B
+              pcaInValVec(i) := genDatapath(j)._2.asInstanceOf[lineLength[T]].io.out.valid
+              pcaInVector(i) := genDatapath(j)._2.asInstanceOf[lineLength[T]].io.out.bits
             }
             case "Bandpower" =>
             {
-              io.out.valid := genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.out.valid
-              io.out.bits  := genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.out.bits
-              io.out.sync  := false.B
+              pcaInValVec(i) := genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.out.valid
+              pcaInVector(i) := genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.out.bits
             }
           }
         }
       }
     }
+
+  // PCA (datapaths to PCA)
+  val pca = Module(new PCA(pcaParams))
+  pca.io.PCAVector := io.inConf.bits.confPCAVector
+  pca.io.in.valid := pcaInValVec.asUInt().andR()
+  pca.io.in.bits := pcaInVector
+  pca.io.in.sync := false.B
+
+  // SVM (PCA to SVM)
+  val svm = Module(new SVM(svmParams))
+  // Configure SVM
+  svm.io.supportVector := io.inConf.bits.confSVMSupportVector
+  svm.io.alphaVector := io.inConf.bits.confSVMAlphaVector
+  svm.io.intercept := io.inConf.bits.confSVMIntercept
+  // Connect PCA to SVM
+  svm.io.in.valid := pca.io.out.valid
+  svm.io.in.bits := pca.io.out.bits
+  svm.io.in.sync := false.B
+  // SVM to Output
+  io.out.valid := svm.io.out.valid
+  io.out.sync := svm.io.out.sync
+  io.out.bits := false.B
+  io.rawVotes := svm.io.rawVotes
+  io.classVotes := svm.io.classVotes
+
   io.in.ready := true.B
 }
