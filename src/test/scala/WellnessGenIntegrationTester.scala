@@ -25,98 +25,94 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
   val wellnessGenParams1 = new wellnessGenParams[SInt] {
     val protoData = SInt(64.W)
   }
-  //val datapathSeq = Seq((0,filter1Params), (1,lineLength1Params))
-  // follow same process as wellnessGen
-  val pathSeq = Seq(("FIR",goldenModelParameters.filter1Params),("lineLength",goldenModelParameters.lineLength1Params))
-  val FIRBucket = mutable.ArrayBuffer[GoldenDoubleFIRFilter]()
-  val IIRBucket = mutable.ArrayBuffer[GoldenDoubleFIRFilter]()
-  val FFTBucket = mutable.ArrayBuffer[GoldenDoubleFIRFilter]()
-  val lineLengthBucket = mutable.ArrayBuffer[GoldenDoubleLineLength]()
 
-  var FIRResultBucket = mutable.ArrayBuffer[Double]()
-  var IIRResultBucket = mutable.ArrayBuffer[Double]()
-  var FFTResultBucket = mutable.ArrayBuffer[Double]()
-  var lineLengthResultBucket = mutable.ArrayBuffer[Double]()
+  val datapathParamsSeqs = Seq(Seq(("FIR",goldenModelParameters.filter1Params),("lineLength",goldenModelParameters.lineLength1Params)),
+    Seq(("FIR",goldenModelParameters.filter1Params),("lineLength",goldenModelParameters.lineLength1Params)))
 
-  val datapathSeq : mutable.ArrayBuffer[(Int,Int)] = mutable.ArrayBuffer()
-  val bucketSeq = Seq(FIRBucket,IIRBucket,FFTBucket,lineLengthBucket)
-  val resultSeq = Seq(FIRResultBucket,IIRResultBucket,FFTResultBucket,lineLengthResultBucket)
+  val generatedDatapaths        : mutable.ArrayBuffer[mutable.ArrayBuffer[(String,Object)]] = mutable.ArrayBuffer()
+  var generatedDatapathResults  : mutable.ArrayBuffer[mutable.ArrayBuffer[Double]] = mutable.ArrayBuffer()
 
+  for (k <- 0 until datapathParamsSeqs.length)
+  {
+    val singlePathParamsSeq = datapathParamsSeqs(k)
+    val generatedSinglePath   : mutable.ArrayBuffer[(String,Object)] = mutable.ArrayBuffer()
+    val genSinglePathResults  : mutable.ArrayBuffer[Double]       = mutable.ArrayBuffer()
 
-  for (i <- 0 until pathSeq.length)
+    for (i <- 0 until singlePathParamsSeq.length)
     {
-      pathSeq(i)._1 match
+      singlePathParamsSeq(i)._1 match
       {
         case "FIR" =>
         { // FIR
-          FIRBucket += new GoldenDoubleFIRFilter(pathSeq(i)._2.asInstanceOf[filterGenParamsTemplate].taps)
-          datapathSeq += ((0,FIRBucket.length-1))
-          FIRResultBucket += 0.toDouble
+          generatedSinglePath     += (("FIR", new GoldenDoubleFIRFilter(singlePathParamsSeq(i)._2.asInstanceOf[filterGenParamsTemplate].taps)))
+          genSinglePathResults    += 0.toDouble
         }
         case "lineLength" =>
         { // lineLength
-          lineLengthBucket += new GoldenDoubleLineLength(pathSeq(i)._2.asInstanceOf[lineLengthGenParamsTemplate].
-            windowSize,wellnessGenParams1.protoData.getClass.getTypeName)
-          datapathSeq += ((3,lineLengthBucket.length-1))
-          lineLengthResultBucket += 0.toDouble
+          generatedSinglePath     += (("lineLength", new GoldenDoubleLineLength(singlePathParamsSeq(i)._2.asInstanceOf[lineLengthGenParamsTemplate].
+            windowSize,wellnessGenParams1.protoData.getClass.getTypeName)))
+          genSinglePathResults += 0.toDouble
         }
       }
     }
+    generatedDatapaths += generatedSinglePath
+    generatedDatapathResults += genSinglePathResults
+  }
+
 
 
   for (i <- 0 until 10)
   {
     val input = scala.util.Random.nextDouble * 16
 
-    for (j <- (datapathSeq.length - 1) to 0 by -1)
-    {
-      val modi = datapathSeq(j)._1
-      val modj = datapathSeq(j)._2
-      if (j == (datapathSeq.length - 1))
+    for (k <- 0 until generatedDatapaths.length)
       {
-        modi match
+        val generatedSinglePath = generatedDatapaths(k)
+        val genSinglePathResult = generatedDatapathResults(k)
+        for (j <- (generatedSinglePath.length - 1) to 0 by -1)
         {
-          case 0 =>
+          val name = generatedSinglePath(j)._1
+
+          if (j == 0)
           {
-            resultSeq(modi)(modj) = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleFIRFilter].poke(input)
+            name match
+            {
+              case "FIR" =>
+                genSinglePathResult(j) = generatedSinglePath(j).asInstanceOf[GoldenDoubleFIRFilter].poke(input)
+              case "lineLength" =>
+                genSinglePathResult(j) = generatedSinglePath(j).asInstanceOf[GoldenDoubleLineLength].poke(input)
+              //case "FFTBuffer" =>
+              //  genSinglePathResult(j) = genSinglePath(j).asInstanceOf[GoldenFFTBuffer].poke(input)
+            }
           }
-          case 3 =>
+          else
           {
-            resultSeq(modi)(modj) = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleLineLength].poke(input)
+            name match
+            {
+              case "FIR" =>
+              {
+                genSinglePathResult(j) = generatedSinglePath(j).asInstanceOf[GoldenDoubleFIRFilter].poke(genSinglePathResult(j-1))
+              }
+              case "lineLength" =>
+              {
+                genSinglePathResult(j) = generatedSinglePath(j).asInstanceOf[GoldenDoubleLineLength].poke(genSinglePathResult(j-1))
+              }
+            }
           }
         }
       }
-      else
-      {
-        val prev_modi = datapathSeq(j+1)._1
-        val prev_modj = datapathSeq(j+1)._2
-        modi match
-        {
-          case 0 =>
-          {
-            resultSeq(modi)(modj) = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleFIRFilter].poke(resultSeq(prev_modi)(prev_modj))
-          }
-          case 3 =>
-          {
-            resultSeq(modi)(modj) = bucketSeq(modi)(modj).asInstanceOf[GoldenDoubleLineLength].poke(resultSeq(prev_modi)(prev_modj))
-          }
-        }
-      }
-    }
 
     poke(c.io.in.bits, input)
     poke(c.io.in.valid, 1)
     step(1)
 
-    val endBlock = datapathSeq.length-1
-    val lasti = datapathSeq(endBlock)._1
-    val lastj = datapathSeq(endBlock)._2
+    val check_i = 0
+    val check_j = generatedDatapathResults(check_i).length-1
 
     if (c.io.out.valid == true.B)
       {
-        expect(c.io.out.bits, resultSeq(lasti)(lastj))
+        expect(c.io.out.bits, generatedDatapathResults(check_i)(check_j))
       }
-
   }
 }
 

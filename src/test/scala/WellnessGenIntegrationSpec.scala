@@ -19,7 +19,19 @@ abstract class lineLengthGenParamsTemplate {
   val windowSize:Int
 }
 
+abstract class fftBufferParamsTemplate {
+  val lanes:Int
+}
 
+abstract class fftConfigTemplate {
+  val nPts: Int
+}
+
+abstract class bandpowerParamsTemplate {
+  val idxStartBin: Int
+  val idxEndBin: Int
+  val nBins: Int
+}
 
 class wellnessGenIntegrationParameterBundle {
 
@@ -31,28 +43,60 @@ class wellnessGenIntegrationParameterBundle {
   }
   val lineLength1Params:lineLengthGenParamsTemplate = new lineLengthGenParamsTemplate {
     val protoData = SInt(64.W)
-    val windowSize = 5
+    val windowSize = 4
+  }
+  val fftBufferParams:fftBufferParamsTemplate = new fftBufferParamsTemplate {
+    val lanes: Int = 0
+  }
+  val fftConfig: fftConfigTemplate = new fftConfigTemplate {
+    val nPts: Int = 0
+  }
+  val bandpower1Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
+    val idxStartBin: Int = 0
+    val idxEndBin: Int = 0
+    val nBins: Int = 0
+  }
+  val bandpower2Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
+    val idxStartBin: Int = 0
+    val idxEndBin: Int = 0
+    val nBins: Int = 0
   }
 }
 
 class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
   behavior of "Wellness"
 
-
-  // I am leaving this SInt implementation as is, since my testbench is meant for floats/fixedpoints
-  it should "pass the input through filters (SInt)" in {
+  it should "Should generate and randomnly test the datapath" in {
 
     val debug = 0
 
     val tap_count = 2
     val coefficients1 = Seq(1,1)
+    val windowLength = 4
 
     val goldenModelParameters = new wellnessGenIntegrationParameterBundle {
       override val filter1Params: filterGenParamsTemplate = new filterGenParamsTemplate {
         val taps: Seq[Double] = coefficients1.map(_.toDouble)
       }
       override val lineLength1Params: lineLengthGenParamsTemplate = new lineLengthGenParamsTemplate {
-        override val windowSize: Int = 2
+        override val windowSize: Int = windowLength
+      }
+      override val fftBufferParams:fftBufferParamsTemplate = new fftBufferParamsTemplate {
+        val lanes: Int = windowLength
+      }
+      override val fftConfig: fftConfigTemplate = new fftConfigTemplate {
+        val nPts: Int = windowLength
+      }
+      // TODO: parameterize to match Chisel params
+      override val bandpower1Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
+        val idxStartBin: Int = 0
+        val idxEndBin: Int = 2
+        val nBins: Int = windowLength
+      }
+      override val bandpower2Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
+        val idxStartBin: Int = 0
+        val idxEndBin: Int = 2
+        val nBins: Int = windowLength
       }
     }
 
