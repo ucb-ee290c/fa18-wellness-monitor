@@ -58,6 +58,49 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
   var referenceSVMAlphaVector = Seq(Seq(7.0, 3.0))
   var referenceSVMIntercept = Seq(4.0)
 
+  val pcaVectorMemoryParams = new MemoryBufferParams[T] {
+    val protoData: T = c.configurationMemoryParams.protoData.cloneType
+    val nRows: Int = c.configurationMemoryParams.nDimensions
+    val nColumns: Int = c.configurationMemoryParams.nFeatures
+  }
+
+  val svmSupportVectorMemoryParams = new MemoryBufferParams[T] {
+    val protoData: T = c.configurationMemoryParams.protoData.cloneType
+    val nRows: Int = c.configurationMemoryParams.nFeatures
+    val nColumns: Int = c.configurationMemoryParams.nSupports
+  }
+
+  val svmAlphaVectorMemoryParams = new MemoryBufferParams[T] {
+    val protoData: T = c.configurationMemoryParams.protoData.cloneType
+    val nRows: Int = c.configurationMemoryParams.nSupports
+    val nColumns: Int = c.configurationMemoryParams.nClassifiers
+  }
+
+  val svmInterceptMemoryParams = new MemoryBufferParams[T] {
+    val protoData: T = c.configurationMemoryParams.protoData.cloneType
+    val nRows: Int = c.configurationMemoryParams.nClassifiers
+    val nColumns: Int = 1
+  }
+
+  for(x <- 0 until pcaVectorMemoryParams.nColumns) {
+    for (y <- 0 until pcaVectorMemoryParams.nRows) {
+      poke(c.io.inConf.bits.confPCAVector(x)(y), referencePCAVector(x)(y))
+    }
+  }
+  for(x <- 0 until svmSupportVectorMemoryParams.nColumns) {
+    for (y <- 0 until svmSupportVectorMemoryParams.nRows) {
+      poke(c.io.inConf.bits.confSVMSupportVector(x)(y), referenceSVMSupportVector(x)(y))
+    }
+  }
+  for(x <- 0 until svmAlphaVectorMemoryParams.nColumns) {
+    for (y <- 0 until svmAlphaVectorMemoryParams.nRows) {
+      poke(c.io.inConf.bits.confSVMAlphaVector(x)(y), referenceSVMAlphaVector(x)(y))
+    }
+  }
+  for (y <- 0 until svmInterceptMemoryParams.nRows) {
+    poke(c.io.inConf.bits.confSVMIntercept(y), referenceSVMIntercept(y))
+  }
+
   for (k <- 0 until datapathParamsSeqs.length)
   {
     val singlePathParamsSeq = datapathParamsSeqs(k)
