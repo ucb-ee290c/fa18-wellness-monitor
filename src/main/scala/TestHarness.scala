@@ -20,7 +20,7 @@ class TestHarness()(implicit p: Parameters) extends Module {
   Debug.connectDebug(dut.debug, clock, reset.toBool(), io.success)
 
   dut.streamIn.valid := true.B
-  dut.streamIn.sync := true.B
+  dut.streamIn.sync := false.B
   dut.streamIn.bits := 0.asUInt().asFixedPoint(8.BP)
 }
 

@@ -265,15 +265,24 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   bandpower2.io.in.sync := false.B
   bandpower2.io.in.bits := fft.io.out.bits
 
+  // Extra pipeline registers for linelength to align with bandpower delay
+  // we need two registers since its Linelength vs FFT Buffer - FFT - Bandpower
+  val lineLength1Reg1 = RegNext(lineLength1.io.out.bits.asTypeOf(pcaParams.protoData))
+  val lineLength1Reg2 = RegNext(lineLength1Reg1)
+  val lineLength1Valid1 = RegNext(lineLength1.io.out.valid)
+  val lineLength1Valid2 = RegNext(lineLength1Valid1)
+
   // Features to PCA
   val pcaInVector = Wire(Vec(3,pcaParams.protoData))
-  pcaInVector(0) := lineLength1.io.out.bits.asTypeOf(pcaParams.protoData)
+  //pcaInVector(0) := lineLength1.io.out.bits.asTypeOf(pcaParams.protoData)
+  pcaInVector(0) := lineLength1Reg2
   pcaInVector(1) := bandpower1.io.out.bits.asTypeOf(pcaParams.protoData)
   pcaInVector(2) := bandpower2.io.out.bits.asTypeOf(pcaParams.protoData)
   pca.io.PCAVector := io.inConf.bits.confPCAVector
   pca.io.in.bits := pcaInVector
   pca.io.in.sync := false.B
-  pca.io.in.valid := (lineLength1.io.out.valid && bandpower1.io.out.valid && bandpower2.io.out.valid)
+  //pca.io.in.valid := (lineLength1.io.out.valid && bandpower1.io.out.valid && bandpower2.io.out.valid)
+  pca.io.in.valid := (lineLength1Valid2 && bandpower1.io.out.valid && bandpower2.io.out.valid)
 
   // PCA to SVM
   svm.io.in.valid := pca.io.out.valid
@@ -448,7 +457,6 @@ trait HasPeripheryWellness extends BaseSubsystem {
 }
 
 trait HasPeripheryWellnessModuleImp extends LazyModuleImp {
-  implicit val p: Parameters
   val outer: HasPeripheryWellness
 
   val streamIn = IO(Flipped(ValidWithSync(outer.wellnessParams.filter1Params.protoData.cloneType)))

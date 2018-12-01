@@ -18,7 +18,7 @@
 #define DATA_MASK ((1L << DATA_WIDTH)-1)
 
 #define CONF_DATA_MASK ((1L << DATA_WIDTH)-1)
-#define CONF_ADDR_WIDTH 2
+#define CONF_ADDR_WIDTH 3
 #define CONF_ADDR_MASK ((1L << CONF_ADDR_WIDTH)-1)
 
 void printDouble(double v, int decimalDigits)
@@ -85,7 +85,10 @@ int main(void)
 
   double tol = 0.1; // percent tolerance
 
-  // pushing data into the configuration matrix
+  printf("Start of script\n");
+
+  // pushing data into the configuration matrices
+
   // pcaVector
   for(i=1;i<=FEATURES;i++){
     for(j=1;j<=DIMENSIONS;j++){
@@ -94,6 +97,8 @@ int main(void)
         while(reg_read64(WELLNESSCONF_WRITE_COUNT) > 0);
     }
   }
+  printf("Done with PCA Vector\n");
+
   // SVMSupportVector
   for(i=1;i<=SUPPORTS;i++){
     for(j=1;j<=FEATURES;j++){
@@ -102,6 +107,8 @@ int main(void)
         while(reg_read64(WELLNESSCONF_WRITE_COUNT) > 0);
     }
   }
+  printf("Done with SVM Support Vector\n");
+
   // SVMAlphaVector
   for(i=1;i<=CLASSIFIERS;i++){
     for(j=1;j<=SUPPORTS;j++){
@@ -110,16 +117,28 @@ int main(void)
         while(reg_read64(WELLNESSCONF_WRITE_COUNT) > 0);
     }
   }
+  printf("Done with SVM Alpha Vector\n");
+
   // SVMIntercept
   for(i=1;i<=CLASSIFIERS;i++){
     write_data = pack_conf_data(3,SVMIntercept[CLASSIFIERS-i]);
     reg_write64(WELLNESSCONF_WRITE, write_data);
     while(reg_read64(WELLNESSCONF_WRITE_COUNT) > 0);
   }
+  printf("Done with SVM Intercept\n");
+
+  // Mux select for streaming input, 0 if through C code
+  write_data = pack_conf_data(4,0.0);
+  reg_write64(WELLNESSCONF_WRITE, write_data);
+  while(reg_read64(WELLNESSCONF_WRITE_COUNT) > 0);
+  printf("Done with Mux Select\n");
 
   // this is the main loop to feed the input vector one by one
   for(i=0;i<100;i++) {
-    while(reg_read64(WELLNESS_READ_COUNT) == 0) reg_write64(WELLNESS_WRITE, pack_data(in[i]));
+    while(reg_read64(WELLNESS_READ_COUNT) == 0) {
+        write_data = pack_data(in[i]);
+        reg_write64(WELLNESS_WRITE, write_data);
+    }
     pack_out = reg_read64(WELLNESS_READ);
     data_out_0 = unpack_pca_0(pack_out);
     data_out_1 = unpack_pca_1(pack_out);
@@ -127,7 +146,7 @@ int main(void)
     data_out_0double = (double) data_out_0 / pow(2,DATA_BP);
     data_out_1double = (double) data_out_1 / pow(2,DATA_BP);
 
-    if (i > WINDOW+NUMTAPS-1) { // This is the part where the output starts being correct
+    if (i > WINDOW+NUMTAPS+1) { // This is the part where the output starts being correct
         printDouble(data_out_1double,4); // check only 1 of the outputs, the other one is always 0
         printDouble(ex[i-(WINDOW+NUMTAPS)][1],4); // adjust starting index 0
         if ((data_out_1double <= ex[i-(WINDOW+NUMTAPS)][1]*(1+tol)) && // tolerance check
