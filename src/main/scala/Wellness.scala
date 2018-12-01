@@ -224,7 +224,8 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   val pca = Module(new PCA(pcaParams))
   val svm = Module(new SVM(svmParams))
 
-  io.in.ready := true.B
+
+
 
   val inStream = Wire(ValidWithSync(filter1Params.protoData))
   inStream.bits := Mux(io.inConf.bits.confInputMuxSel,io.streamIn.bits.asTypeOf(filter1Params.protoData),io.in.bits.asTypeOf(filter1Params.protoData))
