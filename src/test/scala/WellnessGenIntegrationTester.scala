@@ -127,7 +127,7 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
         }
         case "FFT" =>
         {
-          generatedSinglePath     += (("FFT", new GoldenDoubleFFT()))
+          generatedSinglePath     += (("FFT", new GoldenDoubleFFT(goldenModelParameters.fftConfig.nPts)))
           genSinglePathResults    += 0.toDouble
           genSingleFFTResults     += Seq.fill(goldenModelParameters.bandpower1Params.nBins)(Complex(0.0, 0.0))
         }
