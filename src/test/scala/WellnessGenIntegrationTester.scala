@@ -34,8 +34,8 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
   //   Seq(("FIR",goldenModelParameters.filter1Params),("lineLength",goldenModelParameters.lineLength1Params)))
 
   val datapathParamsSeqs = Seq(Seq(("FIR",goldenModelParameters.filter1Params),("lineLength",goldenModelParameters.lineLength1Params)),
-    Seq(("FIR",goldenModelParameters.filter1Params),("lineLength",goldenModelParameters.lineLength1Params)),
-    Seq(("FFTBuffer",goldenModelParameters.fftBufferParams),("FFT",goldenModelParameters.fftConfig),("Bandpower",goldenModelParameters.bandpower1Params)))
+    Seq(("FIR",goldenModelParameters.filter1Params),("FFTBuffer",goldenModelParameters.fftBufferParams),("FFT",goldenModelParameters.fftConfig),("Bandpower",goldenModelParameters.bandpower1Params)),
+    Seq(("FIR",goldenModelParameters.filter1Params),("FFTBuffer",goldenModelParameters.fftBufferParams),("FFT",goldenModelParameters.fftConfig),("Bandpower",goldenModelParameters.bandpower1Params)))
 
   val generatedDatapaths        : mutable.ArrayBuffer[mutable.ArrayBuffer[(String,Object)]] = mutable.ArrayBuffer()
 

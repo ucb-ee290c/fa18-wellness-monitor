@@ -105,6 +105,60 @@ object SIntWellnessParams {
   }
 }
 
+object SIntWellnessGenParams {
+
+  val nPts = 4
+
+  val wellnessGenParams1 = new wellnessGenParams[SInt] {
+    val dataType = SInt(64.W)
+  }
+
+  val pcaParams = new PCAParams[SInt] {
+    val protoData = SInt(32.W)
+    val nDimensions = 3 // input dimension, minimum 1
+    val nFeatures = 2 // output dimension to SVM, minimum 1
+  }
+
+  val svmParams = new SVMParams[SInt] {
+    val protoData = pcaParams.protoData.cloneType
+    val nSupports = 2
+    val nFeatures = pcaParams.nFeatures
+    val nClasses = 2
+    val nDegree = 1
+    val kernelType = "poly"
+    val classifierType = "ovo"
+    val codeBook = Seq.fill(nClasses, nClasses * 2)((scala.util.Random.nextInt(2) * 2) - 1) // ignored for this test case
+  }
+
+  val configurationMemoryParams = new ConfigurationMemoryParams[SInt] {
+
+    object computeNClassifiers {
+      def apply(params: SVMParams[chisel3.SInt] with Object {
+        val nClasses: Int
+        val codeBook: Seq[Seq[Int]]
+        val classifierType: String
+      }): Int =
+        if (params.classifierType == "ovr") {
+          if (params.nClasses == 2) params.nClasses - 1
+          else 1
+        }
+        else if (params.classifierType == "ovo") {
+          (params.nClasses * (params.nClasses - 1)) / 2
+        }
+        else if (params.classifierType == "ecoc") {
+          params.codeBook.head.length
+        }
+        else 1
+    }
+
+    val protoData = pcaParams.protoData.cloneType
+    val nDimensions: Int = pcaParams.nDimensions
+    val nFeatures: Int = pcaParams.nFeatures
+    val nSupports: Int = svmParams.nSupports
+    val nClassifiers: Int = computeNClassifiers(svmParams)
+  }
+}
+
 object utilities {
   // function to read CSVs and return data in 2D format (in Strings, need to convert after calling if needed)
   def readCSV(fileLoc: String): Seq[Seq[String]] = {

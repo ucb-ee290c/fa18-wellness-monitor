@@ -21,7 +21,7 @@ class TestHarness()(implicit p: Parameters) extends Module {
 
   dut.streamIn.valid := true.B
   dut.streamIn.sync := true.B
-  dut.streamIn.bits := 0.asUInt().asFixedPoint(8.BP)
+  dut.streamIn.bits := 0.asSInt()//.asUInt().asFixedPoint(8.BP)
 }
 
 object Generator extends GeneratorApp {
