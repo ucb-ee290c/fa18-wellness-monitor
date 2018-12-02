@@ -18,17 +18,12 @@ import scala.collection.mutable.ArrayBuffer
 import scala.collection.{Seq, mutable}
 
 class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
+                                           wellnessGenParams1: wellnessGenParams[T],
                                            pcaParams: PCAParams[T],
                                            svmParams: SVMParams[T],
                                            configurationMemoryParams: ConfigurationMemoryParams[T],
                                            goldenModelParameters: wellnessGenIntegrationParameterBundle,
                                            dataBP: Int, testType: Int) extends DspTester(c) {
-
-  // Instantiate golden models
-  val wellnessGenParams1 = new wellnessGenParams[SInt] {
-    val dataType = SInt(64.W)
-  }
-
   // val datapathParamsSeqs = Seq(Seq(("FIR",goldenModelParameters.filter1Params),("lineLength",goldenModelParameters.lineLength1Params)),
   //   Seq(("FIR",goldenModelParameters.filter1Params),("lineLength",goldenModelParameters.lineLength1Params)),
   //   Seq(("FIR",goldenModelParameters.filter1Params),("lineLength",goldenModelParameters.lineLength1Params)))
@@ -283,6 +278,7 @@ object wellnessGenIntegrationTesterSInt {
         svmParams,
         configurationMemoryParams)) {
         c => new wellnessGenTester(c,
+          wellnessGenParams1,
           pcaParams,
           svmParams,
           configurationMemoryParams, goldenModelParameters, 0,0)
@@ -295,6 +291,44 @@ object wellnessGenIntegrationTesterSInt {
         configurationMemoryParams),
         TestSetup.dspTesterOptions) {
         c => new wellnessGenTester(c,
+          wellnessGenParams1,
+          pcaParams,
+          svmParams,
+          configurationMemoryParams,
+          goldenModelParameters, 0, 0)
+      }
+    }
+  }
+}
+
+object wellnessGenIntegrationTesterFP {
+  implicit val p: Parameters = null
+  def apply(wellnessGenParams1: wellnessGenParams[FixedPoint],
+            pcaParams: PCAParams[FixedPoint],
+            svmParams: SVMParams[FixedPoint],
+            configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
+            goldenModelParameters: wellnessGenIntegrationParameterBundle, debug: Int): Boolean = {
+    if (debug == 1) {
+      chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new wellnessGenModule(
+        wellnessGenParams1,
+        pcaParams,
+        svmParams,
+        configurationMemoryParams)) {
+        c => new wellnessGenTester(c,
+          wellnessGenParams1,
+          pcaParams,
+          svmParams,
+          configurationMemoryParams, goldenModelParameters, 0,0)
+      }
+    } else {
+      dsptools.Driver.execute(() => new wellnessGenModule(
+        wellnessGenParams1,
+        pcaParams,
+        svmParams,
+        configurationMemoryParams),
+        TestSetup.dspTesterOptions) {
+        c => new wellnessGenTester(c,
+          wellnessGenParams1,
           pcaParams,
           svmParams,
           configurationMemoryParams,

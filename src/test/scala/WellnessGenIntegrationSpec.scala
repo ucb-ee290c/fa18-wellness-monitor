@@ -107,7 +107,7 @@ class wellnessGenIntegrationParameterBundle {
 class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
   behavior of "Wellness"
 
-  it should "Should generate and randomnly test the datapath" in {
+  it should "Should generate and randomnly test the datapath (SInt)" in {
 
     val debug = 0
 
@@ -226,11 +226,144 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
       val nClassifiers: Int = computeNClassifiers(svmParams)
     }
 
-
     wellnessGenIntegrationTesterSInt(wellnessGenParams1: wellnessGenParams[SInt],
       pcaParams: PCAParams[SInt],
       svmParams: SVMParams[SInt],
       configurationMemoryParams: ConfigurationMemoryParams[SInt],
+      goldenModelParameters: wellnessGenIntegrationParameterBundle, debug) should be (true)
+  }
+
+
+  it should "Should generate and randomnly test the datapath (FixedPoint)" in {
+
+    val debug = 0
+
+    val windowLength = 32
+
+    val dataWidth = 32
+    val dataBP = 8
+
+    val tap_count = scala.util.Random.nextInt(15) + 1
+    val coefficients1 = mutable.ArrayBuffer[Double]()
+    for(j <- 0 until tap_count) {
+      coefficients1 += (-5 + scala.util.Random.nextFloat * 10)
+    }
+
+    val goldenModelParameters = new wellnessGenIntegrationParameterBundle {
+      override val filter1Params: filterGenParamsTemplate = new filterGenParamsTemplate {
+        val taps: Seq[Double] = coefficients1.map(_.toDouble)
+      }
+      override val lineLength1Params: lineLengthGenParamsTemplate = new lineLengthGenParamsTemplate {
+        override val windowSize: Int = windowLength
+      }
+      override val fftBufferParams: fftBufferGenParamsTemplate = new fftBufferGenParamsTemplate {
+        val lanes: Int = windowLength
+      }
+      override val fftConfig: fftConfigGenTemplate = new fftConfigGenTemplate {
+        val nPts: Int = windowLength
+      }
+      // TODO: parameterize to match Chisel params
+      override val bandpower1Params: bandpowerParamsGenTemplate = new bandpowerParamsGenTemplate {
+        val idxStartBin: Int = 0
+        val idxEndBin: Int = 2
+        val nBins: Int = windowLength
+      }
+      override val bandpower2Params: bandpowerParamsGenTemplate = new bandpowerParamsGenTemplate {
+        val idxStartBin: Int = 0
+        val idxEndBin: Int = 2
+        val nBins: Int = windowLength
+      }
+      override val pcaParams: pcaParamsGenTemplate = new pcaParamsGenTemplate {
+        val nDimensions: Int = 3
+        val nFeatures: Int = 2
+      }
+      override val svmParams: svmParamsGenTemplate = new svmParamsGenTemplate {
+        val nSupports: Int = 2
+        val nFeatures: Int = pcaParams.nFeatures
+        val nClasses: Int = 2
+        val nDegree: Int = 1
+        val kernelType: String = "poly"
+        val classifierType: String = "ovo"
+        val codeBook: Seq[Seq[Int]] = Seq.fill(nClasses, nClasses * 2)((scala.util.Random.nextInt(2) * 2) - 1)
+      }
+      override val configurationMemoryParams: configurationMemoryParamsGenTemplate = new configurationMemoryParamsGenTemplate {
+        object computeNClassifiers {
+          def apply(params: svmParamsGenTemplate with Object {
+            val nClasses: Int
+            val codeBook: Seq[Seq[Int]]
+            val classifierType: String
+          }): Int =
+            if (params.classifierType == "ovr") {
+              if (params.nClasses == 2) params.nClasses - 1
+              else 1
+            }
+            else if (params.classifierType == "ovo") {
+              (params.nClasses*(params.nClasses - 1))/2
+            }
+            else if (params.classifierType == "ecoc") {
+              params.codeBook.head.length
+            }
+            else 1
+        }
+        val nDimensions: Int = pcaParams.nDimensions
+        val nFeatures: Int = pcaParams.nFeatures
+        val nSupports: Int = svmParams.nSupports
+        val nClassifiers: Int = computeNClassifiers(svmParams)
+      }
+    }
+
+    val wellnessGenParams1 = new wellnessGenParams[FixedPoint] {
+      val dataType = FixedPoint(dataWidth.W, dataBP.BP)
+    }
+
+
+    val pcaParams = new PCAParams[FixedPoint] {
+      val protoData = FixedPoint(dataWidth.W, dataBP.BP)
+      val nDimensions = 3 // input dimension, minimum 1
+      val nFeatures = 2   // output dimension to SVM, minimum 1
+    }
+
+    val svmParams = new SVMParams[FixedPoint] {
+      val protoData = FixedPoint(dataWidth.W, dataBP.BP)
+      val nSupports = 2
+      val nFeatures = pcaParams.nFeatures
+      val nClasses = 2
+      val nDegree = 1
+      val kernelType = "poly"
+      val classifierType = "ovo"
+      val codeBook = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
+    }
+
+    val configurationMemoryParams = new ConfigurationMemoryParams[FixedPoint] {
+      object computeNClassifiers {
+        def apply(params: SVMParams[FixedPoint] with Object {
+          val nClasses: Int
+          val codeBook: Seq[Seq[Int]]
+          val classifierType: String
+        }): Int =
+          if (params.classifierType == "ovr") {
+            if (params.nClasses == 2) params.nClasses - 1
+            else 1
+          }
+          else if (params.classifierType == "ovo") {
+            (params.nClasses*(params.nClasses - 1))/2
+          }
+          else if (params.classifierType == "ecoc") {
+            params.codeBook.head.length
+          }
+          else 1
+      }
+      val protoData = pcaParams.protoData.cloneType
+      val nDimensions: Int = pcaParams.nDimensions
+      val nFeatures: Int = pcaParams.nFeatures
+      val nSupports: Int = svmParams.nSupports
+      val nClassifiers: Int = computeNClassifiers(svmParams)
+    }
+
+    wellnessGenIntegrationTesterFP(wellnessGenParams1: wellnessGenParams[FixedPoint],
+      pcaParams: PCAParams[FixedPoint],
+      svmParams: SVMParams[FixedPoint],
+      configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
       goldenModelParameters: wellnessGenIntegrationParameterBundle, debug) should be (true)
   }
 }
