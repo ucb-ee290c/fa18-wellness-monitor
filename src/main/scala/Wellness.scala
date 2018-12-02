@@ -19,6 +19,13 @@ import freechips.rocketchip.subsystem._
 
 import scala.collection.Seq
 
+/**
+  * The memory interface writes entries into the queue.
+  * They stream out the streaming interface
+  * @param depth number of entries in the queue
+  * @param streamParameters parameters for the stream node
+  * @param p
+  */
 abstract class WriteQueue
 (
   val depth: Int = 8,
@@ -52,6 +59,13 @@ abstract class WriteQueue
   }
 }
 
+/**
+  * TLDspBlock specialization of WriteQueue
+  * @param depth number of entries in the queue
+  * @param csrAddress address range for peripheral
+  * @param beatBytes beatBytes of TL interface
+  * @param p
+  */
 class TLWriteQueue
 (
   depth: Int = 8,
@@ -70,6 +84,13 @@ class TLWriteQueue
   override val mem = Some(TLRegisterNode(address = Seq(csrAddress), device = device, beatBytes = beatBytes))
 }
 
+/**
+  * The streaming interface adds elements into the queue.
+  * The memory interface can read elements out of the queue.
+  * @param depth number of entries in the queue
+  * @param streamParameters parameters for the stream node
+  * @param p
+  */
 abstract class ReadQueue
 (
   val depth: Int = 8,
@@ -100,6 +121,13 @@ abstract class ReadQueue
   }
 }
 
+/**
+  * TLDspBlock specialization of ReadQueue
+  * @param depth number of entries in the queue
+  * @param csrAddress address range
+  * @param beatBytes beatBytes of TL interface
+  * @param p
+  */
 class TLReadQueue
 (
   depth: Int = 8,
@@ -119,6 +147,12 @@ class TLReadQueue
 
 }
 
+/**
+  * Bundle that contains runtime configuration signals of the Wellness Module.
+  * This bundle is used to easily connect the configuration signals from Configuration
+  * Memory to Wellness Module.
+  * @param params is explained at wellness.ConfigurationMemory
+  */
 class WellnessConfigurationBundle[T <: Data](params: ConfigurationMemoryParams[T]) extends Bundle {
   val confPCAVector = Vec(params.nFeatures,Vec(params.nDimensions,params.protoData))
   val confSVMSupportVector = Vec(params.nSupports,Vec(params.nFeatures,params.protoData))
@@ -132,6 +166,16 @@ object WellnessConfigurationBundle {
   def apply[T <: Data](params: ConfigurationMemoryParams[T]): WellnessConfigurationBundle[T] = new WellnessConfigurationBundle(params)
 }
 
+//TODO Update comment definition to reflect new generator
+/**
+  * I/O Bundle of the Wellness Module
+  * streamIn: Input stream from the ADC
+  * in: Test input stream from the RISC-V Core
+  * inConf: Configuration signals from Configuration Memory
+  * out: Currently unused
+  * rawVotes: Raw Votes from SVM
+  * classVotes: Class Votes from SVM
+  */
 class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1Params: FIRFilterParams[T],
                                                  lineLength1Params: lineLengthParams[T],
                                                  fftBufferParams: FFTBufferParams[T],
@@ -149,19 +193,19 @@ class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1P
   } else if (svmParams.classifierType == "ecoc") {  // error correcting output code
     nClassifiers = svmParams.codeBook.head.length // # columns = # classifiers
   }
-  val streamIn = Flipped(ValidWithSync(filter1Params.protoData.cloneType))
-  val in = Flipped(DecoupledIO(filter1Params.protoData.cloneType))
-  val inConf = Flipped(ValidWithSync(WellnessConfigurationBundle(configurationMemoryParams)))
-  val out = ValidWithSync(Bool())
-  val rawVotes = Output(Vec(svmParams.nClasses, svmParams.protoData))
-  val classVotes = Output(Vec(svmParams.nClasses,UInt((log2Ceil(nClassifiers)+1).W)))
-  val lineOut = Output(lineLength1Params.protoData)
-  val fftBufferOut = Output(Vec(fftBufferParams.lanes, fftBufferParams.protoData))
-  val fftOut = Output(Vec(fftConfig.lanes, fftConfig.genOut))
-  val bandpower1Out = Output(bandpower1Params.genOut)
-  val bandpower2Out = Output(bandpower2Params.genOut)
-  val filterOut = Output(filter1Params.protoData)
-  val pcaOut = Output(Vec(pcaParams.nFeatures, pcaParams.protoData))
+  val streamIn = Flipped(ValidWithSync(filter1Params.protoData.cloneType)) // Streaming Input from external source
+  val in = Flipped(DecoupledIO(filter1Params.protoData.cloneType)) // Test Input from RISC-V core
+  val inConf = Flipped(ValidWithSync(WellnessConfigurationBundle(configurationMemoryParams))) // Configuration input from Configuration Memory
+  val out = ValidWithSync(Bool()) // Not used right now
+  val rawVotes = Output(Vec(svmParams.nClasses, svmParams.protoData)) // Raw Votes from SVM
+  val classVotes = Output(Vec(svmParams.nClasses,UInt((log2Ceil(nClassifiers)+1).W))) // Class Votes from SVM
+  val lineOut = Output(lineLength1Params.protoData) // Not used in actual implementation, only for debug purposes
+  val fftBufferOut = Output(Vec(fftBufferParams.lanes, fftBufferParams.protoData)) // Not used in actual implementation, only for debug purposes
+  val fftOut = Output(Vec(fftConfig.lanes, fftConfig.genOut)) // Not used in actual implementation, only for debug purposes
+  val bandpower1Out = Output(bandpower1Params.genOut) // Not used in actual implementation, only for debug purposes
+  val bandpower2Out = Output(bandpower2Params.genOut) // Not used in actual implementation, only for debug purposes
+  val filterOut = Output(filter1Params.protoData) // Not used in actual implementation, only for debug purposes
+  val pcaOut = Output(Vec(pcaParams.nFeatures, pcaParams.protoData)) // Not used in actual implementation, only for debug purposes
 
   override def cloneType: this.type = WellnessModuleIO( filter1Params: FIRFilterParams[T],
                                                         lineLength1Params: lineLengthParams[T],
@@ -194,6 +238,21 @@ object WellnessModuleIO {
       configurationMemoryParams: ConfigurationMemoryParams[T])
 }
 
+/**
+  * Wellness Module
+  * A prototype wellness module definition with 1 Line Length and 2 Band Power features.
+  * @param filter1Params Parameters of the FIR filter before Line Length Extractor
+  * @param lineLength1Params Parameters of the Line Length Extractor
+  * @param fftBufferParams Parameters of the FFT Buffer
+  * @param fftConfig Parameters of the FFT
+  * @param bandpower1Params Parameters of the first Bandpower Extractor
+  * @param bandpower2Params Parameters of the second Bandpower Extractor
+  * @param pcaParams Parameters of the PCA
+  * @param svmParams Parameters of the SVM
+  * @param configurationMemoryParams Parameters of the Configuration Memory
+  *                                  Note that configuration memory is not actually inside the Wellness Module,
+  *                                  but Wellness Module requires this parameter bundle to properly connect to Conf Mem
+  */
 class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
 ( val filter1Params: FIRFilterParams[T],
   val lineLength1Params: lineLengthParams[T],
@@ -309,7 +368,18 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   io.pcaOut := pca.io.out.bits
 }
 
-
+/**
+  * TLDspBlock specialization of WellnessModule
+  * @param filter1Params Parameters of the FIR filter before Line Length Extractor
+  * @param lineLength1Params Parameters of the Line Length Extractor
+  * @param fftBufferParams Parameters of the FFT Buffer
+  * @param fftConfig Parameters of the FFT
+  * @param bandpower1Params Parameters of the first Bandpower Extractor
+  * @param bandpower2Params Parameters of the second Bandpower Extractor
+  * @param pcaParams Parameters of the PCA
+  * @param svmParams Parameters of the SVM
+  * @param configurationMemoryParams Parameters of the Configuration Memory
+  */
 abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real : Order : BinaryRepresentation]
 (
   val filter1Params: FIRFilterParams[T],
@@ -323,8 +393,8 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real :
   val configurationMemoryParams: ConfigurationMemoryParams[T]
 )(implicit p: Parameters) extends DspBlock[D, U, EO, EI, B] {
   val streamNode = AXI4StreamNexusNode(
-    masterFn = { seq => AXI4StreamMasterPortParameters()},
-    slaveFn  = { seq => AXI4StreamSlavePortParameters()}
+    masterFn = { seq => AXI4StreamMasterPortParameters()}, // Master Port for stream data transfer (Read/Write)
+    slaveFn  = { seq => AXI4StreamSlavePortParameters()} // Slave Port for configuration data transfer (Write only)
   )
   val mem = None
 
@@ -363,6 +433,8 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real :
     out.valid := wellness.io.out.valid
     out.bits.data := Cat(wellness.io.rawVotes(1).asUInt(),wellness.io.rawVotes(0).asUInt())
 
+    // Configuration memory connections.
+    // Conf Mem uses the 3 MSB bits to decode the address of the data that is being written.
     inConf.ready := true.B
     configurationMemory.io.in.valid := inConf.valid
     configurationMemory.io.in.sync := false.B

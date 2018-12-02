@@ -58,18 +58,21 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     input = scala.util.Random.nextInt(32) - 16
   }
 
+  // Define some arbitrary default values for PCA and SVM to be used in random input tests
   var referencePCAVector = Seq(Seq(5.0, 0.0, -2.0), Seq(1.0, 2.0, 3.0))
   var referenceSVMSupportVector = Seq(Seq(1.0, 2.0), Seq(3.0, 4.0))
   var referenceSVMAlphaVector = Seq(Seq(7.0, 3.0))
   var referenceSVMIntercept = Seq(4.0)
 
-  if (testType == 1) { // this is the file loading sequence for the configuration parameters
+  // If the pre-generated test is being run, load the PCA and SVM data from files instead
+  if (testType == 1) {
     referencePCAVector = utilities.readCSV("scripts/generated_files/pca_vectors.csv").map(_.map(_.toDouble))
     referenceSVMSupportVector = utilities.readCSV("scripts/generated_files/support_vectors.csv").map(_.map(_.toDouble))
     referenceSVMAlphaVector = utilities.readCSV("scripts/generated_files/alpha_vectors.csv").map(_.map(_.toDouble))
     referenceSVMIntercept = utilities.readCSV("scripts/generated_files/intercepts.csv").flatMap(_.map(_.toDouble))
   }
 
+  // Configure the input mux selection to accept data from RISC-V core instead of external input
   poke(c.io.inConf.bits.confInputMuxSel, 0)
 
   val pcaVectorMemoryParams = new MemoryBufferParams[T] {
@@ -95,6 +98,8 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     val nRows: Int = c.configurationMemoryParams.nClassifiers
     val nColumns: Int = 1
   }
+
+  // Fill the configuration inputs of the DUT
 
   for(x <- 0 until pcaVectorMemoryParams.nColumns) {
     for (y <- 0 until pcaVectorMemoryParams.nRows) {
@@ -200,10 +205,11 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     }
 
     // Poke inputs to golden models
-    // THIS SHOULD STRICTLY BE DONE IN REVERSE ORDER, FROM THE OUTPUT SIDE TO THE INPUT SIDE
+    // The order of poking matters. For sequential modules connected to eachother, poking should be from last-to-first.
+    // For combinational modules between sequential modules, it should be from first-to-last.
     svmResult = SVM.poke(pcaResult.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),
       referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
-    //pcaInputBundle = Seq(lineLength1Result, bandpower1Result, bandpower2Result)
+    //pcaInputBundle = Seq(lineLength1Result, bandpower1Result, bandpower2Result) - Commented out to accommodate pipeline delay
     pcaInputBundle = Seq(lineLength1ResultReg2, bandpower1Result, bandpower2Result)
     pcaResult = PCA.poke(pcaInputBundle, referencePCAVector.map(_.map(_.toDouble)))
 

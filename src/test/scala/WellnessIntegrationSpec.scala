@@ -14,6 +14,22 @@ import svm._
 
 import scala.collection.{Seq, mutable}
 
+/**
+  * WellnessIntegrationSpec
+  *
+  * This code is organized as follows:
+  *   xxParamsTemplate: Parameter Templates for Golden Models
+  *   wellnessIntegrationParameterBundle: Parameters Bundle for wellnessTester
+  *   wellnessIntegrationSpec: Spec definitions for the wellnessTester
+  *
+  */
+
+/**
+  * xxParamsTemplate
+  *
+  * These are parameter templates for Golden Models since they require different parameters than the modules themselves
+  *
+  */
 abstract class filterParamsTemplate {
   val taps:Seq[Double]
 }
@@ -57,6 +73,13 @@ abstract class configurationMemoryParamsTemplate {
   val nSupports:Int
   val nClassifiers:Int
 }
+
+/**
+  * wellnessIntegrationParameterBundle
+  *
+  * Bundle containing all the parameters for the golden models.
+  *
+  */
 
 class wellnessIntegrationParameterBundle {
 
@@ -106,6 +129,16 @@ class wellnessIntegrationParameterBundle {
   }
 }
 
+/**
+  * WellnessIntegrationSpec
+  *
+  * Spec list for the Integration Test. Three tests are currently programmed to run:
+  *   -> SInt test with a random input stream with random block parameters
+  *   -> FixedPoint test with a random input stream with random block parameters
+  *   -> FixedPoint test with a pre-determined input, with pre-determined block parameters
+  *
+  */
+
 class WellnessIntegrationSpec extends FlatSpec with Matchers {
   behavior of "Wellness"
 
@@ -116,15 +149,17 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
   it should "pass the input through filters, compute features, and classify (SInt)" in {
 
     val debug = 0
-
     val windowLength = 4
 
+    // Tap Count for FIR filter.
     val tap_count = 5
+    // Random Coefficient generation for FIR filter.
     val coefficients1 = mutable.ArrayBuffer[Int]()
     for(j <- 0 until tap_count) {
       coefficients1 += j
        }
 
+    // Golden Model Parameter instantiation
     val goldenModelParameters = new wellnessIntegrationParameterBundle {
       override val filter1Params: filterParamsTemplate = new filterParamsTemplate {
         val taps: Seq[Double] = coefficients1.map(_.toDouble)
@@ -187,6 +222,8 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
         val nClassifiers: Int = computeNClassifiers(svmParams)
       }
     }
+
+    // DUT parameter instantiations
 
     val filter1Params = new FIRFilterParams[SInt] {
       val protoData = SInt(64.W)
@@ -466,7 +503,7 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
 
   if (integrated == 1) {
     it should "work using the Python model generated files" in {
-      val debug = 0
+      val debug = 1
 
       val dataWidth = 32
       val dataBP = 8
