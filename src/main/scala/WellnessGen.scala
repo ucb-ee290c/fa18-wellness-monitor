@@ -104,12 +104,37 @@ extends Module {
     val windowSize = windowLength
   }
 
+  val bandpower1Params = new BandpowerParams[SInt] {
+    val idxStartBin = 0
+    val idxEndBin = 2
+    val nBins = windowLength
+    val genIn = DspComplex(SInt(64.W), SInt(64.W))
+    val genOut = SInt(64.W)
+  }
+
+  val fftConfig = FFTConfig(
+    genIn = DspComplex(SInt(64.W), SInt(64.W)),
+    genOut = DspComplex(SInt(64.W), SInt(64.W)),
+    n = windowLength,
+    lanes = windowLength,
+    pipelineDepth = 0,
+    quadrature = false,
+  )
+
+  val fftBufferParams = new FFTBufferParams[SInt] {
+    val protoData = SInt(64.W)
+    val lanes = windowLength
+  }
+
 
   // Ch x (params): seq of param datapaths
   // Each param datapath: seq of (block type, block params)
+  // val datapathParamsSeqs = Seq(Seq(("FIR",filter1Params), ("lineLength",lineLength1Params)),
+  //   Seq(("FIR",filter1Params), ("lineLength",lineLength1Params)),
+  //   Seq(("FIR",filter1Params), ("lineLength",lineLength1Params)))
   val datapathParamsSeqs = Seq(Seq(("FIR",filter1Params), ("lineLength",lineLength1Params)),
     Seq(("FIR",filter1Params), ("lineLength",lineLength1Params)),
-    Seq(("FIR",filter1Params), ("lineLength",lineLength1Params)))
+    Seq(("FFTBuffer",fftBufferParams), ("FFT",fftConfig),("bandpower",bandpower1Params)))
   // Ch x (modules): arr of module datapaths
   // Each module datapath: arr of (block type, gen'd module)
   val generatedDatapaths: mutable.ArrayBuffer[mutable.ArrayBuffer[(String,Module)]] = mutable.ArrayBuffer()
@@ -152,9 +177,9 @@ extends Module {
         {
           generatedSinglePath += (("lineLength",Module(new lineLength(singlePathParamsSeq(j)._2.asInstanceOf[lineLengthParams[T]]))))
         }
-        case "Bandpower" =>
+        case "bandpower" =>
         {
-          generatedSinglePath += (("Bandpower",Module(new Bandpower(singlePathParamsSeq(j)._2.asInstanceOf[BandpowerParams[T]]))))
+          generatedSinglePath += (("bandpower",Module(new Bandpower(singlePathParamsSeq(j)._2.asInstanceOf[BandpowerParams[T]]))))
         }
       }
     }
@@ -252,9 +277,16 @@ extends Module {
             }
             case "FFT" =>
             {
+              // FFT Buffers to FFTs
               genDatapath(j)._2.asInstanceOf[FFT[T]].io.in.valid := genDatapath(j-1)._2.asInstanceOf[FFTBuffer[T]].io.out.valid
-              genDatapath(j)._2.asInstanceOf[FFT[T]].io.in.bits  := genDatapath(j-1)._2.asInstanceOf[FFTBuffer[T]].io.out.bits
               genDatapath(j)._2.asInstanceOf[FFT[T]].io.in.sync  := false.B
+              for (i <- genDatapath(j)._2.asInstanceOf[FFT[T]].io.in.bits.indices) {
+                genDatapath(j)._2.asInstanceOf[FFT[T]].io.in.bits(i).real := genDatapath(j-1)._2.asInstanceOf[FFTBuffer[T]].io.out.bits(i).asTypeOf(genDatapath(j)._2.asInstanceOf[FFT[T]].io.in.bits(i).real)
+              }
+              genDatapath(j)._2.asInstanceOf[FFT[T]].io.in.bits.foreach(_.imag := ConvertableTo[T].fromInt(0))
+
+              genDatapath(j)._2.asInstanceOf[FFT[T]].io.data_set_end_clear := false.B
+
             }
             case "lineLength" =>
             {
@@ -274,7 +306,7 @@ extends Module {
                 }
               }
             }
-            case "Bandpower" =>
+            case "bandpower" =>
             {
               genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.in.valid := genDatapath(j-1)._2.asInstanceOf[FFT[T]].io.out.valid
               genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.in.bits  := genDatapath(j-1)._2.asInstanceOf[FFT[T]].io.out.bits
@@ -302,7 +334,7 @@ extends Module {
               pcaInValVec(i) := genDatapath(j)._2.asInstanceOf[lineLength[T]].io.out.valid
               pcaInVector(i) := genDatapath(j)._2.asInstanceOf[lineLength[T]].io.out.bits
             }
-            case "Bandpower" =>
+            case "bandpower" =>
             {
               pcaInValVec(i) := genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.out.valid
               pcaInVector(i) := genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.out.bits
