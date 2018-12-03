@@ -344,21 +344,19 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
 //  }
   // End C test
 
-  val inStream = Wire(ValidWithSync(genParams.dataType))
-  inStream.bits := Mux(io.inConf.bits.confInputMuxSel,io.streamIn.bits.asTypeOf(genParams.dataType),io.in.bits.asTypeOf(genParams.dataType))
-  inStream.valid := Mux(io.inConf.bits.confInputMuxSel,io.streamIn.valid,io.in.valid)
-  inStream.sync := Mux(io.inConf.bits.confInputMuxSel,io.streamIn.sync,false.B)
-
-
   // Ch x (params): seq of param datapaths
   // Each param datapath: seq of (block type, block params)
   // val datapathParamsSeqs = Seq(Seq(("FIR",filter1Params), ("lineLength",lineLength1Params)),
   //   Seq(("FIR",filter1Params), ("lineLength",lineLength1Params)),
   //   Seq(("FIR",filter1Params), ("lineLength",lineLength1Params)))
-//  val datapathParamsSeqs = Seq(Seq(("FIR",filter1Params), ("lineLength",lineLength1Params)),
-//    Seq(("FIR",filter1Params),("FFTBuffer",fftBufferParams), ("FFT",fftConfig),("bandpower",bandpower1Params)),
-//    Seq(("FIR",filter1Params),("FFTBuffer",fftBufferParams), ("FFT",fftConfig),("bandpower",bandpower2Params)))
+  //  val datapathParamsSeqs = Seq(Seq(("FIR",filter1Params), ("lineLength",lineLength1Params)),
+  //    Seq(("FIR",filter1Params),("FFTBuffer",fftBufferParams), ("FFT",fftConfig),("bandpower",bandpower1Params)),
+  //    Seq(("FIR",filter1Params),("FFTBuffer",fftBufferParams), ("FFT",fftConfig),("bandpower",bandpower2Params)))
 
+  val inStream = Wire(ValidWithSync(genParams.dataType))
+  inStream.bits := Mux(io.inConf.bits.confInputMuxSel,io.streamIn.bits.asTypeOf(genParams.dataType),io.in.bits.asTypeOf(genParams.dataType))
+  inStream.valid := Mux(io.inConf.bits.confInputMuxSel,io.streamIn.valid,io.in.valid)
+  inStream.sync := Mux(io.inConf.bits.confInputMuxSel,io.streamIn.sync,false.B)
 
   // Ch x (params): arr of param datapaths
   // Each param datapath: seq of (block type, block params)
