@@ -6,7 +6,6 @@ import fft._
 import features._
 import pca._
 import svm._
-
 import chisel3._
 import chisel3.core.FixedPoint
 import dsptools.numbers._
@@ -15,7 +14,6 @@ import scala.collection.Seq
 import scala.collection.mutable.ArrayBuffer
 
 object SIntWellnessParams {
-
   val nPts = 4
 
   val filter1Params = new FIRFilterParams[SInt] {
@@ -23,19 +21,16 @@ object SIntWellnessParams {
     val taps = Seq(1.S, 2.S, 3.S, 4.S, 5.S, 0.S)
   }
 
-  // lineLength params
   val lineLength1Params = new lineLengthParams[SInt] {
     val protoData = SInt(32.W)
     val windowSize = 2
   }
 
-  // FFTBufferParams
   val fftBufferParams = new FFTBufferParams[SInt] {
     val protoData = SInt(32.W)
     val lanes = nPts
   }
 
-  // FFTConfigs
   val fftConfig = FFTConfig(
     genIn = DspComplex(SInt(32.W), SInt(32.W)),
     genOut = DspComplex(SInt(32.W), SInt(32.W)),
@@ -45,7 +40,6 @@ object SIntWellnessParams {
     quadrature = false,
   )
 
-  // BandpowerParams
   val bandpower1Params = new BandpowerParams[SInt] {
     val idxStartBin = 0
     val idxEndBin = nPts - 1
@@ -107,60 +101,6 @@ object SIntWellnessParams {
   }
 }
 
-object SIntWellnessGenParams {
-
-  val nPts = 4
-
-  val wellnessGenParams1 = new wellnessGenParams[SInt] {
-    val dataType = SInt(64.W)
-  }
-
-  val pcaParams = new PCAParams[SInt] {
-    val protoData = SInt(32.W)
-    val nDimensions = 3 // input dimension, minimum 1
-    val nFeatures = 2 // output dimension to SVM, minimum 1
-  }
-
-  val svmParams = new SVMParams[SInt] {
-    val protoData = pcaParams.protoData.cloneType
-    val nSupports = 2
-    val nFeatures = pcaParams.nFeatures
-    val nClasses = 2
-    val nDegree = 1
-    val kernelType = "poly"
-    val classifierType = "ovo"
-    val codeBook = Seq.fill(nClasses, nClasses * 2)((scala.util.Random.nextInt(2) * 2) - 1) // ignored for this test case
-  }
-
-  val configurationMemoryParams = new ConfigurationMemoryParams[SInt] {
-
-    object computeNClassifiers {
-      def apply(params: SVMParams[chisel3.SInt] with Object {
-        val nClasses: Int
-        val codeBook: Seq[Seq[Int]]
-        val classifierType: String
-      }): Int =
-        if (params.classifierType == "ovr") {
-          if (params.nClasses == 2) params.nClasses - 1
-          else 1
-        }
-        else if (params.classifierType == "ovo") {
-          (params.nClasses * (params.nClasses - 1)) / 2
-        }
-        else if (params.classifierType == "ecoc") {
-          params.codeBook.head.length
-        }
-        else 1
-    }
-
-    val protoData = pcaParams.protoData.cloneType
-    val nDimensions: Int = pcaParams.nDimensions
-    val nFeatures: Int = pcaParams.nFeatures
-    val nSupports: Int = svmParams.nSupports
-    val nClassifiers: Int = computeNClassifiers(svmParams)
-  }
-}
-
 object utilities {
   // function to read CSVs and return data in 2D format (in Strings, need to convert after calling if needed)
   def readCSV(fileLoc: String): Seq[Seq[String]] = {
@@ -173,7 +113,6 @@ object utilities {
 }
 
 object FixedPointWellnessParams {
-
   val nPts = 4
 
   val Seq(dataWidth, dataBP) = utilities.readCSV("scripts/generated_files/datasize.csv").flatMap(_.map(_.toInt))
@@ -192,13 +131,11 @@ object FixedPointWellnessParams {
     val windowSize = 2
   }
 
-  // FFTBufferParams
   val fftBufferParams = new FFTBufferParams[FixedPoint] {
     val protoData = FixedPoint(dataWidth.W,dataBP.BP)
     val lanes = nPts
   }
 
-  // FFTConfigs
   val fftConfig = FFTConfig(
     genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP)),
     genOut = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP)),
@@ -208,7 +145,6 @@ object FixedPointWellnessParams {
     quadrature = false,
   )
 
-  // BandpowerParams
   val bandpower1Params = new BandpowerParams[FixedPoint] {
     val idxStartBin = 0
     val idxEndBin = 4
@@ -269,7 +205,6 @@ object FixedPointWellnessParams {
 }
 
 object FixedPointModelWellnessParams {
-
   // determine the dataWidth and dataBP parameters
   val Seq(dataWidth, dataBP) = utilities.readCSV("scripts/generated_files/datasize.csv").flatMap(_.map(_.toInt))
 
@@ -315,13 +250,11 @@ object FixedPointModelWellnessParams {
     val windowSize = windowLength
   }
 
-  // FFTBufferParams
   val fftBufferParams = new FFTBufferParams[FixedPoint] {
     val protoData = FixedPoint(dataWidth.W,dataBP.BP)
     val lanes = windowLength
   }
 
-  // FFTConfigs
   val fftConfig = FFTConfig(
     genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP)),
     genOut = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP)),
@@ -331,7 +264,6 @@ object FixedPointModelWellnessParams {
     quadrature = false,
   )
 
-  // BandpowerParams
   val bandpower1Params = new BandpowerParams[FixedPoint] {
     val idxStartBin = bandpower1Index(0)
     val idxEndBin = bandpower1Index(1)
@@ -391,6 +323,65 @@ object FixedPointModelWellnessParams {
   }
 }
 
+/*
+*************************************************************
+* Generated params (for WellnessGen and its tester)
+*************************************************************
+*/
+
+object SIntWellnessGenParams {
+  val nPts = 4
+
+  val wellnessGenParams1 = new wellnessGenParams[SInt] {
+    val dataType = SInt(64.W)
+  }
+
+  val pcaParams = new PCAParams[SInt] {
+    val protoData = SInt(32.W)
+    val nDimensions = 3 // input dimension, minimum 1
+    val nFeatures = 2 // output dimension to SVM, minimum 1
+  }
+
+  val svmParams = new SVMParams[SInt] {
+    val protoData = pcaParams.protoData.cloneType
+    val nSupports = 2
+    val nFeatures = pcaParams.nFeatures
+    val nClasses = 2
+    val nDegree = 1
+    val kernelType = "poly"
+    val classifierType = "ovo"
+    val codeBook = Seq.fill(nClasses, nClasses * 2)((scala.util.Random.nextInt(2) * 2) - 1) // ignored for this test case
+  }
+
+  val configurationMemoryParams = new ConfigurationMemoryParams[SInt] {
+    object computeNClassifiers {
+      def apply(params: SVMParams[chisel3.SInt] with Object {
+        val nClasses: Int
+        val codeBook: Seq[Seq[Int]]
+        val classifierType: String
+      }): Int =
+        if (params.classifierType == "ovr") {
+          if (params.nClasses == 2) params.nClasses - 1
+          else 1
+        }
+        else if (params.classifierType == "ovo") {
+          (params.nClasses * (params.nClasses - 1)) / 2
+        }
+        else if (params.classifierType == "ecoc") {
+          params.codeBook.head.length
+        }
+        else 1
+    }
+
+    val protoData = pcaParams.protoData.cloneType
+    val nDimensions: Int = pcaParams.nDimensions
+    val nFeatures: Int = pcaParams.nFeatures
+    val nSupports: Int = svmParams.nSupports
+    val nClassifiers: Int = computeNClassifiers(svmParams)
+  }
+}
+
+
 object FixedPointWellnessGenParams {
   val nFFT: Int = 4
 
@@ -410,14 +401,11 @@ object FixedPointWellnessGenParams {
   ch0DatapathsArr += makeLineLength(0, 2, "FIR", ch0LL1FilterTapsA, ch0LL1FilterTapsA)
   val datapathParamsArr = ch0DatapathsArr
 
-  // TODO: why can't I just define fftConfig out here?
-
   def makeBandpower(channel: Int, idxLowBin: Int, idxUpBin: Int): Seq[(String, Any)] = {
     val fftBufferParams = new FFTBufferParams[FixedPoint] {
       val protoData = dataPrototype
       val lanes = nFFT
     }
-
     val fftConfig = FFTConfig(
       genIn = DspComplex(dataPrototype, dataPrototype),
       genOut = DspComplex(dataPrototype, dataPrototype),
@@ -426,7 +414,6 @@ object FixedPointWellnessGenParams {
       pipelineDepth = 0,
       quadrature = false,
     )
-
     val bandpowerParams = new BandpowerParams[FixedPoint] {
       val idxStartBin = idxLowBin
       val idxEndBin = idxUpBin
@@ -436,6 +423,7 @@ object FixedPointWellnessGenParams {
     }
 
     val bandpowerDatapath: Seq[(String, Any)] = Seq(("FFTBuffer", fftBufferParams), ("FFT", fftConfig), ("Bandpower", bandpowerParams))
+
     bandpowerDatapath
   }
 

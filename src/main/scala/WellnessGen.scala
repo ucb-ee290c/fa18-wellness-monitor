@@ -368,51 +368,6 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   // Just a var instantiation
   var singlePathParamsSeq = datapathParamsArr(0)
 
-  // Gen ch x's seq of module datapaths from param datapaths
-  // For each (ith) param datapath in ch x (params)
-  for (i <- 0 until datapathParamsArr.length)
-  {
-    // Param datapath i
-    singlePathParamsSeq = datapathParamsArr(i)
-    // Module datapath (i)
-    val generatedSinglePath: mutable.ArrayBuffer[(String,Module)] = mutable.ArrayBuffer()
-
-    // For each (jth) param in param datapath i
-    for(j <- 0 until singlePathParamsSeq.length)
-    {
-      // Param j
-      singlePathParamsSeq(j)._1 match
-      {
-        case "FIR" =>
-        {
-          generatedSinglePath += (("FIR",Module(new ConstantCoefficientFIRFilter(singlePathParamsSeq(j)._2.asInstanceOf[FIRFilterParams[T]]))))
-        }
-        case "IIR" =>
-        {
-          generatedSinglePath += (("IIR",Module(new ConstantCoefficientIIRFilter(singlePathParamsSeq(j)._2.asInstanceOf[IIRFilterParams[T]]))))
-        }
-        case "FFTBuffer" =>
-        {
-          generatedSinglePath += (("FFTBuffer",Module(new FFTBuffer(singlePathParamsSeq(j)._2.asInstanceOf[FFTBufferParams[T]]))))
-        }
-        case "FFT" =>
-        {
-          generatedSinglePath += (("FFT",Module(new FFT(singlePathParamsSeq(j)._2.asInstanceOf[FFTConfig[T]]))))
-        }
-        case "LineLength" =>
-        {
-          generatedSinglePath += (("LineLength",Module(new lineLength(singlePathParamsSeq(j)._2.asInstanceOf[lineLengthParams[T]]))))
-        }
-        case "Bandpower" =>
-        {
-          generatedSinglePath += (("Bandpower",Module(new Bandpower(singlePathParamsSeq(j)._2.asInstanceOf[BandpowerParams[T]]))))
-        }
-      }
-    }
-    // Add (jth) module datapath to ch x (modules)
-    generatedDatapaths += generatedSinglePath
-  }
-
   val pcaInVector = Wire(Vec(pcaParams.nDimensions, pcaParams.protoData))
   val pcaInValVec = Wire(Vec(pcaParams.nDimensions, Bool()))
   // For each (ith) module datapath in ch x, connect up modules

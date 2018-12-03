@@ -41,6 +41,7 @@ in order to verify consistent operation, and checks both datapaths output and co
 
 class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
                                            wellnessGenParams1: wellnessGenParams[T],
+                                           datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
                                            pcaParams: PCAParams[T],
                                            svmParams: SVMParams[T],
                                            configurationMemoryParams: ConfigurationMemoryParams[T],
@@ -53,6 +54,8 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
   val datapathParamsSeqs = Seq(Seq(("FIR",goldenModelParameters.filter1Params),("lineLength",goldenModelParameters.lineLength1Params)),
     Seq(("FIR",goldenModelParameters.filter1Params),("FFTBuffer",goldenModelParameters.fftBufferParams),("FFT",goldenModelParameters.fftConfig),("Bandpower",goldenModelParameters.bandpower1Params)),
     Seq(("FIR",goldenModelParameters.filter1Params),("FFTBuffer",goldenModelParameters.fftBufferParams),("FFT",goldenModelParameters.fftConfig),("Bandpower",goldenModelParameters.bandpower1Params)))
+
+  val newDatapathParamsArr: mutable.ArrayBuffer[Seq[(String, Object)]] = mutable.ArrayBuffer()
 
   val generatedDatapaths        : mutable.ArrayBuffer[mutable.ArrayBuffer[(String,Object)]] = mutable.ArrayBuffer()
 
@@ -297,6 +300,7 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
 object wellnessGenIntegrationTesterSInt {
   implicit val p: Parameters = null
   def apply(wellnessGenParams1: wellnessGenParams[SInt],
+            datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
             pcaParams: PCAParams[SInt],
             svmParams: SVMParams[SInt],
             configurationMemoryParams: ConfigurationMemoryParams[SInt],
@@ -304,11 +308,13 @@ object wellnessGenIntegrationTesterSInt {
     if (debug == 1) {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new wellnessGenModule(
         wellnessGenParams1,
+        datapathParamsArr,
         pcaParams,
         svmParams,
         configurationMemoryParams)) {
         c => new wellnessGenTester(c,
           wellnessGenParams1,
+          datapathParamsArr,
           pcaParams,
           svmParams,
           configurationMemoryParams, goldenModelParameters, 0,0)
@@ -316,12 +322,14 @@ object wellnessGenIntegrationTesterSInt {
     } else {
       dsptools.Driver.execute(() => new wellnessGenModule(
         wellnessGenParams1,
+        datapathParamsArr,
         pcaParams,
         svmParams,
         configurationMemoryParams),
         TestSetup.dspTesterOptions) {
         c => new wellnessGenTester(c,
           wellnessGenParams1,
+          datapathParamsArr,
           pcaParams,
           svmParams,
           configurationMemoryParams,
@@ -334,6 +342,7 @@ object wellnessGenIntegrationTesterSInt {
 object wellnessGenIntegrationTesterFP {
   implicit val p: Parameters = null
   def apply(wellnessGenParams1: wellnessGenParams[FixedPoint],
+            datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
             pcaParams: PCAParams[FixedPoint],
             svmParams: SVMParams[FixedPoint],
             configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
@@ -341,11 +350,13 @@ object wellnessGenIntegrationTesterFP {
     if (debug == 1) {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new wellnessGenModule(
         wellnessGenParams1,
+        datapathParamsArr,
         pcaParams,
         svmParams,
         configurationMemoryParams)) {
         c => new wellnessGenTester(c,
           wellnessGenParams1,
+          datapathParamsArr,
           pcaParams,
           svmParams,
           configurationMemoryParams, goldenModelParameters, 0,0)
@@ -353,12 +364,14 @@ object wellnessGenIntegrationTesterFP {
     } else {
       dsptools.Driver.execute(() => new wellnessGenModule(
         wellnessGenParams1,
+        datapathParamsArr,
         pcaParams,
         svmParams,
         configurationMemoryParams),
         TestSetup.dspTesterOptions) {
         c => new wellnessGenTester(c,
           wellnessGenParams1,
+          datapathParamsArr,
           pcaParams,
           svmParams,
           configurationMemoryParams,
