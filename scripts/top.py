@@ -268,8 +268,7 @@ if print_data == 1:
     
     np.savetxt("generated_files/filter_taps.csv",lpf,fmt=fmt,delimiter=',')
     
-    np.savetxt("generated_files/normalization_mean.csv",X_train_mean,fmt=fmt,delimiter=',')
-    np.savetxt("generated_files/normalization_recipvar.csv",1/np.sqrt(X_train_var),fmt=fmt,delimiter=',')
+    np.savetxt("generated_files/normalization.csv",np.array([X_train_mean, 1/np.sqrt(X_train_var)]).T,fmt=fmt,delimiter=',')
     
     np.savetxt("generated_files/pca_vectors.csv",pca.components_,fmt=fmt,delimiter=',')
     np.savetxt("generated_files/support_vectors.csv",supports,fmt=fmt,delimiter=',')
