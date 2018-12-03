@@ -240,20 +240,6 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     lineLength1Result = lineLength1.poke(value = filter1Result)
     filter1Result = filter1.poke(input)
 
-    // do feature normalization before going to the PCA, (feature_val - mean)/ std
-    // mean and std values are already computed by the Python script from the training data
-    val norm_mean = utilities.readCSV("scripts/generated_files/normalization_mean.csv").flatMap(_.map(_.toDouble))
-    val norm_invstd = utilities.readCSV("scripts/generated_files/normalization_recipvar.csv").flatMap(_.map(_.toDouble))
-
-    if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
-      bandpower1Result = floor(floor(bandpower1Result - floor(norm_mean(0))) * floor(norm_invstd(0)))
-      bandpower2Result = floor(floor(bandpower2Result - floor(norm_mean(1))) * floor(norm_invstd(1)))
-      lineLength1ResultReg2 = floor(floor(lineLength1ResultReg2 - floor(norm_mean(2))) * floor(norm_invstd(2)))
-    } else {
-      bandpower1Result = (bandpower1Result - norm_mean(0)) * norm_invstd(0)
-      bandpower2Result = (bandpower2Result - norm_mean(1)) * norm_invstd(1)
-      lineLength1ResultReg2 = (lineLength1ResultReg2 - norm_mean(2)) * norm_invstd(2)
-    }
     // Poke inputs to real thing
     poke(c.io.in.bits, input)
     poke(c.io.in.valid, 1)
