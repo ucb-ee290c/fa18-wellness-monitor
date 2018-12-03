@@ -31,9 +31,15 @@ There are three general approaches for multi-class classification using multiple
 
 * **One vs Rest:** This fits one classifier per class (except for the two-class situation where only one classifier is created, the default SVM algorithm). For each classifier, one class is fitted against the other classes. The final class will be coming from the votes of each classifier.
 
+![OvR](images/ovr.png)
+
 * **One vs One:** This constructs one classifier per pair of classes. That is, the number of classifiers would be the pairwise combination of all classes in the system: _n(n-1)/2_, where n is the number of classes. As with One vs Rest, the final class is determined from the votes of each classifier.
 
+![OvO](images/ovo.png)
+
 * **Error-Correcting Output-Codes:** This is a rather different paradigm. Each class would be represented as a unique binary combination of classifiers. That is, each class is represented by a binary code, which is an array of 0s and 1s formed by the classifiers. This mapping of classes to classifiers are contained in a code book which should be indicated at training time. The number of classifiers, therefore, is dependent on the user. Since voting for the final class involves calculating how near the resulting binary code for the new data is to one of the class mappings, the more classifiers there is, the more robust the classification will be.
+
+![ECOC](images/ecoc.jpg)
 
 ## SVM Training
 
