@@ -52,6 +52,7 @@ class ConstantCoefficientIIRFilter[T <: chisel3.Data : Ring](val params: IIRFilt
 
   val regs = RegInit(Vec(params.consts_A.length, params.protoData), VecInit(List.fill(params.consts_A.length)(Ring[T].zero)))
 
+  // Generate shift register for data being multiplied by consts_A and wire input to topLine
   for(i <- 0 until params.consts_A.length) {
     when(shift_en === true.B) {
       if (i == 0) regs(i) := topLine

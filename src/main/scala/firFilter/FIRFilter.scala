@@ -11,12 +11,11 @@ import scala.collection._
 
 /**
   * Base class for FIR Filter parameters
-  *
-  * These are type generic
   */
 trait FIRFilterParams[T <: Data] {
-  val protoData: T
-  val taps: Seq[T]
+  val protoData: T // Data template for the FIR filter. All filter weights, input and output data must be the same type.
+  val taps: Seq[T] // Sequence of taps for the FIR filter. Number of registers (for data path and synchronization signal
+                   // path) are inferred from the length of this sequence.
   //TODO: Implementation -> Direct or Transposed?
   //TODO: # of Pipeline Stages?
   //TODO: Data Buffer Type -> Linear Shift Register or Circular Buffer?
@@ -34,7 +33,7 @@ object FIRFilterIO {
 }
 
 class ConstantCoefficientFIRFilter[T <: chisel3.Data : Ring](val params: FIRFilterParams[T]) extends Module {
-  require(params.taps.nonEmpty, "Missing filter taps")
+  require(params.taps.nonEmpty, "Filter taps cannot be empty.")
   val io = IO(FIRFilterIO[T](params))
 
   val shift_en = Wire(Bool())
@@ -49,12 +48,6 @@ class ConstantCoefficientFIRFilter[T <: chisel3.Data : Ring](val params: FIRFilt
       regs(i) := regs(i)
     }
   }
-
-//  val regs = mutable.ArrayBuffer[T]()
-//  for(i <- params.taps.indices) {
-//    if(i == 0) regs += RegEnable(io.in.bits, Ring[T].zero, shift_en)
-//    else       regs += RegEnable(regs(i - 1), Ring[T].zero, shift_en)
-//  }
 
   val muls = mutable.ArrayBuffer[T]()
   for(i <- params.taps.indices) {
