@@ -6,13 +6,18 @@ import chisel3.core.FixedPoint
 import dsptools.numbers._
 import dsptools.DspTester
 import breeze.math.Complex
-import breeze.numerics.floor
+import breeze.numerics.{floor, pow}
 import chisel3.util.log2Ceil
 
 import scala.util.Random
 
 class GoldenDoubleBandpower(nBins: Int, idxStartBin: Int, idxEndBin: Int, dataType: String) {
   def poke(input: Seq[Complex]): Double = {
+
+    // Also do division by 2^23 to minimize dynamic range of output values
+    // Check https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/scripts/features.py
+    val band_normalize = pow(2,23).toDouble
+
     // Take mag squared of FFT output
     val p2 = input.map{ case x => x.abs * x.abs}
     // Except for DC and sampling freq, 2x for 2-sided to 1-sided
@@ -22,8 +27,16 @@ class GoldenDoubleBandpower(nBins: Int, idxStartBin: Int, idxEndBin: Int, dataTy
     // Sum and divide by num of bins of interest squared
     val output = p1.slice(idxStartBin, idxEndBin).sum
 
-    if ((dataType == "chisel3.core.SInt") || (dataType == "chisel3.core.UInt")) floor(output/((idxEndBin - idxStartBin) * (idxEndBin - idxStartBin)))
-    else output/((idxEndBin - idxStartBin) * (idxEndBin - idxStartBin))
+    //println(output.toString)
+    //println((idxEndBin - idxStartBin).toString)
+    //println(band_normalize.toString)
+    //println((((idxEndBin - idxStartBin).toDouble * (idxEndBin - idxStartBin).toDouble)*band_normalize).toString)
+    //println((output/(((idxEndBin - idxStartBin) * (idxEndBin - idxStartBin))*band_normalize)).toString)
+    if ((dataType == "chisel3.core.SInt") || (dataType == "chisel3.core.UInt")) {
+      floor(output/(((idxEndBin - idxStartBin) * (idxEndBin - idxStartBin))*band_normalize))
+    } else {
+      output/(((idxEndBin - idxStartBin) * (idxEndBin - idxStartBin))*band_normalize)
+    }
   }
 }
 
@@ -50,6 +63,7 @@ class BandpowerTester[T <: Data](c: Bandpower[T], params: BandpowerParams[T], da
     expect(c.io.out.bits, goldenModelResult, msg = s"Input: $input, Golden: $goldenModelResult, ${peek(c.io.out.bits)}")
   } else {
     val tolerance = 0.1
+    println(goldenModelResult.abs.toString)
     fixTolLSBs.withValue(log2Ceil((goldenModelResult.abs*tolerance).toInt+1)+dataBP+1) {
       expect(c.io.out.bits, goldenModelResult, msg = s"Input: $input, Golden: $goldenModelResult, ${peek(c.io.out.bits)}")
     }

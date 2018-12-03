@@ -83,7 +83,7 @@ int main(void)
   double data_out_0double;
   double data_out_1double;
 
-  double tol = 0.1; // percent tolerance
+  double tol = 0.15; // percent tolerance
 
   printf("Start of script\n");
 
@@ -134,7 +134,7 @@ int main(void)
   printf("Done with Mux Select\n");
 
   // this is the main loop to feed the input vector one by one
-  for(i=0;i<100;i++) {
+  for(i=0;i<97;i++) {
     while(reg_read64(WELLNESS_READ_COUNT) == 0) {
         write_data = pack_data(in[i]);
         reg_write64(WELLNESS_WRITE, write_data);
@@ -147,12 +147,33 @@ int main(void)
     data_out_1double = (double) data_out_1 / pow(2,DATA_BP);
 
     if (i > WINDOW+NUMTAPS+1) { // This is the part where the output starts being correct
-        printDouble(data_out_1double,4); // check only 1 of the outputs, the other one is always 0
-        printDouble(ex[i-(WINDOW+NUMTAPS)][1],4); // adjust starting index 0
-        if ((data_out_1double <= ex[i-(WINDOW+NUMTAPS)][1]*(1+tol)) && // tolerance check
-            (data_out_1double >= ex[i-(WINDOW+NUMTAPS)][1]*(1-tol))) {
-            printf(" PASSED (within %d\%)", (int)(tol*100));
-            }
+        printf("Scores: ");
+        printDouble(data_out_0double,4);
+        printf(" ");
+        printDouble(data_out_1double,4);
+        printf(" ");
+
+        printf("\tExpected: ");
+        printDouble(ex[i-(WINDOW+NUMTAPS)][0],4);
+        printf(" ");
+        printDouble(ex[i-(WINDOW+NUMTAPS)][1],4);
+
+        if (data_out_0double > 0) {
+            if ((data_out_0double <= ex[i-(WINDOW+NUMTAPS)][0]*(1+tol)) && // tolerance check
+                (data_out_0double >= ex[i-(WINDOW+NUMTAPS)][0]*(1-tol))) {
+                printf("\tPASSED (within %d\%)", (int)(tol*100));
+                }
+            else { printf("\tFAIL (not within %d\%)", (int)(tol*100));}
+            printf("\tPredicted label: No seizure");
+        } else if (data_out_1double > 0) {
+            if ((data_out_1double <= ex[i-(WINDOW+NUMTAPS)][1]*(1+tol)) && // tolerance check
+                (data_out_1double >= ex[i-(WINDOW+NUMTAPS)][1]*(1-tol))) {
+                printf("\tPASSED (within %d\%)", (int)(tol*100));
+                }
+            else { printf("\tFAIL (not within %d\%)", (int)(tol*100));}
+            printf("\tPredicted label: SEIZURE");
+        }
+
         printf("\n");
     }
   }

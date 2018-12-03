@@ -42,7 +42,11 @@ class Bandpower[T <: Data : Real : BinaryRepresentation](val params: BandpowerPa
   // Concatenate back in unscaled DC and sampling freq elems
   val p1 = VecInit(p2(0)) ++ p1Scaled ++ VecInit(p2(params.nBins/2))
   // Sum and divide by num of bins of interest squared
-  val outNext = p1.slice(params.idxStartBin, params.idxEndBin).reduce(_ + _) >> (2 * log2(params.idxEndBin - params.idxStartBin).toInt)
+
+  // Also do division by 2^23 to minimize dynamic range of output values
+  // Check https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/scripts/features.py
+  val outNext = (p1.slice(params.idxStartBin, params.idxEndBin).reduce(_ + _)
+            >> (2 * log2(params.idxEndBin - params.idxStartBin).toInt))  >> 23
 
   val outReg = RegEnable(outNext, io.in.valid)
   val valReg = RegNext(io.in.valid)

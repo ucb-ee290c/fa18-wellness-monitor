@@ -1,6 +1,6 @@
 package features
 
-import breeze.numerics.{abs, floor}
+import breeze.numerics.{abs, floor, pow}
 import wellness._
 import chisel3.core._
 import chisel3.util.log2Ceil
@@ -12,6 +12,10 @@ class GoldenDoubleLineLength(windowSize: Int, dataType: String) {
   var pseudoRegisters : List[Double] = List.fill(windowSize)(0.toDouble)
   var lineLengths : mutable.ArrayBuffer[Double] = List.fill(windowSize-1)(0.toDouble).to[mutable.ArrayBuffer]
 
+  // Also do division by 8 to minimize dynamic range of output values
+  // Check https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/scripts/features.py
+  val line_normalize = pow(2,3).toDouble
+
   def poke(value: Double): Double = {
     pseudoRegisters = value :: pseudoRegisters.take(windowSize - 1)
     for(i <- 0 until windowSize-1) {
@@ -21,8 +25,8 @@ class GoldenDoubleLineLength(windowSize: Int, dataType: String) {
     for(i <- 0 until windowSize-1) {
       accumulator += lineLengths(i)
     }
-    if ((dataType == "chisel3.core.SInt") || (dataType == "chisel3.core.UInt"))  floor(accumulator/windowSize)
-    else accumulator/windowSize
+    if ((dataType == "chisel3.core.SInt") || (dataType == "chisel3.core.UInt"))  floor(accumulator/(windowSize*line_normalize))
+    else accumulator/(windowSize*line_normalize)
   }
 }
 

@@ -3,6 +3,7 @@ package wellness
 import java.io._
 
 import breeze.math.Complex
+import breeze.numerics.floor
 import chisel3._
 import chisel3.experimental.FixedPoint
 import chisel3.util.log2Ceil
@@ -136,8 +137,7 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   var lineLength1ResultReg2 = 0.0
   var filter1Result = filter1.poke(0)
 
-  //var pcaInputBundle = Seq(lineLength1Result, bandpower1Result, bandpower2Result)
-  var pcaInputBundle = Seq(lineLength1ResultReg2, bandpower1Result, bandpower2Result)
+  var pcaInputBundle = Seq(bandpower1Result, bandpower2Result, lineLength1ResultReg2)
 
   var dataWidth = 0
   var dataBP = 0
@@ -187,6 +187,7 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     file.close()
   }
 
+  val tolerance = 0.15 // tolerate 10% error
   val outputContainer = ArrayBuffer[Array[Double]]() // this will hold the rawVotes from SVM for printout
   for (i <- 0 until 100) {
 
@@ -209,8 +210,7 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     // For combinational modules between sequential modules, it should be from first-to-last.
     svmResult = SVM.poke(pcaResult.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),
       referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
-    //pcaInputBundle = Seq(lineLength1Result, bandpower1Result, bandpower2Result) - Commented out to accommodate pipeline delay
-    pcaInputBundle = Seq(lineLength1ResultReg2, bandpower1Result, bandpower2Result)
+    pcaInputBundle = Seq(bandpower1Result, bandpower2Result, lineLength1ResultReg2)
     pcaResult = PCA.poke(pcaInputBundle, referencePCAVector.map(_.map(_.toDouble)))
 
     bandpower1Result = bandpower1.poke(fftResult)
@@ -224,6 +224,20 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     lineLength1Result = lineLength1.poke(value = filter1Result)
     filter1Result = filter1.poke(input)
 
+    // do feature normalization before going to the PCA, (feature_val - mean)/ std
+    // mean and std values are already computed by the Python script from the training data
+    val norm_mean = utilities.readCSV("scripts/generated_files/normalization_mean.csv").flatMap(_.map(_.toDouble))
+    val norm_invstd = utilities.readCSV("scripts/generated_files/normalization_recipvar.csv").flatMap(_.map(_.toDouble))
+
+    if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
+      bandpower1Result = floor(floor(bandpower1Result - floor(norm_mean(0))) * floor(norm_invstd(0)))
+      bandpower2Result = floor(floor(bandpower2Result - floor(norm_mean(1))) * floor(norm_invstd(1)))
+      lineLength1ResultReg2 = floor(floor(lineLength1ResultReg2 - floor(norm_mean(2))) * floor(norm_invstd(2)))
+    } else {
+      bandpower1Result = (bandpower1Result - norm_mean(0)) * norm_invstd(0)
+      bandpower2Result = (bandpower2Result - norm_mean(1)) * norm_invstd(1)
+      lineLength1ResultReg2 = (lineLength1ResultReg2 - norm_mean(2)) * norm_invstd(2)
+    }
     // Poke inputs to real thing
     poke(c.io.in.bits, input)
     poke(c.io.in.valid, 1)
@@ -231,7 +245,6 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
 
     // Expect Results
     if (peek(c.io.out.valid)) {
-      val tolerance = 0.1 // tolerate 10% error
 
       if (c.lineLength1Params.protoData.getClass.getTypeName == "chisel3.core.SInt") {
         expect(c.io.filterOut, filter1Result)
@@ -294,6 +307,30 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
       outputContainer += svmResult(0).toArray // inside the valid checks, only the valid outputs are recorded
     }
     //outputContainer += svmResult(0).toArray // outside the valid checks, if you want to include the false outputs
+  }
+
+  // Final output check vs Python output
+  if (testType == 1) {
+    val referenceOutput = utilities.readCSV("scripts/generated_files/expected.csv").flatMap(_.map(_.toDouble))
+    // there is an offset of 6, i'm guessing this is the accumulated pipelined delay
+    // from filter - fftbuffer - fft - bandpower - pca - svm?
+    for (i <- 0 until referenceOutput.length - 6) {
+      if (referenceOutput(i) > 0) {
+        if ((outputContainer(i+1)(1) < referenceOutput(i)*(1-tolerance)) ||
+            (outputContainer(i+1)(1) > referenceOutput(i)*(1+tolerance))) {
+          println("Mismatched values outside tolerance")
+          println(outputContainer(i+1)(1).toString)
+          println(referenceOutput(i).toString)
+        }
+      } else {
+        if ((outputContainer(i+1)(0) < referenceOutput(i).abs*(1-tolerance)) ||
+            (outputContainer(i+1)(0) > referenceOutput(i).abs*(1+tolerance))) {
+          println("Mismatched values outside tolerance")
+          println(outputContainer(i+1)(0).toString)
+          println(referenceOutput(i).abs.toString)
+        }
+      }
+    }
   }
 
   if (testType == 1) { // write out the expected rawVotes to the file

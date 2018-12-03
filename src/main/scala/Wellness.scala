@@ -331,16 +331,26 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   val lineLength1Valid1 = RegNext(lineLength1.io.out.valid)
   val lineLength1Valid2 = RegNext(lineLength1Valid1)
 
+  // do feature normalization before going to the PCA, (feature_val - mean)/ std
+  // mean and std values are already computed by the Python script from the training data
+  val norm_mean = utilities.readCSV("scripts/generated_files/normalization_mean.csv").flatMap(_.map(_.toDouble))
+  val norm_invstd = utilities.readCSV("scripts/generated_files/normalization_recipvar.csv").flatMap(_.map(_.toDouble))
+
+  val bandpower1norm = (bandpower1.io.out.bits.asTypeOf(pcaParams.protoData) - ConvertableTo[T].fromDouble(norm_mean(0)))*
+    ConvertableTo[T].fromDouble(norm_invstd(0))
+  val bandpower2norm = (bandpower2.io.out.bits.asTypeOf(pcaParams.protoData) - ConvertableTo[T].fromDouble(norm_mean(1)))*
+    ConvertableTo[T].fromDouble(norm_invstd(1))
+  val lineLength1norm = (lineLength1Reg2.asTypeOf(pcaParams.protoData) - ConvertableTo[T].fromDouble(norm_mean(2)))*
+                        ConvertableTo[T].fromDouble(norm_invstd(2))
+
   // Features to PCA
   val pcaInVector = Wire(Vec(3,pcaParams.protoData))
-  //pcaInVector(0) := lineLength1.io.out.bits.asTypeOf(pcaParams.protoData)
-  pcaInVector(0) := lineLength1Reg2
-  pcaInVector(1) := bandpower1.io.out.bits.asTypeOf(pcaParams.protoData)
-  pcaInVector(2) := bandpower2.io.out.bits.asTypeOf(pcaParams.protoData)
+  pcaInVector(0) := bandpower1norm
+  pcaInVector(1) := bandpower2norm
+  pcaInVector(2) := lineLength1norm
   pca.io.PCAVector := io.inConf.bits.confPCAVector
   pca.io.in.bits := pcaInVector
   pca.io.in.sync := false.B
-  //pca.io.in.valid := (lineLength1.io.out.valid && bandpower1.io.out.valid && bandpower2.io.out.valid)
   pca.io.in.valid := (lineLength1Valid2 && bandpower1.io.out.valid && bandpower2.io.out.valid)
 
   // PCA to SVM

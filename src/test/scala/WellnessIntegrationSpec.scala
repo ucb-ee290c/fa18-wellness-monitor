@@ -145,6 +145,7 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
   // set this to 1 to use the generated files from the Python model
   val integrated = 1
 
+  /*
   // I am leaving this SInt implementation as is, since my testbench is meant for floats/fixedpoints
   it should "pass the input through filters, compute features, and classify (SInt)" in {
 
@@ -321,7 +322,7 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       configurationMemoryParams: ConfigurationMemoryParams[SInt],
       goldenModelParameters: wellnessIntegrationParameterBundle, debug) should be (true)
   }
-
+  */
   it should "pass the input through filters, compute features, and classify (FixedPoint)" in {
     val debug = 0
 

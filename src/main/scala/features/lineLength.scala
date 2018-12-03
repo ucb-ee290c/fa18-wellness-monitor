@@ -1,9 +1,7 @@
 package features
 
-import breeze.numerics.log10
 import chisel3._
-import chisel3.util.RegEnable
-import chisel3.experimental.FixedPoint
+import chisel3.util.log2Ceil
 import dspblocks.ShiftRegisterWithReset
 import dspjunctions.ValidWithSync
 import dsptools.numbers._
@@ -77,9 +75,12 @@ class lineLength[T <: chisel3.Data : Ring : Order : BinaryRepresentation](val pa
     shift_en := false.B
   }
 
-  //Output normalization: Take the average over the given window size. Currently only works for window sizes
-  // of powers of 2.
-  io.out.bits := accumulator.last >> (log10(params.windowSize) / log10(2)).toInt
+  // Output normalization: Take the average over the given window size.
+  // Currently only works for window sizes of powers of 2.
+
+  // Also do division by 8 to minimize dynamic range of output values
+  // Check https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/scripts/features.py
+  io.out.bits := (accumulator.last >> log2Ceil(params.windowSize)) >> 3
   io.out.valid := (ShiftRegisterWithReset(io.in.valid, params.windowSize, false.B, shift_en) && shift_en)
   io.out.sync := (ShiftRegisterWithReset(io.in.sync, params.windowSize, false.B, shift_en) && shift_en)
 

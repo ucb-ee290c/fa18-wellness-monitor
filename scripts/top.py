@@ -264,6 +264,7 @@ if print_data == 1:
     fmt = '%.10f' # 10 decimal places as float
     np.savetxt("generated_files/input.csv",X_test_raw.T,fmt=fmt,delimiter=',')
     np.savetxt("generated_files/labels.csv",y_test_raw.T,fmt='%d',delimiter=',')
+    np.savetxt("generated_files/expected.csv",decision.T,fmt=fmt,delimiter=',')
     
     np.savetxt("generated_files/filter_taps.csv",lpf,fmt=fmt,delimiter=',')
     
