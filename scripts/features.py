@@ -8,9 +8,6 @@ alpha_band = [8, 16]
 beta_band = [16, 32]
 gamma_band = [32, 96]
 
-# window size for linelength and fft calculation
-window = 512 # 1 second
-
 # post computation normalization values
 line_normalize = 2**3
 band_normalize = 2**23
@@ -26,7 +23,7 @@ def linelength(data,window):
         else:
             temp = np.convolve(datalength[:,i],np.ones(window,dtype=int),'valid').reshape((len(temp),1))
             cumsum = np.concatenate((cumsum,temp),axis=1)
-    
+
     return cumsum/(window*line_normalize) 
 
 # Bandpower
@@ -44,10 +41,10 @@ def bandpower(data,window,freq_band,fs):
         
         bandpower.append(np.sum(p1[freq_band[0]:freq_band[1],:],axis=0)/
                          ((freq_band[1]-freq_band[0])**2))
-    
+
     return np.array(bandpower)/(band_normalize)
 
-def feature_extraction (features, filtered, valid_labels, fs):    
+def feature_extraction (features, filtered, valid_labels, fs, window):    
     # all feature calculations must end up the same size
     X = np.empty((len(valid_labels[window:]),0))
     for i in features:
