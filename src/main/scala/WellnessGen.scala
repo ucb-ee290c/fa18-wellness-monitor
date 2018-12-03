@@ -27,8 +27,42 @@ trait wellnessGenParams[T <: Data] {
   val dataType: T
 }
 
+/*
+General Description:
+
+WellnessGen.scala contains all the required class definitions to generate a wellness monitor and connect it to Rocket.
+
+@Classes  $WriteQueue
+          $ReadQueue
+          $TLWriteQueue
+          $TLReadQueue
+          $WellnessConfigurationBundle
+          $wellnessGenModuleIO
+          $wellnessGenModule
+          $wellnessGenDataPathBlock
+          $TLWellnessGenDataPathBlock
+          $wellnessGenThing
+
+@traits   $wellnessGenParams
+          $HasPeripheryWellness
+          $HasPeripheryWellnessImp
+
+@notes    - There are duplicate class and trait definitions inside Wellness.scala so all of Wellness.scala must removed
+          from the project directory or commented out
+          - specific class commentary is above the appropriate class definition
+          - all tester definitions are in the test/scala directory
+
+ */
+
 
 // For RocketChip integration
+/*
+abstract class WriteQueue:
+
+Generally defines a 'write' queue. Use this to connect your block to Rocket that one can send data from Rocket to your
+accelerator. Keep in mind that you define the the width of the queue and that in turn builds an internal, relatively
+addressed memory map. TLWriteQueue will extend WriteQueue to define the queue's base address in Rocket's memory
+ */
 abstract class WriteQueue
 (
   val depth: Int = 8,
@@ -62,6 +96,16 @@ abstract class WriteQueue
   }
 }
 
+/*
+class TLWriteQueue:
+
+Defines the specific WriteQueue that will connect to Rocket's tile link interface.
+
+@parameters   $depth                  Defines the depth of the queue
+              $csrAddress             Defines the base address where the queue will live in Rocket's memory
+              $beatBytes
+
+ */
 class TLWriteQueue
 (
   depth: Int = 8,
@@ -80,6 +124,13 @@ class TLWriteQueue
   override val mem = Some(TLRegisterNode(address = Seq(csrAddress), device = device, beatBytes = beatBytes))
 }
 
+/*
+abstract class ReadQueue:
+
+Generally defines a 'read' queue. Use this to connect your block to Rocket that one can read data from your accelerator.
+Keep in mind that you define the the width of the queue and that in turn builds an internal, relatively
+addressed memory map. TLReadQueue will extend ReadQueue to define the queue's base address in Rocket's memory
+ */
 abstract class ReadQueue
 (
   val depth: Int = 8,
@@ -110,6 +161,16 @@ abstract class ReadQueue
   }
 }
 
+/*
+class TLWriteQueue:
+
+Defines the specific WriteQueue that will connect to Rocket's tile link interface.
+
+@parameters   $depth                  Defines the depth of the queue
+              $csrAddress             Defines the base address where the queue will live in Rocket's memory
+              $beatBytes
+
+ */
 class TLReadQueue
 (
   depth: Int = 8,
@@ -129,7 +190,17 @@ class TLReadQueue
 
 }
 
+/*
+class WellnessConfigurationBundle:
 
+Defines the wire bundle that configures the PCA, SVM, and the input select bit that determines whether or not channel
+data will come from Rocket or an external input. This bundle connects the configuration memory to the appropriate ports
+inside wellnessGen (namely the PCA/SVM configuration inputs and the input mux)
+
+@parameter    $ConfigurationMemoryParams              describes the PCA & SVM configuration memory width and thus contains
+                                                      all the pertinent information for defining the wire widths that
+                                                      connect the configuration memory to the PCA and SVM
+ */
 class WellnessConfigurationBundle[T <: Data](params: ConfigurationMemoryParams[T]) extends Bundle {
   val confPCAVector = Vec(params.nFeatures,Vec(params.nDimensions,params.protoData))
   val confSVMSupportVector = Vec(params.nSupports,Vec(params.nFeatures,params.protoData))
@@ -144,11 +215,29 @@ object WellnessConfigurationBundle {
     = new WellnessConfigurationBundle(params)
 }
 
+/*
+class wellnessGenModuleIO:
 
+Defines the IO characteristics for wellnessGen.
+
+@Parameters   $genParams                      Defines general wellnessGen I/O dataType
+              $svmParams                      Used to define the width of different output ports
+              $configurationMemoryParams      Used to define the inConf width
+
+
+@Inputs       $streamIn                       External input (e.g. an ADC output) that can drive the wellness monitor input
+              $in                             Wellness monitor memory mapped input that's ultimately driven by Rocket
+              $inConf                         Memory mapped input that drives the configuration memory decides and ultimately
+                                              sets the PCA and SVM configuration vectors and whether or not wellness
+                                              monitor gets data from 'streamIn' or 'in'
+
+@Outputs      $out                            bool output that can be used for status checks (currently is dummy)
+              $rawVotes                       rawVotes output from SVM
+              $classVotes                     classVotes output from SVM
+
+*/
 class wellnessGenModuleIO[T <: Data : Real : Order : BinaryRepresentation]
 (genParams: wellnessGenParams[T],
- datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
- pcaParams: PCAParams[T],
  svmParams: SVMParams[T],
  configurationMemoryParams: ConfigurationMemoryParams[T]) extends Bundle {
   var nClassifiers = svmParams.nClasses  // one vs rest default
@@ -169,22 +258,16 @@ class wellnessGenModuleIO[T <: Data : Real : Order : BinaryRepresentation]
 
   override def cloneType: this.type = wellnessGenModuleIO(
     genParams: wellnessGenParams[T],
-    datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
-    pcaParams: PCAParams[T],
     svmParams: SVMParams[T],
     configurationMemoryParams: ConfigurationMemoryParams[T]).asInstanceOf[this.type]
 }
 object wellnessGenModuleIO {
   def apply[T <: chisel3.Data : Real : Order : BinaryRepresentation](
     genParams: wellnessGenParams[T],
-    datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
-    pcaParams: PCAParams[T],
     svmParams: SVMParams[T],
     configurationMemoryParams: ConfigurationMemoryParams[T]):
   wellnessGenModuleIO[T] = new wellnessGenModuleIO(
     genParams: wellnessGenParams[T],
-    datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
-    pcaParams: PCAParams[T],
     svmParams: SVMParams[T],
     configurationMemoryParams: ConfigurationMemoryParams[T])
 }
@@ -198,8 +281,6 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
  val configurationMemoryParams: ConfigurationMemoryParams[T]) (implicit val p: Parameters) extends Module {
   val io = IO(wellnessGenModuleIO[T](
     genParams: wellnessGenParams[T],
-    datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
-    pcaParams: PCAParams[T],
     svmParams: SVMParams[T],
     configurationMemoryParams: ConfigurationMemoryParams[T]))
 
@@ -367,6 +448,52 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
 
   // Just a var instantiation
   var singlePathParamsSeq = datapathParamsArr(0)
+
+  // Gen ch x's seq of module datapaths from param datapaths
+  // For each (ith) param datapath in ch x (params)
+  for (i <- 0 until datapathParamsArr.length)
+  {
+    // Param datapath i
+    singlePathParamsSeq = datapathParamsArr(i)
+    // Module datapath (i)
+    val generatedSinglePath: mutable.ArrayBuffer[(String,Module)] = mutable.ArrayBuffer()
+
+    // For each (jth) param in param datapath i
+    for(j <- 0 until singlePathParamsSeq.length)
+    {
+      // Param j
+      singlePathParamsSeq(j)._1 match
+      {
+        case "FIR" =>
+        {
+          generatedSinglePath += (("FIR",Module(new ConstantCoefficientFIRFilter(singlePathParamsSeq(j)._2.asInstanceOf[FIRFilterParams[T]]))))
+        }
+        case "IIR" =>
+        {
+          generatedSinglePath += (("IIR",Module(new ConstantCoefficientIIRFilter(singlePathParamsSeq(j)._2.asInstanceOf[IIRFilterParams[T]]))))
+        }
+        case "FFTBuffer" =>
+        {
+          generatedSinglePath += (("FFTBuffer",Module(new FFTBuffer(singlePathParamsSeq(j)._2.asInstanceOf[FFTBufferParams[T]]))))
+        }
+        case "FFT" =>
+        {
+          generatedSinglePath += (("FFT",Module(new FFT(singlePathParamsSeq(j)._2.asInstanceOf[FFTConfig[T]]))))
+        }
+        case "LineLength" =>
+        {
+          generatedSinglePath += (("LineLength",Module(new lineLength(singlePathParamsSeq(j)._2.asInstanceOf[lineLengthParams[T]]))))
+        }
+        case "Bandpower" =>
+        {
+          generatedSinglePath += (("Bandpower",Module(new Bandpower(singlePathParamsSeq(j)._2.asInstanceOf[BandpowerParams[T]]))))
+        }
+      }
+    }
+    // Add (jth) module datapath to ch x (modules)
+    generatedDatapaths += generatedSinglePath
+  }
+
 
   val pcaInVector = Wire(Vec(pcaParams.nDimensions, pcaParams.protoData))
   val pcaInValVec = Wire(Vec(pcaParams.nDimensions, Bool()))
