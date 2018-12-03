@@ -66,12 +66,6 @@ int32_t unpack_pca_1(uint64_t packed) {
   return ((int64_t)(xpack << shift)) >> shift;
 }
 
-int check_tol(double x, double exp_x, double x_tol) {
-  if(x > exp_x + x_tol) return 0;
-  else if(x < exp_x - x_tol) return 0;
-  return 1;
-}
-
 int main(void)
 {
   uint64_t write_data, read_data;
@@ -85,7 +79,7 @@ int main(void)
 
   double tol = 0.15; // percent tolerance
 
-  printf("Start of script\n");
+  printf("This test uses %d bits total data width with %d bits for binary places\n",DATA_WIDTH,DATA_BP);
 
   // pushing data into the configuration matrices
 
@@ -97,7 +91,7 @@ int main(void)
         while(reg_read64(WELLNESSCONF_WRITE_COUNT) > 0);
     }
   }
-  printf("Done with PCA Vector\n");
+  printf("Done configuring PCA Vector: %d reduced dimension(s), %d original features\n",FEATURES,DIMENSIONS);
 
   // SVMSupportVector
   for(i=1;i<=SUPPORTS;i++){
@@ -107,7 +101,7 @@ int main(void)
         while(reg_read64(WELLNESSCONF_WRITE_COUNT) > 0);
     }
   }
-  printf("Done with SVM Support Vector\n");
+  printf("Done configuring SVM Support Vector: %d support vectors, %d reduced dimension(s)\n",SUPPORTS,FEATURES);
 
   // SVMAlphaVector
   for(i=1;i<=CLASSIFIERS;i++){
@@ -117,7 +111,7 @@ int main(void)
         while(reg_read64(WELLNESSCONF_WRITE_COUNT) > 0);
     }
   }
-  printf("Done with SVM Alpha Vector\n");
+  printf("Done configuring SVM Alpha Vector: %d classifier(s), %d support vectors\n",CLASSIFIERS,SUPPORTS);
 
   // SVMIntercept
   for(i=1;i<=CLASSIFIERS;i++){
@@ -125,13 +119,13 @@ int main(void)
     reg_write64(WELLNESSCONF_WRITE, write_data);
     while(reg_read64(WELLNESSCONF_WRITE_COUNT) > 0);
   }
-  printf("Done with SVM Intercept\n");
+  printf("Done configuring SVM Intercept: %d classifier(s)\n",CLASSIFIERS);
 
   // Mux select for streaming input, 0 if through C code
   write_data = pack_conf_data(4,0.0);
   reg_write64(WELLNESSCONF_WRITE, write_data);
   while(reg_read64(WELLNESSCONF_WRITE_COUNT) > 0);
-  printf("Done with Mux Select\n");
+  printf("Passing data through C test instead of external input\n");
 
   // this is the main loop to feed the input vector one by one
   for(i=0;i<97;i++) {
