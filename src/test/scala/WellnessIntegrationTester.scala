@@ -225,8 +225,8 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     svmResult = SVM.poke(pcaResult.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),
       referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
     pcaInputBundle = Seq(bandpower1Result, bandpower2Result, lineLength1ResultReg2)
-    pcaNormalizerResult = PCANormalizer.poke(pcaInputBundle, referencePCANormalizationData.map(_.map(_.toDouble)))
     pcaResult = PCA.poke(pcaNormalizerResult, referencePCAVector.map(_.map(_.toDouble)))
+    pcaNormalizerResult = PCANormalizer.poke(pcaInputBundle, referencePCANormalizationData.map(_.map(_.toDouble)))
 
     bandpower1Result = bandpower1.poke(fftResult)
     bandpower2Result = bandpower2.poke(fftResult)
