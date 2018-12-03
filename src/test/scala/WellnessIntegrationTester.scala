@@ -49,6 +49,7 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     goldenModelParameters.svmParams.codeBook,
     flag = 0,
     c.svmParams.protoData.getClass.getTypeName)
+  val PCANormalizer = new GoldenIntPCANormalizer(goldenModelParameters.pcaParams.nDimensions)
   val PCA = new GoldenIntPCA(goldenModelParameters.pcaParams.nDimensions,goldenModelParameters.pcaParams.nFeatures)
 
   var input = scala.util.Random.nextFloat*16 - 8
@@ -64,6 +65,7 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   var referenceSVMSupportVector = Seq(Seq(1.0, 2.0), Seq(3.0, 4.0))
   var referenceSVMAlphaVector = Seq(Seq(7.0, 3.0))
   var referenceSVMIntercept = Seq(4.0)
+  var referencePCANormalizationData = Seq(Seq(10.0,2.0),Seq(3.0,5.0),Seq(1.0,1.0))
 
   // If the pre-generated test is being run, load the PCA and SVM data from files instead
   if (testType == 1) {
@@ -80,6 +82,12 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     val protoData: T = c.configurationMemoryParams.protoData.cloneType
     val nRows: Int = c.configurationMemoryParams.nDimensions
     val nColumns: Int = c.configurationMemoryParams.nFeatures
+  }
+
+  val pcaNormalizationMemoryParams = new MemoryBufferParams[T] {
+    val protoData: T = c.configurationMemoryParams.protoData.cloneType
+    val nRows: Int = 2
+    val nColumns: Int = c.configurationMemoryParams.nDimensions
   }
 
   val svmSupportVectorMemoryParams = new MemoryBufferParams[T] {
@@ -120,10 +128,16 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   for (y <- 0 until svmInterceptMemoryParams.nRows) {
     poke(c.io.inConf.bits.confSVMIntercept(y), referenceSVMIntercept(y))
   }
+  for(x <- 0 until pcaNormalizationMemoryParams.nColumns) {
+    for (y <- 0 until pcaNormalizationMemoryParams.nRows) {
+      poke(c.io.inConf.bits.confPCANormalizationData(x)(y), referencePCANormalizationData(x)(y))
+    }
+  }
 
   // poke initial values, as well as the declaration of the variables, set to 0 first
   var svmResult = SVM.poke(Seq.fill(goldenModelParameters.svmParams.nFeatures)(0.0), referenceSVMSupportVector.map(_.map(_.toDouble)),
     referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
+  var pcaNormalizerResult = PCANormalizer.poke(Seq(0,0,0),referencePCANormalizationData.map(_.map(_.toDouble)))
   var pcaResult = PCA.poke(Seq(0,0,0),referencePCAVector.map(_.map(_.toDouble)))
 
   var bandpower1Result = bandpower1.poke(Seq.fill(goldenModelParameters.bandpower1Params.nBins)(Complex(0.0, 0.0)))
@@ -211,7 +225,8 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     svmResult = SVM.poke(pcaResult.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),
       referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
     pcaInputBundle = Seq(bandpower1Result, bandpower2Result, lineLength1ResultReg2)
-    pcaResult = PCA.poke(pcaInputBundle, referencePCAVector.map(_.map(_.toDouble)))
+    pcaNormalizerResult = PCANormalizer.poke(pcaInputBundle, referencePCANormalizationData.map(_.map(_.toDouble)))
+    pcaResult = PCA.poke(pcaNormalizerResult, referencePCAVector.map(_.map(_.toDouble)))
 
     bandpower1Result = bandpower1.poke(fftResult)
     bandpower2Result = bandpower2.poke(fftResult)

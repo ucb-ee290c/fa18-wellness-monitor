@@ -281,6 +281,7 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   val fft = Module(new FFT(fftConfig))
   val bandpower1 = Module(new Bandpower(bandpower1Params))
   val bandpower2 = Module(new Bandpower(bandpower2Params))
+  val pcaNorm = Module(new PCANormalizer(pcaParams))
   val pca = Module(new PCA(pcaParams))
   val svm = Module(new SVM(svmParams))
 
@@ -332,27 +333,28 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   val lineLength1Valid1 = RegNext(lineLength1.io.out.valid)
   val lineLength1Valid2 = RegNext(lineLength1Valid1)
 
+  // TODO: Delete this block once normalization has been integrated with C
   // do feature normalization before going to the PCA, (feature_val - mean)/ std
   // mean and std values are already computed by the Python script from the training data
-  val norm_mean = utilities.readCSV("scripts/generated_files/normalization_mean.csv").flatMap(_.map(_.toDouble))
-  val norm_invstd = utilities.readCSV("scripts/generated_files/normalization_recipvar.csv").flatMap(_.map(_.toDouble))
+  // val norm_mean = utilities.readCSV("scripts/generated_files/normalization_mean.csv").flatMap(_.map(_.toDouble))
+  // val norm_invstd = utilities.readCSV("scripts/generated_files/normalization_recipvar.csv").flatMap(_.map(_.toDouble))
 
-  val bandpower1norm = (bandpower1.io.out.bits.asTypeOf(pcaParams.protoData) - ConvertableTo[T].fromDouble(norm_mean(0)))*
-    ConvertableTo[T].fromDouble(norm_invstd(0))
-  val bandpower2norm = (bandpower2.io.out.bits.asTypeOf(pcaParams.protoData) - ConvertableTo[T].fromDouble(norm_mean(1)))*
-    ConvertableTo[T].fromDouble(norm_invstd(1))
-  val lineLength1norm = (lineLength1Reg2.asTypeOf(pcaParams.protoData) - ConvertableTo[T].fromDouble(norm_mean(2)))*
-                        ConvertableTo[T].fromDouble(norm_invstd(2))
+  // Features to PCA Normalizer
+  val pcaNormInVector = Wire(Vec(3,pcaParams.protoData))
+  pcaNorm.io.PCANormalizationData := io.inConf.bits.confPCANormalizationData
+  pcaNormInVector(0) := bandpower1.io.out.bits.asTypeOf(pcaParams.protoData)
+  pcaNormInVector(1) := bandpower2.io.out.bits.asTypeOf(pcaParams.protoData)
+  pcaNormInVector(2) := lineLength1Reg2.asTypeOf(pcaParams.protoData)
+  pcaNorm.io.in.bits := pcaNormInVector
+  pcaNorm.io.in.sync := false.B
+  pcaNorm.io.in.valid := (lineLength1Valid2 && bandpower1.io.out.valid && bandpower2.io.out.valid)
 
-  // Features to PCA
-  val pcaInVector = Wire(Vec(3,pcaParams.protoData))
-  pcaInVector(0) := bandpower1norm
-  pcaInVector(1) := bandpower2norm
-  pcaInVector(2) := lineLength1norm
+
+  // PCA Normalizer to PCA
   pca.io.PCAVector := io.inConf.bits.confPCAVector
-  pca.io.in.bits := pcaInVector
-  pca.io.in.sync := false.B
-  pca.io.in.valid := (lineLength1Valid2 && bandpower1.io.out.valid && bandpower2.io.out.valid)
+  pca.io.in.bits := pcaNorm.io.out.bits
+  pca.io.in.sync := pcaNorm.io.out.sync
+  pca.io.in.valid := pcaNorm.io.out.valid
 
   // PCA to SVM
   svm.io.in.valid := pca.io.out.valid
