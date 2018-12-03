@@ -73,6 +73,7 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     referenceSVMSupportVector = utilities.readCSV("scripts/generated_files/support_vectors.csv").map(_.map(_.toDouble))
     referenceSVMAlphaVector = utilities.readCSV("scripts/generated_files/alpha_vectors.csv").map(_.map(_.toDouble))
     referenceSVMIntercept = utilities.readCSV("scripts/generated_files/intercepts.csv").flatMap(_.map(_.toDouble))
+	referencePCANormalizationData = utilities.readCSV("scripts/generated_files/normalization.csv").map(_.map(_.toDouble))
   }
 
   // Configure the input mux selection to accept data from RISC-V core instead of external input
