@@ -159,6 +159,7 @@ class WellnessConfigurationBundle[T <: Data](params: ConfigurationMemoryParams[T
   val confSVMAlphaVector = Vec(params.nClassifiers,Vec(params.nSupports,params.protoData))
   val confSVMIntercept = Vec(params.nClassifiers,params.protoData)
   val confInputMuxSel = Bool()
+  val confPCANormalizationData = Vec(params.nDimensions,Vec(2,params.protoData))
 
   override def cloneType: this.type = WellnessConfigurationBundle(params).asInstanceOf[this.type]
 }

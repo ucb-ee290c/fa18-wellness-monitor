@@ -66,6 +66,7 @@ class ConfigurationMemory[T <: chisel3.Data : Real : Order : BinaryRepresentatio
   val svmAlphaVectorMemoryAddr = 2.U
   val svmInterceptMemoryAddr = 3.U
   val inputMuxSelAddr = 4.U
+  val pcaNormalizationMemoryAddr = 5.U
 
   //MemoryBuffer definition for PCA
   val pcaVectorMemoryParams = new MemoryBufferParams[T] {
@@ -78,6 +79,18 @@ class ConfigurationMemory[T <: chisel3.Data : Real : Order : BinaryRepresentatio
   pcaVectorMemory.io.in.sync := false.B
   pcaVectorMemory.io.in.valid := io.in.valid && (addr === pcaVectorMemoryAddr)
   io.out.bits.confPCAVector := pcaVectorMemory.io.out.bits
+
+  //MemoryBuffer definition for PCA Normalization
+  val pcaNormalizationMemoryParams = new MemoryBufferParams[T] {
+    override val protoData: T = params.protoData.cloneType
+    override val nRows: Int = 2
+    override val nColumns: Int = params.nDimensions
+  }
+  val pcaNormalizationMemory = Module(new MemoryBuffer[T](pcaNormalizationMemoryParams))
+  pcaNormalizationMemory.io.in.bits := io.in.bits.wrdata
+  pcaNormalizationMemory.io.in.sync := false.B
+  pcaNormalizationMemory.io.in.valid := io.in.valid && (addr === pcaNormalizationMemoryAddr)
+  io.out.bits.confPCANormalizationData := pcaNormalizationMemory.io.out.bits
 
   //MemoryBuffer definition for SVM Support Vector
   val svmSupportVectorMemoryParams = new MemoryBufferParams[T] {
@@ -103,13 +116,12 @@ class ConfigurationMemory[T <: chisel3.Data : Real : Order : BinaryRepresentatio
   svmAlphaVectorMemory.io.in.valid := io.in.valid && (addr === svmAlphaVectorMemoryAddr)
   io.out.bits.confSVMAlphaVector := svmAlphaVectorMemory.io.out.bits
 
+  //MemoryBuffer definition for SVM Intercept
   val svmInterceptMemoryParams = new MemoryBufferParams[T] {
     override val protoData: T = params.protoData.cloneType
     override val nRows: Int = params.nClassifiers
     override val nColumns: Int = 1
   }
-
-  //MemoryBuffer definition for SVM Intercept
   val svmInterceptMemory = Module(new MemoryBuffer[T](svmInterceptMemoryParams))
   svmInterceptMemory.io.in.bits := io.in.bits.wrdata
   svmInterceptMemory.io.in.sync := false.B
