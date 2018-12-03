@@ -176,6 +176,10 @@ object FixedPointWellnessParams {
 
   val Seq(dataWidth, dataBP) = utilities.readCSV("scripts/generated_files/datasize.csv").flatMap(_.map(_.toInt))
 
+  val wellnessGenParams1 = new wellnessGenParams[FixedPoint] {
+    val dataType = FixedPoint(dataWidth.W,dataBP.BP)
+  }
+
   val filter1Params = new FIRFilterParams[FixedPoint] {
     val protoData = FixedPoint(dataWidth.W,dataBP.BP)
     val taps = Seq(1, 2, 3, 4, 5, 0).map(ConvertableTo[FixedPoint].fromDouble(_))
@@ -205,14 +209,14 @@ object FixedPointWellnessParams {
   // BandpowerParams
   val bandpower1Params = new BandpowerParams[FixedPoint] {
     val idxStartBin = 0
-    val idxEndBin = 3
+    val idxEndBin = 4
     val nBins = nPts
     val genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP))
     val genOut = FixedPoint(dataWidth.W,dataBP.BP)
   }
   val bandpower2Params = new BandpowerParams[FixedPoint] {
     val idxStartBin = 0
-    val idxEndBin = 1
+    val idxEndBin = 2
     val nBins = nPts
     val genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP))
     val genOut = FixedPoint(dataWidth.W,dataBP.BP)

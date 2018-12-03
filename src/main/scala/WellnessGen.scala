@@ -247,16 +247,64 @@ extends Module {
   // End SInt
 
   // FixedPoint
-  var windowLength = 32
+//  var windowLength = 32
+//
+//  var dataWidth = 32
+//  var dataBP = 8
+//
+//  var coefficients1 = Seq(3.0, 4.0, -5.0, 2.0, -1.0, -2.2, 3.3, -3.4)
+//
+//  val filter1Params = new FIRFilterParams[FixedPoint] {
+//    val protoData = FixedPoint(dataWidth.W, dataBP.BP)
+//    val taps = coefficients1.map(ConvertableTo[FixedPoint].fromDouble(_))
+//  }
+//
+//  val fftBufferParams = new FFTBufferParams[FixedPoint] {
+//    val protoData = FixedPoint(dataWidth.W, dataBP.BP)
+//    val lanes = windowLength
+//  }
+//
+//  val fftConfig = FFTConfig(
+//    genIn = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP)),
+//    genOut = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP)),
+//    n = windowLength,
+//    lanes = windowLength,
+//    pipelineDepth = 0,
+//    quadrature = false,
+//  )
+//
+//  val lineLength1Params = new lineLengthParams[FixedPoint] {
+//    val protoData = FixedPoint(dataWidth.W, dataBP.BP)
+//    val windowSize = windowLength
+//  }
+//
+//  val bandpower1Params = new BandpowerParams[FixedPoint] {
+//    val idxStartBin = 0
+//    val idxEndBin = 2
+//    val nBins = windowLength
+//    val genIn = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP))
+//    val genOut = FixedPoint(dataWidth.W, dataBP.BP)
+//  }
+//  val bandpower2Params = new BandpowerParams[FixedPoint] {
+//    val idxStartBin = 0
+//    val idxEndBin = 2
+//    val nBins = windowLength
+//    val genIn = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP))
+//    val genOut = FixedPoint(dataWidth.W, dataBP.BP)
+//  }
+  // End FixedPoint
+
+  // C test
+  var windowLength = 4
 
   var dataWidth = 32
   var dataBP = 8
 
-  var coefficients1 = Seq(3.0, 4.0, -5.0, 2.0, -1.0, -2.2, 3.3, -3.4)
+  var coefficients1 = Seq(1, 2, 3, 4, 5, 0).map(ConvertableTo[FixedPoint].fromDouble(_))
 
   val filter1Params = new FIRFilterParams[FixedPoint] {
     val protoData = FixedPoint(dataWidth.W, dataBP.BP)
-    val taps = coefficients1.map(ConvertableTo[FixedPoint].fromDouble(_))
+    val taps = coefficients1
   }
 
   val fftBufferParams = new FFTBufferParams[FixedPoint] {
@@ -292,7 +340,7 @@ extends Module {
     val genIn = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP))
     val genOut = FixedPoint(dataWidth.W, dataBP.BP)
   }
-  // End FixedPoint
+  // End C test
 
   val inStream = Wire(ValidWithSync(genParams.dataType))
   inStream.bits := Mux(io.inConf.bits.confInputMuxSel,io.streamIn.bits.asTypeOf(genParams.dataType),io.in.bits.asTypeOf(genParams.dataType))
@@ -645,7 +693,7 @@ class wellnessGenThing[T <: Data : Real : Order : BinaryRepresentation]
 
 trait HasPeripheryWellness extends BaseSubsystem {
 
-  val wellnessParams = SIntWellnessGenParams
+  val wellnessParams = FixedPointWellnessParams
 
   // Instantiate wellness monitor
   val wellness = LazyModule(new wellnessGenThing(
