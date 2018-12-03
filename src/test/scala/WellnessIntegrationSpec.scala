@@ -503,7 +503,7 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
 
   if (integrated == 1) {
     it should "work using the Python model generated files" in {
-      val debug = 1
+      val debug = 0
 
       val dataWidth = 32
       val dataBP = 8
