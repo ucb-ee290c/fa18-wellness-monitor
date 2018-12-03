@@ -6,14 +6,12 @@ import fft._
 import features._
 import pca._
 import svm._
-
 import chisel3._
 import chisel3.core.FixedPoint
 import chisel3.util._
 import dspblocks._
 import dspjunctions.ValidWithSync
 import dsptools.numbers._
-
 import freechips.rocketchip.amba.axi4stream._
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
@@ -22,6 +20,7 @@ import freechips.rocketchip.tilelink._
 import freechips.rocketchip.subsystem._
 
 import scala.collection._
+import scala.collection.mutable.ArrayBuffer
 
 
 trait wellnessGenParams[T <: Data] {
@@ -148,10 +147,10 @@ object WellnessConfigurationBundle {
 
 class wellnessGenModuleIO[T <: Data : Real : Order : BinaryRepresentation]
 (genParams: wellnessGenParams[T],
+ datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
  pcaParams: PCAParams[T],
  svmParams: SVMParams[T],
- configurationMemoryParams: ConfigurationMemoryParams[T])
-extends Bundle {
+ configurationMemoryParams: ConfigurationMemoryParams[T]) extends Bundle {
   var nClassifiers = svmParams.nClasses  // one vs rest default
   if (svmParams.classifierType == "ovr") {
     if (svmParams.nClasses == 2) nClassifiers = svmParams.nClasses - 1
@@ -170,6 +169,7 @@ extends Bundle {
 
   override def cloneType: this.type = wellnessGenModuleIO(
     genParams: wellnessGenParams[T],
+    datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
     pcaParams: PCAParams[T],
     svmParams: SVMParams[T],
     configurationMemoryParams: ConfigurationMemoryParams[T]).asInstanceOf[this.type]
@@ -177,11 +177,13 @@ extends Bundle {
 object wellnessGenModuleIO {
   def apply[T <: chisel3.Data : Real : Order : BinaryRepresentation](
     genParams: wellnessGenParams[T],
+    datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
     pcaParams: PCAParams[T],
     svmParams: SVMParams[T],
     configurationMemoryParams: ConfigurationMemoryParams[T]):
   wellnessGenModuleIO[T] = new wellnessGenModuleIO(
     genParams: wellnessGenParams[T],
+    datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
     pcaParams: PCAParams[T],
     svmParams: SVMParams[T],
     configurationMemoryParams: ConfigurationMemoryParams[T])
@@ -190,13 +192,13 @@ object wellnessGenModuleIO {
 
 class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
 (val genParams: wellnessGenParams[T],
+ val datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
  val pcaParams: PCAParams[T],
  val svmParams: SVMParams[T],
- val configurationMemoryParams: ConfigurationMemoryParams[T])
-(implicit val p: Parameters)
-extends Module {
+ val configurationMemoryParams: ConfigurationMemoryParams[T]) (implicit val p: Parameters) extends Module {
   val io = IO(wellnessGenModuleIO[T](
     genParams: wellnessGenParams[T],
+    datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
     pcaParams: PCAParams[T],
     svmParams: SVMParams[T],
     configurationMemoryParams: ConfigurationMemoryParams[T]))
@@ -295,51 +297,51 @@ extends Module {
   // End FixedPoint
 
   // C test
-  var windowLength = 4
-
-  var dataWidth = 32
-  var dataBP = 8
-
-  var coefficients1 = Seq(1, 2, 3, 4, 5, 0).map(ConvertableTo[FixedPoint].fromDouble(_))
-
-  val filter1Params = new FIRFilterParams[FixedPoint] {
-    val protoData = FixedPoint(dataWidth.W, dataBP.BP)
-    val taps = coefficients1
-  }
-
-  val fftBufferParams = new FFTBufferParams[FixedPoint] {
-    val protoData = FixedPoint(dataWidth.W, dataBP.BP)
-    val lanes = windowLength
-  }
-
-  val fftConfig = FFTConfig(
-    genIn = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP)),
-    genOut = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP)),
-    n = windowLength,
-    lanes = windowLength,
-    pipelineDepth = 0,
-    quadrature = false,
-  )
-
-  val lineLength1Params = new lineLengthParams[FixedPoint] {
-    val protoData = FixedPoint(dataWidth.W, dataBP.BP)
-    val windowSize = windowLength
-  }
-
-  val bandpower1Params = new BandpowerParams[FixedPoint] {
-    val idxStartBin = 0
-    val idxEndBin = 2
-    val nBins = windowLength
-    val genIn = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP))
-    val genOut = FixedPoint(dataWidth.W, dataBP.BP)
-  }
-  val bandpower2Params = new BandpowerParams[FixedPoint] {
-    val idxStartBin = 0
-    val idxEndBin = 2
-    val nBins = windowLength
-    val genIn = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP))
-    val genOut = FixedPoint(dataWidth.W, dataBP.BP)
-  }
+//  var windowLength = 4
+//
+//  var dataWidth = 32
+//  var dataBP = 8
+//
+//  var coefficients1 = Seq(1, 2, 3, 4, 5, 0).map(ConvertableTo[FixedPoint].fromDouble(_))
+//
+//  val filter1Params = new FIRFilterParams[FixedPoint] {
+//    val protoData = FixedPoint(dataWidth.W, dataBP.BP)
+//    val taps = coefficients1
+//  }
+//
+//  val fftBufferParams = new FFTBufferParams[FixedPoint] {
+//    val protoData = FixedPoint(dataWidth.W, dataBP.BP)
+//    val lanes = windowLength
+//  }
+//
+//  val fftConfig = FFTConfig(
+//    genIn = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP)),
+//    genOut = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP)),
+//    n = windowLength,
+//    lanes = windowLength,
+//    pipelineDepth = 0,
+//    quadrature = false,
+//  )
+//
+//  val lineLength1Params = new lineLengthParams[FixedPoint] {
+//    val protoData = FixedPoint(dataWidth.W, dataBP.BP)
+//    val windowSize = windowLength
+//  }
+//
+//  val bandpower1Params = new BandpowerParams[FixedPoint] {
+//    val idxStartBin = 0
+//    val idxEndBin = 2
+//    val nBins = windowLength
+//    val genIn = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP))
+//    val genOut = FixedPoint(dataWidth.W, dataBP.BP)
+//  }
+//  val bandpower2Params = new BandpowerParams[FixedPoint] {
+//    val idxStartBin = 0
+//    val idxEndBin = 2
+//    val nBins = windowLength
+//    val genIn = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP))
+//    val genOut = FixedPoint(dataWidth.W, dataBP.BP)
+//  }
   // End C test
 
   val inStream = Wire(ValidWithSync(genParams.dataType))
@@ -353,22 +355,27 @@ extends Module {
   // val datapathParamsSeqs = Seq(Seq(("FIR",filter1Params), ("lineLength",lineLength1Params)),
   //   Seq(("FIR",filter1Params), ("lineLength",lineLength1Params)),
   //   Seq(("FIR",filter1Params), ("lineLength",lineLength1Params)))
-  val datapathParamsSeqs = Seq(Seq(("FIR",filter1Params), ("lineLength",lineLength1Params)),
-    Seq(("FIR",filter1Params),("FFTBuffer",fftBufferParams), ("FFT",fftConfig),("bandpower",bandpower1Params)),
-    Seq(("FIR",filter1Params),("FFTBuffer",fftBufferParams), ("FFT",fftConfig),("bandpower",bandpower2Params)))
+//  val datapathParamsSeqs = Seq(Seq(("FIR",filter1Params), ("lineLength",lineLength1Params)),
+//    Seq(("FIR",filter1Params),("FFTBuffer",fftBufferParams), ("FFT",fftConfig),("bandpower",bandpower1Params)),
+//    Seq(("FIR",filter1Params),("FFTBuffer",fftBufferParams), ("FFT",fftConfig),("bandpower",bandpower2Params)))
+
+
+  // Ch x (params): arr of param datapaths
+  // Each param datapath: seq of (block type, block params)
+
   // Ch x (modules): arr of module datapaths
   // Each module datapath: arr of (block type, gen'd module)
   val generatedDatapaths: mutable.ArrayBuffer[mutable.ArrayBuffer[(String,Module)]] = mutable.ArrayBuffer()
 
   // Just a var instantiation
-  var singlePathParamsSeq = Seq(("FIR",filter1Params), ("lineLength",lineLength1Params))
+  var singlePathParamsSeq = datapathParamsArr(0)
 
   // Gen ch x's seq of module datapaths from param datapaths
   // For each (ith) param datapath in ch x (params)
-  for (i <- 0 until datapathParamsSeqs.length)
+  for (i <- 0 until datapathParamsArr.length)
   {
     // Param datapath i
-    singlePathParamsSeq = datapathParamsSeqs(i)
+    singlePathParamsSeq = datapathParamsArr(i)
     // Module datapath (i)
     val generatedSinglePath: mutable.ArrayBuffer[(String,Module)] = mutable.ArrayBuffer()
 
@@ -394,13 +401,13 @@ extends Module {
         {
           generatedSinglePath += (("FFT",Module(new FFT(singlePathParamsSeq(j)._2.asInstanceOf[FFTConfig[T]]))))
         }
-        case "lineLength" =>
+        case "LineLength" =>
         {
-          generatedSinglePath += (("lineLength",Module(new lineLength(singlePathParamsSeq(j)._2.asInstanceOf[lineLengthParams[T]]))))
+          generatedSinglePath += (("LineLength",Module(new lineLength(singlePathParamsSeq(j)._2.asInstanceOf[lineLengthParams[T]]))))
         }
-        case "bandpower" =>
+        case "Bandpower" =>
         {
-          generatedSinglePath += (("bandpower",Module(new Bandpower(singlePathParamsSeq(j)._2.asInstanceOf[BandpowerParams[T]]))))
+          generatedSinglePath += (("Bandpower",Module(new Bandpower(singlePathParamsSeq(j)._2.asInstanceOf[BandpowerParams[T]]))))
         }
       }
     }
@@ -509,7 +516,7 @@ extends Module {
               genDatapath(j)._2.asInstanceOf[FFT[T]].io.data_set_end_clear := false.B
 
             }
-            case "lineLength" =>
+            case "LineLength" =>
             {
               genDatapath(j-1)._1 match
               {
@@ -527,7 +534,7 @@ extends Module {
                 }
               }
             }
-            case "bandpower" =>
+            case "Bandpower" =>
             {
               genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.in.valid := genDatapath(j-1)._2.asInstanceOf[FFT[T]].io.out.valid
               genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.in.bits  := genDatapath(j-1)._2.asInstanceOf[FFT[T]].io.out.bits
@@ -550,12 +557,12 @@ extends Module {
               pcaInValVec(i) := genDatapath(j)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.out.valid
               pcaInVector(i) := genDatapath(j)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.out.bits
             }
-            case "lineLength" =>
+            case "LineLength" =>
             {
               pcaInValVec(i) := genDatapath(j)._2.asInstanceOf[lineLength[T]].io.out.valid
               pcaInVector(i) := genDatapath(j)._2.asInstanceOf[lineLength[T]].io.out.bits
             }
-            case "bandpower" =>
+            case "Bandpower" =>
             {
               pcaInValVec(i) := genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.out.valid
               pcaInVector(i) := genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.out.bits
@@ -592,9 +599,11 @@ extends Module {
   io.in.ready := true.B
 }
 
+
 abstract class wellnessGenDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real : Order : BinaryRepresentation]
 (
   val genParams: wellnessGenParams[T],
+  val datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
   val pcaParams: PCAParams[T],
   val svmParams: SVMParams[T],
   val configurationMemoryParams: ConfigurationMemoryParams[T]
@@ -616,6 +625,7 @@ abstract class wellnessGenDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Rea
     // Block instantiation
     val wellnessGen = Module(new wellnessGenModule(
       genParams: wellnessGenParams[T],
+      datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
       pcaParams: PCAParams[T],
       svmParams: SVMParams[T],
       configurationMemoryParams: ConfigurationMemoryParams[T]))
@@ -644,24 +654,25 @@ abstract class wellnessGenDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Rea
   }
 }
 
-
 class TLWellnessGenDataPathBlock[T <: Data : Real : Order : BinaryRepresentation]
 (
   genParams: wellnessGenParams[T],
+  datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
   pcaParams: PCAParams[T],
   svmParams: SVMParams[T],
   configurationMemoryParams: ConfigurationMemoryParams[T]
 )(implicit p: Parameters) extends
   wellnessGenDataPathBlock[TLClientPortParameters, TLManagerPortParameters, TLEdgeOut, TLEdgeIn, TLBundle, T](
     genParams,
+    datapathParamsArr,
     pcaParams, svmParams,
     configurationMemoryParams)
   with TLDspBlock
 
-
 class wellnessGenThing[T <: Data : Real : Order : BinaryRepresentation]
 (
   val genParams: wellnessGenParams[T],
+  val datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
   val pcaParams: PCAParams[T],
   val svmParams: SVMParams[T],
   val configurationMemoryParams: ConfigurationMemoryParams[T],
@@ -673,6 +684,7 @@ class wellnessGenThing[T <: Data : Real : Order : BinaryRepresentation]
   val writeConfigurationQueue = LazyModule(new TLWriteQueue(depth,configurationBaseAddr))
   val wellness = LazyModule(new TLWellnessGenDataPathBlock(
     genParams,
+    datapathParamsArr,
     pcaParams,
     svmParams,
     configurationMemoryParams))
@@ -693,11 +705,12 @@ class wellnessGenThing[T <: Data : Real : Order : BinaryRepresentation]
 
 trait HasPeripheryWellness extends BaseSubsystem {
 
-  val wellnessParams = FixedPointWellnessParams
+  val wellnessParams = FixedPointWellnessGenParams
 
   // Instantiate wellness monitor
   val wellness = LazyModule(new wellnessGenThing(
     wellnessParams.wellnessGenParams1,
+    wellnessParams.datapathParamsArr,
     wellnessParams.pcaParams,
     wellnessParams.svmParams,
     wellnessParams.configurationMemoryParams))
@@ -716,5 +729,4 @@ trait HasPeripheryWellnessModuleImp extends LazyModuleImp {
   outer.wellness.module.streamIn.sync := streamIn.sync
   outer.wellness.module.streamIn.valid := streamIn.valid
   outer.wellness.module.streamIn.bits := streamIn.bits
-
 }
