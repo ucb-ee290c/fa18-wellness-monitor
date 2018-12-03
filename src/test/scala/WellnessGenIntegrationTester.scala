@@ -169,7 +169,15 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
 
   for (i <- 0 until 50)
   {
-    val input = scala.util.Random.nextDouble * 32
+//    val input = scala.util.Random.nextDouble * 32
+
+    var input = scala.util.Random.nextDouble * 6 - 3
+    if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
+      input = scala.util.Random.nextInt(16)
+    }
+    else if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
+      input = scala.util.Random.nextInt(32) - 16
+    }
 
     // poke SVM with PCA output
     svmResult = SVM.poke(pcaResult.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),
@@ -241,7 +249,7 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
         //{
         //  expect(c.io.out.bits, generatedDoubleResults(check_i)(check_j), s"valid ${peek(c.io.out.valid)}")
         //}
-        val tolerance = 0.1 // tolerate 10% error
+        val tolerance = 0.3 // tolerate 10% error
         for (i <- 0 until goldenModelParameters.svmParams.nClasses) {
           if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.SInt" || c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
             fixTolLSBs.withValue(204){

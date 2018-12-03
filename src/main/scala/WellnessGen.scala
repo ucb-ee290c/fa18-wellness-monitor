@@ -201,75 +201,72 @@ extends Module {
     svmParams: SVMParams[T],
     configurationMemoryParams: ConfigurationMemoryParams[T]))
 
-
   // SInt
-  //  val windowLength = 4
-  //
-  //  val coefficients1 = Seq(2,2)
-  //  val filter1Params = new FIRFilterParams[SInt] {
-  //    val protoData = SInt(64.W)
-  //    val taps = coefficients1.map(_.asSInt())
-  //  }
-  //
-  //  val fftBufferParams = new FFTBufferParams[SInt] {
-  //    val protoData = SInt(64.W)
-  //    val lanes = windowLength
-  //  }
-  //
-  //  val fftConfig = FFTConfig(
-  //    genIn = DspComplex(SInt(64.W), SInt(64.W)),
-  //    genOut = DspComplex(SInt(64.W), SInt(64.W)),
-  //    n = windowLength,
-  //    lanes = windowLength,
-  //    pipelineDepth = 0,
-  //    quadrature = false,
-  //  )
-  //
-  //  val lineLength1Params = new lineLengthParams[SInt] {
-  //    val protoData = SInt(64.W)
-  //    val windowSize = windowLength
-  //  }
-  //
-  //  val bandpower1Params = new BandpowerParams[SInt] {
-  //    val idxStartBin = 0
-  //    val idxEndBin = 2
-  //    val nBins = windowLength
-  //    val genIn = DspComplex(SInt(64.W), SInt(64.W))
-  //    val genOut = SInt(64.W)
-  //  }
-  //
-  //  val bandpower2Params = new BandpowerParams[SInt] {
-  //    val idxStartBin = 0
-  //    val idxEndBin = 2
-  //    val nBins = windowLength
-  //    val genIn = DspComplex(SInt(64.W), SInt(64.W))
-  //    val genOut = SInt(64.W)
-  //  }
+//  var windowLength = 4
+//
+//  var coefficients1 = Seq(2.0, 2.0)
+//
+//  val filter1Params = new FIRFilterParams[SInt] {
+//    val protoData = SInt(64.W)
+//    val taps = coefficients1.map(ConvertableTo[SInt].fromDouble(_))
+//  }
+//
+//  val fftBufferParams = new FFTBufferParams[SInt] {
+//    val protoData = SInt(64.W)
+//    val lanes = windowLength
+//  }
+//
+//  val fftConfig = FFTConfig(
+//    genIn = DspComplex(SInt(64.W), SInt(64.W)),
+//    genOut = DspComplex(SInt(64.W), SInt(64.W)),
+//    n = windowLength,
+//    lanes = windowLength,
+//    pipelineDepth = 0,
+//    quadrature = false,
+//  )
+//
+//  val lineLength1Params = new lineLengthParams[SInt] {
+//    val protoData = SInt(64.W)
+//    val windowSize = windowLength
+//  }
+//
+//  val bandpower1Params = new BandpowerParams[SInt] {
+//    val idxStartBin = 0
+//    val idxEndBin = 2
+//    val nBins = windowLength
+//    val genIn = DspComplex(SInt(64.W), SInt(64.W))
+//    val genOut = SInt(64.W)
+//  }
+//  val bandpower2Params = new BandpowerParams[SInt] {
+//    val idxStartBin = 0
+//    val idxEndBin = 2
+//    val nBins = windowLength
+//    val genIn = DspComplex(SInt(64.W), SInt(64.W))
+//    val genOut = SInt(64.W)
+//  }
   // End SInt
 
   // FixedPoint
-  val windowLength = 32
-  val dataWidth = 32
-  val dataBP = 8
+  var windowLength = 32
 
-  val tap_count = scala.util.Random.nextInt(15) + 1
-  val coefficients1 = mutable.ArrayBuffer[Double]()
-  for(j <- 0 until tap_count) {
-    coefficients1 += (-5 + scala.util.Random.nextFloat * 10)
-  }
+  var dataWidth = 32
+  var dataBP = 8
+
+  var coefficients1 = Seq(3.0, 4.0, -5.0, 2.0, -1.0, -2.2, 3.3, -3.4)
+
   val filter1Params = new FIRFilterParams[FixedPoint] {
-    val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    val protoData = FixedPoint(dataWidth.W, dataBP.BP)
     val taps = coefficients1.map(ConvertableTo[FixedPoint].fromDouble(_))
   }
 
   val fftBufferParams = new FFTBufferParams[FixedPoint] {
-    val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    val protoData = FixedPoint(dataWidth.W, dataBP.BP)
     val lanes = windowLength
   }
 
   val fftConfig = FFTConfig(
-    genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP)),
-    genOut = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP)),
+    genIn = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP)),
+    genOut = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP)),
     n = windowLength,
     lanes = windowLength,
     pipelineDepth = 0,
@@ -277,7 +274,7 @@ extends Module {
   )
 
   val lineLength1Params = new lineLengthParams[FixedPoint] {
-    val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    val protoData = FixedPoint(dataWidth.W, dataBP.BP)
     val windowSize = windowLength
   }
 
@@ -285,18 +282,17 @@ extends Module {
     val idxStartBin = 0
     val idxEndBin = 2
     val nBins = windowLength
-    val genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP))
-    val genOut = FixedPoint(dataWidth.W,dataBP.BP)
+    val genIn = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP))
+    val genOut = FixedPoint(dataWidth.W, dataBP.BP)
   }
   val bandpower2Params = new BandpowerParams[FixedPoint] {
     val idxStartBin = 0
     val idxEndBin = 2
     val nBins = windowLength
-    val genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP))
-    val genOut = FixedPoint(dataWidth.W,dataBP.BP)
+    val genIn = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP))
+    val genOut = FixedPoint(dataWidth.W, dataBP.BP)
   }
   // End FixedPoint
-
 
   val inStream = Wire(ValidWithSync(genParams.dataType))
   inStream.bits := Mux(io.inConf.bits.confInputMuxSel,io.streamIn.bits.asTypeOf(genParams.dataType),io.in.bits.asTypeOf(genParams.dataType))
