@@ -225,8 +225,8 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
 
     // Rename to pass to tester
     // TODO: Change after more channels are added
-    val datapathParamsArr = datapathsArr
-    val goldenDatapathParamsArr = goldenDatapathsArr
+    val datapathParamsArr: ArrayBuffer[Seq[(String, Any)]] = datapathsArr
+    val goldenDatapathParamsArr: ArrayBuffer[Seq[(String, Any)]] = goldenDatapathsArr
 
     // *********************************************
     // Chisel PCA, SVM, and
