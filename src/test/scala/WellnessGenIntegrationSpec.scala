@@ -10,12 +10,11 @@ import features._
 import pca._
 import svm._
 import memorybuffer._
-
 import chisel3._
 import chisel3.core.FixedPoint
 import dsptools.numbers._
-
 import org.scalatest.{FlatSpec, Matchers}
+import wellness.FixedPointWellnessGenParams.dataPrototype
 
 import scala.collection.Seq
 import scala.collection.mutable.ArrayBuffer
@@ -394,7 +393,13 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
         val windowSize = windowLength
       }
 
-      val lineLengthDatapath: Seq[(String, Any)] = Seq((filterType, filterParams), ("LineLength", lineLengthParams))
+      val bufferSeq = Seq.fill(1)(1.0)
+      val bufferParams = new FIRFilterParams[FixedPoint] {
+        val protoData = dataPrototype
+        val taps = bufferSeq.map(ConvertableTo[FixedPoint].fromDouble(_))
+      }
+
+      val lineLengthDatapath: Seq[(String, Any)] = Seq((filterType, filterParams), ("LineLength", lineLengthParams),("Buffer", bufferParams))
       lineLengthDatapath
     }
 
@@ -434,7 +439,7 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
         override val windowSize: Int = windowLength
       }
 
-      val lineLengthDatapath: Seq[(String, Any)] = Seq((filterType, filterParams), ("LineLength", lineLengthParams))
+      val lineLengthDatapath: Seq[(String, Any)] = Seq((filterType, filterParams), ("LineLength", lineLengthParams), ("Buffer",1))
       lineLengthDatapath
     }
 
