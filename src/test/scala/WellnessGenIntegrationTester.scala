@@ -196,6 +196,15 @@ class wellnessGenTester[T <: chisel3.Data] (
           genSingleFFTResults   += Seq.fill(64)(Complex(0.0, 0.0))
           genSingleBufResults   += Buffer.fill(64)(0.toDouble)
         }
+        case "Buffer" =>
+        {
+          // Buffer doesn't actually need an FIR filter - it's just a dummy object to appease scala's type checking
+          // Instead buffer will literally just be a pass through
+          generatedSinglePath   += (("Buffer", new GoldenDoubleFIRFilter(Seq.fill(3)(0.0))))
+          genSinglePathResults  += 0.toDouble
+          genSingleFFTResults   += Seq.fill(64)(Complex(0.0, 0.0))
+          genSingleBufResults   += Buffer.fill(64)(0.toDouble)
+        }
       }
     }
     generatedDatapaths         += generatedSinglePath
@@ -213,7 +222,7 @@ class wellnessGenTester[T <: chisel3.Data] (
 
   for (i <- 0 until 50)
   {
-    var input = scala.util.Random.nextDouble * 6 - 3
+    var input = scala.util.Random.nextDouble * 4 - 2
     if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
       input = scala.util.Random.nextInt(16)
     }
@@ -252,6 +261,8 @@ class wellnessGenTester[T <: chisel3.Data] (
                 genSinglePathResult(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenDoubleLineLength].poke(input)
               case "FFTBuffer" =>
                 genSingleBufPathResults(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenFFTBuffer].poke(input).regs
+              case "Buffer" =>
+                genSinglePathResult(j) = input
             }
           }
           else
@@ -273,6 +284,8 @@ class wellnessGenTester[T <: chisel3.Data] (
               case "Bandpower" =>
                 genSinglePathResult(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenDoubleBandpower].
                   poke(genSingleFFTPathResults(j-1))
+              case "Buffer" =>
+                genSinglePathResult(j) = genSinglePathResult(j-1)
             }
           }
         }

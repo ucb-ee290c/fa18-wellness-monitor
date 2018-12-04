@@ -397,7 +397,14 @@ object SIntWellnessGenParams {
       val windowSize = windowLength
     }
 
-    val lineLengthDatapath: Seq[(String, Any)] = Seq((filterType, filterParams), ("LineLength", lineLengthParams))
+    val bufferSeq = Seq.fill(1)(1)
+    val bufferParams = new FIRFilterParams[SInt] {
+      val protoData = dataPrototype
+      val taps = bufferSeq.map(ConvertableTo[SInt].fromDouble(_))
+    }
+
+
+    val lineLengthDatapath: Seq[(String, Any)] = Seq((filterType, filterParams), ("LineLength", lineLengthParams),("Buffer",bufferParams))
     lineLengthDatapath
   }
 
@@ -516,7 +523,13 @@ object FixedPointWellnessGenParams {
       val windowSize = windowLength
     }
 
-    val lineLengthDatapath: Seq[(String, Any)] = Seq((filterType, filterParams), ("LineLength", lineLengthParams))
+    val bufferSeq = Seq.fill(1)(1.0)
+    val bufferParams = new FIRFilterParams[FixedPoint] {
+      val protoData = dataPrototype
+      val taps = bufferSeq.map(ConvertableTo[FixedPoint].fromDouble(_))
+    }
+
+    val lineLengthDatapath: Seq[(String, Any)] = Seq((filterType, filterParams), ("LineLength", lineLengthParams), ("Buffer", bufferParams))
     lineLengthDatapath
   }
 
