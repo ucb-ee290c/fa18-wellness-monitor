@@ -28,6 +28,8 @@ trait BandpowerParams[T <: Data] {
 }
 
 /**
+  * Input is parallelized, output is a scalar
+  *
   * @param params   See BandpowerParams above
   * @tparam T
   *
