@@ -38,7 +38,7 @@ class Bandpower[T <: Data : Real : BinaryRepresentation](val params: BandpowerPa
   // Take mag squared of FFT output
   val p2 = io.in.bits.map(_.abssq())
   // Except for DC and sampling freq, 2x for 2-sided to 1-sided
-  val p1Scaled = p2.slice(1, params.nBins/2 - 1).map(_ * 2)
+  val p1Scaled = p2.slice(1, params.nBins/2).map(_ * 2)
   // Concatenate back in unscaled DC and sampling freq elems
   val p1 = VecInit(p2(0)) ++ p1Scaled ++ VecInit(p2(params.nBins/2))
   // Sum and divide by num of bins of interest squared
