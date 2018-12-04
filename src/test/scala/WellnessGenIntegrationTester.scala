@@ -1,21 +1,25 @@
 package wellness
 
-import breeze.math.Complex
-import chisel3._
-import chisel3.experimental.FixedPoint
-import chisel3.util.log2Ceil
-import dsptools.DspTester
-import dsptools.numbers._
 import firFilter._
+import iirFilter._
 import fft._
 import features._
 import pca._
-import memorybuffer._
 import svm._
+import memorybuffer._
+
+import chisel3._
+import chisel3.core.FixedPoint
+import chisel3.util.log2Ceil
+import dsptools.DspTester
+import dsptools.numbers._
+
 import freechips.rocketchip.config.Parameters
 
-import scala.collection.mutable.ArrayBuffer
-import scala.collection.{Seq, mutable}
+import scala.collection.Seq
+import scala.collection.mutable.{Buffer, ArrayBuffer}
+
+import breeze.math.Complex
 
 /*
 wellnessGenTester:
@@ -39,44 +43,46 @@ in order to verify consistent operation, and checks both datapaths output and co
  */
 
 
-class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
-                                           wellnessGenParams1: wellnessGenParams[T],
-                                           datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
-                                           pcaParams: PCAParams[T],
-                                           svmParams: SVMParams[T],
-                                           configurationMemoryParams: ConfigurationMemoryParams[T],
-                                           goldenModelParameters: wellnessGenIntegrationParameterBundle,
-                                           dataBP: Int, testType: Int) extends DspTester(c) {
-  // val datapathParamsSeqs = Seq(Seq(("FIR",goldenModelParameters.filter1Params),("lineLength",goldenModelParameters.lineLength1Params)),
-  //   Seq(("FIR",goldenModelParameters.filter1Params),("lineLength",goldenModelParameters.lineLength1Params)),
-  //   Seq(("FIR",goldenModelParameters.filter1Params),("lineLength",goldenModelParameters.lineLength1Params)))
+class wellnessGenTester[T <: chisel3.Data]
+  (
+    c: wellnessGenModule[T],
+    wellnessGenParams1: wellnessGenParams[T],
+    datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
+    pcaParams: PCAParams[T],
+    svmParams: SVMParams[T],
+    configurationMemoryParams: ConfigurationMemoryParams[T],
+    goldenDatapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
+    goldenModelParameters: wellnessGenIntegrationParameterBundle,
+    testType: Int
+  ) extends DspTester(c) {
 
-  val datapathParamsSeqs = Seq(Seq(("FIR",goldenModelParameters.filter1Params),("lineLength",goldenModelParameters.lineLength1Params)),
-    Seq(("FIR",goldenModelParameters.filter1Params),("FFTBuffer",goldenModelParameters.fftBufferParams),("FFT",goldenModelParameters.fftConfig),("Bandpower",goldenModelParameters.bandpower1Params)),
-    Seq(("FIR",goldenModelParameters.filter1Params),("FFTBuffer",goldenModelParameters.fftBufferParams),("FFT",goldenModelParameters.fftConfig),("Bandpower",goldenModelParameters.bandpower1Params)))
+  val dataBP = 8
 
-  val newDatapathParamsArr: mutable.ArrayBuffer[Seq[(String, Object)]] = mutable.ArrayBuffer()
+  val newDatapathParamsArr: ArrayBuffer[Seq[(String, Object)]] = ArrayBuffer()
 
-  val generatedDatapaths        : mutable.ArrayBuffer[mutable.ArrayBuffer[(String,Object)]] = mutable.ArrayBuffer()
+  val generatedDatapaths: ArrayBuffer[ArrayBuffer[(String,Object)]] = ArrayBuffer()
 
   // In order to keep track of intermediate results, we need to store them somewhere
   // But they're all different types so we need array buffers of different types to store data for different blocks
   // Doubles will be stored here (used by FIR, IIR, lineLength, and Bandpower)
-  var generatedDoubleResults  : mutable.ArrayBuffer[mutable.ArrayBuffer[Double]] = mutable.ArrayBuffer()
-  var generatedFFTResults       : mutable.ArrayBuffer[mutable.ArrayBuffer[Seq[Complex]]] = mutable.ArrayBuffer()
-  var generatedFFTBufferResults : mutable.ArrayBuffer[mutable.ArrayBuffer[mutable.Buffer[Double]]] = mutable.ArrayBuffer()
+  var generatedDoubleResults: ArrayBuffer[ArrayBuffer[Double]] = ArrayBuffer()
+  var generatedFFTResults: ArrayBuffer[ArrayBuffer[Seq[Complex]]] = ArrayBuffer()
+  var generatedFFTBufferResults: ArrayBuffer[ArrayBuffer[Buffer[Double]]] = ArrayBuffer()
 
+  // *********************************************
+  // Golden SVM and PCA
+  // *********************************************
   val SVM = new GoldenSVM(
-    goldenModelParameters.svmParams.nSupports,
-    goldenModelParameters.svmParams.nFeatures,
-    goldenModelParameters.svmParams.nClasses,
-    goldenModelParameters.svmParams.nDegree,
-    goldenModelParameters.svmParams.kernelType,
-    goldenModelParameters.svmParams.classifierType,
-    goldenModelParameters.svmParams.codeBook,
+    goldenModelParameters.goldenSVMParams.nSupports,
+    goldenModelParameters.goldenSVMParams.nFeatures,
+    goldenModelParameters.goldenSVMParams.nClasses,
+    goldenModelParameters.goldenSVMParams.nDegree,
+    goldenModelParameters.goldenSVMParams.kernelType,
+    goldenModelParameters.goldenSVMParams.classifierType,
+    goldenModelParameters.goldenSVMParams.codeBook,
     flag = 0,
     c.svmParams.protoData.getClass.getTypeName)
-  val PCA = new GoldenIntPCA(goldenModelParameters.pcaParams.nDimensions,goldenModelParameters.pcaParams.nFeatures)
+  val PCA = new GoldenIntPCA(goldenModelParameters.goldenPCAParams.nDimensions, goldenModelParameters.goldenPCAParams.nFeatures)
 
   var referencePCAVector = Seq(Seq(5.0, 0.0, -2.0), Seq(1.0, 2.0, 3.0))
   var referenceSVMSupportVector = Seq(Seq(1.0, 2.0), Seq(3.0, 4.0))
@@ -126,63 +132,76 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
     poke(c.io.inConf.bits.confSVMIntercept(y), referenceSVMIntercept(y))
   }
 
-  for (k <- 0 until datapathParamsSeqs.length)
+  // *********************************************
+  // Generate and connect golden module datapaths
+  // from golden param datapaths
+  // *********************************************
+  for (k <- 0 until goldenDatapathParamsArr.length)
   {
-    val singlePathParamsSeq = datapathParamsSeqs(k)
-    val generatedSinglePath       : mutable.ArrayBuffer[(String,Object)] = mutable.ArrayBuffer()
-    val genSinglePathResults      : mutable.ArrayBuffer[Double]       = mutable.ArrayBuffer()
-    var genSingleFFTResults       : mutable.ArrayBuffer[Seq[Complex]] = mutable.ArrayBuffer()
-    var genSingleBufResults       : mutable.ArrayBuffer[mutable.Buffer[Double]] = mutable.ArrayBuffer()
+    val singlePathParamsSeq = datapathParamsArr(k)
+    val generatedSinglePath: ArrayBuffer[(String,Object)] = ArrayBuffer()
+    val genSinglePathResults: ArrayBuffer[Double] = ArrayBuffer()
+    var genSingleFFTResults: ArrayBuffer[Seq[Complex]] = ArrayBuffer()
+    var genSingleBufResults: ArrayBuffer[Buffer[Double]] = ArrayBuffer()
 
     for (i <- 0 until singlePathParamsSeq.length)
     {
       singlePathParamsSeq(i)._1 match
       {
         case "FIR" =>
-        { // FIR
-          generatedSinglePath     += (("FIR", new GoldenDoubleFIRFilter(singlePathParamsSeq(i)._2.asInstanceOf[filterGenParamsTemplate].taps)))
-          genSinglePathResults    += 0.toDouble
-          genSingleFFTResults     += Seq.fill(goldenModelParameters.bandpower1Params.nBins)(Complex(0.0, 0.0))
-          genSingleBufResults     += mutable.Buffer.fill(goldenModelParameters.bandpower1Params.nBins)(0.toDouble)
-        }
-        case "lineLength" =>
-        { // lineLength
-          generatedSinglePath     += (("lineLength", new GoldenDoubleLineLength(singlePathParamsSeq(i)._2.asInstanceOf[lineLengthGenParamsTemplate].
-            windowSize,wellnessGenParams1.dataType.getClass.getTypeName)))
-          genSinglePathResults += 0.toDouble
-          genSingleFFTResults     += Seq.fill(goldenModelParameters.bandpower1Params.nBins)(Complex(0.0, 0.0))
-          genSingleBufResults     += mutable.Buffer.fill(goldenModelParameters.bandpower1Params.nBins)(0.toDouble)
-        }
-        case "FFT" =>
         {
-          generatedSinglePath     += (("FFT", new GoldenDoubleFFT(goldenModelParameters.fftConfig.nPts)))
-          genSinglePathResults    += 0.toDouble
-          genSingleFFTResults     += Seq.fill(goldenModelParameters.bandpower1Params.nBins)(Complex(0.0, 0.0))
-          genSingleBufResults     += mutable.Buffer.fill(goldenModelParameters.bandpower1Params.nBins)(0.toDouble)
+          generatedSinglePath   += (("FIR", new GoldenDoubleFIRFilter(singlePathParamsSeq(i)._2.asInstanceOf[firGenParamsTemplate].taps)))
+          genSinglePathResults  += 0.toDouble
+          genSingleFFTResults   += Seq.fill(2)(Complex(0.0, 0.0))
+          genSingleBufResults   += Buffer.fill(2)(0.toDouble)
+        }
+        case "IIR" =>
+        {
+          generatedSinglePath   += (("IIR", new GoldenIIRFilter(singlePathParamsSeq(i)._2.asInstanceOf[iirGenParamsTemplate].tapsA,
+            singlePathParamsSeq(i)._2.asInstanceOf[iirGenParamsTemplate].tapsB)))
+          genSinglePathResults  += 0.toDouble
+          genSingleFFTResults   += Seq.fill(2)(Complex(0.0, 0.0))
+          genSingleBufResults   += Buffer.fill(2)(0.toDouble)
         }
         case "FFTBuffer" =>
         {
-          generatedSinglePath     += (("FFTBuffer", new GoldenFFTBuffer(goldenModelParameters.fftBufferParams.lanes)))
-          genSinglePathResults    += 0.toDouble
-          genSingleFFTResults     += Seq.fill(goldenModelParameters.bandpower1Params.nBins)(Complex(0.0, 0.0))
-          genSingleBufResults     += mutable.Buffer.fill(goldenModelParameters.bandpower1Params.nBins)(0.toDouble)
+          generatedSinglePath   += (("FFTBuffer", new GoldenFFTBuffer(singlePathParamsSeq(i)._2.asInstanceOf[fftBufferGenParamsTemplate].lanes)))
+          genSinglePathResults  += 0.toDouble
+          genSingleFFTResults   += Seq.fill(2)(Complex(0.0, 0.0))
+          genSingleBufResults   += Buffer.fill(2)(0.toDouble)
+        }
+        case "FFT" =>
+        {
+          generatedSinglePath   += (("FFT", new GoldenDoubleFFT(singlePathParamsSeq(i)._2.asInstanceOf[fftConfigGenTemplate].nPts)))
+          genSinglePathResults  += 0.toDouble
+          genSingleFFTResults   += Seq.fill(2)(Complex(0.0, 0.0))
+          genSingleBufResults   += Buffer.fill(2)(0.toDouble)
+        }
+        case "LineLength" =>
+        {
+          generatedSinglePath   += (("LineLength", new GoldenDoubleLineLength(singlePathParamsSeq(i)._2.asInstanceOf[lineLengthGenParamsTemplate].windowSize,
+            wellnessGenParams1.dataType.getClass.getTypeName)))
+          genSinglePathResults  += 0.toDouble
+          genSingleFFTResults   += Seq.fill(2)(Complex(0.0, 0.0))
+          genSingleBufResults   += Buffer.fill(2)(0.toDouble)
         }
         case "Bandpower" =>
         {
-          generatedSinglePath     += (("Bandpower", new GoldenDoubleBandpower(goldenModelParameters.bandpower1Params.nBins,
-                                          goldenModelParameters.bandpower1Params.idxStartBin,
-                                          goldenModelParameters.bandpower1Params.idxEndBin,
-                                          wellnessGenParams1.dataType.getClass.getTypeName)))
-          genSinglePathResults    += 0.toDouble
-          genSingleFFTResults     += Seq.fill(goldenModelParameters.bandpower1Params.nBins)(Complex(0.0, 0.0))
-          genSingleBufResults     += mutable.Buffer.fill(goldenModelParameters.bandpower1Params.nBins)(0.toDouble)
+          generatedSinglePath   += (("Bandpower", new GoldenDoubleBandpower(
+            singlePathParamsSeq(i)._2.asInstanceOf[bandpowerParamsGenTemplate].nBins,
+            singlePathParamsSeq(i)._2.asInstanceOf[bandpowerParamsGenTemplate].idxStartBin,
+            singlePathParamsSeq(i)._2.asInstanceOf[bandpowerParamsGenTemplate].idxEndBin,
+            wellnessGenParams1.dataType.getClass.getTypeName)))
+          genSinglePathResults  += 0.toDouble
+          genSingleFFTResults   += Seq.fill(2)(Complex(0.0, 0.0))
+          genSingleBufResults   += Buffer.fill(2)(0.toDouble)
         }
       }
     }
-    generatedDatapaths += generatedSinglePath
-    generatedDoubleResults += genSinglePathResults
-    generatedFFTResults += genSingleFFTResults
-    generatedFFTBufferResults += genSingleBufResults
+    generatedDatapaths         += generatedSinglePath
+    generatedDoubleResults     += genSinglePathResults
+    generatedFFTResults        += genSingleFFTResults
+    generatedFFTBufferResults  += genSingleBufResults
   }
 
 
@@ -194,8 +213,6 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
 
   for (i <- 0 until 50)
   {
-//    val input = scala.util.Random.nextDouble * 32
-
     var input = scala.util.Random.nextDouble * 6 - 3
     if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
       input = scala.util.Random.nextInt(16)
@@ -217,11 +234,11 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
 
     for (k <- 0 until generatedDatapaths.length)
       {
+        val generatedSinglePath      = generatedDatapaths(k)
+        val genSinglePathResult      = generatedDoubleResults(k)
+        val genSingleFFTPathResults  = generatedFFTResults(k)
+        val genSingleBufPathResults  = generatedFFTBufferResults(k)
 
-        val generatedSinglePath     = generatedDatapaths(k)
-        val genSinglePathResult     = generatedDoubleResults(k)
-        val genSingleFFTPathResults = generatedFFTResults(k)
-        val genSingleBufPathResults = generatedFFTBufferResults(k)
         for (j <- (generatedSinglePath.length - 1) to 0 by -1)
         {
           val name = generatedSinglePath(j)._1
@@ -231,7 +248,7 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
             {
               case "FIR" =>
                 genSinglePathResult(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenDoubleFIRFilter].poke(input)
-              case "lineLength" =>
+              case "LineLength" =>
                 genSinglePathResult(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenDoubleLineLength].poke(input)
               case "FFTBuffer" =>
                 genSingleBufPathResults(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenFFTBuffer].poke(input).regs
@@ -244,7 +261,7 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
               case "FIR" =>
                 genSinglePathResult(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenDoubleFIRFilter].
                   poke(genSinglePathResult(j-1))
-              case "lineLength" =>
+              case "LineLength" =>
                 genSinglePathResult(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenDoubleLineLength].
                   poke(genSinglePathResult(j-1))
               case "FFTBuffer" =>
@@ -270,29 +287,21 @@ class wellnessGenTester[T <: chisel3.Data](c: wellnessGenModule[T],
 
     if (peek(c.io.out.valid) == true)
       {
-        //fixTolLSBs.withValue(1)
-        //{
-        //  expect(c.io.out.bits, generatedDoubleResults(check_i)(check_j), s"valid ${peek(c.io.out.valid)}")
-        //}
         val tolerance = 0.3 // tolerate 10% error
-        for (i <- 0 until goldenModelParameters.svmParams.nClasses) {
+        for (i <- 0 until goldenModelParameters.goldenSVMParams.nClasses) {
           if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.SInt" || c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
             fixTolLSBs.withValue(204){
               expect(c.io.rawVotes(i), svmResult(0)(i))
             }
-            //expect(c.io.classVotes(i), svmResult(1)(i))
           } else {
-            // due to the series of multiply and accumulates, error actually blows up, let's be lenient
-            fixTolLSBs.withValue(log2Ceil((svmResult(0)(i).abs*tolerance).toInt+1)+dataBP+1) { // +-16, 4 extra bits after the binary point
+            // Due to the series of multiply and accumulates, error actually blows up, let's be lenient
+            // +-16, 4 extra bits after the binary point
+            fixTolLSBs.withValue(log2Ceil((svmResult(0)(i).abs * tolerance).toInt + 1) + dataBP + 1) {
               expect(c.io.rawVotes(i), svmResult(0)(i))
             }
-            // strict check for the class votes
-            //expect(c.io.classVotes(i), svmResult(1)(i))
           }
         }
       }
-    //expect(c.io.out.valid, false.B)
-    //expect(c.io.out.bits, generatedDoubleResults(check_i)(check_j))
   }
 }
 
@@ -304,7 +313,9 @@ object wellnessGenIntegrationTesterSInt {
             pcaParams: PCAParams[SInt],
             svmParams: SVMParams[SInt],
             configurationMemoryParams: ConfigurationMemoryParams[SInt],
-            goldenModelParameters: wellnessGenIntegrationParameterBundle, debug: Int): Boolean = {
+            goldenDatapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
+            goldenModelParameters: wellnessGenIntegrationParameterBundle,
+            debug: Int): Boolean = {
     if (debug == 1) {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new wellnessGenModule(
         wellnessGenParams1,
@@ -317,7 +328,10 @@ object wellnessGenIntegrationTesterSInt {
           datapathParamsArr,
           pcaParams,
           svmParams,
-          configurationMemoryParams, goldenModelParameters, 0,0)
+          configurationMemoryParams,
+          goldenDatapathParamsArr,
+          goldenModelParameters,
+          0)
       }
     } else {
       dsptools.Driver.execute(() => new wellnessGenModule(
@@ -333,7 +347,9 @@ object wellnessGenIntegrationTesterSInt {
           pcaParams,
           svmParams,
           configurationMemoryParams,
-          goldenModelParameters, 0, 0)
+          goldenDatapathParamsArr,
+          goldenModelParameters,
+          0)
       }
     }
   }
@@ -346,7 +362,9 @@ object wellnessGenIntegrationTesterFP {
             pcaParams: PCAParams[FixedPoint],
             svmParams: SVMParams[FixedPoint],
             configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
-            goldenModelParameters: wellnessGenIntegrationParameterBundle, debug: Int): Boolean = {
+            goldenDatapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
+            goldenModelParameters: wellnessGenIntegrationParameterBundle,
+            debug: Int): Boolean = {
     if (debug == 1) {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new wellnessGenModule(
         wellnessGenParams1,
@@ -359,7 +377,10 @@ object wellnessGenIntegrationTesterFP {
           datapathParamsArr,
           pcaParams,
           svmParams,
-          configurationMemoryParams, goldenModelParameters, 0,0)
+          configurationMemoryParams,
+          goldenDatapathParamsArr,
+          goldenModelParameters,
+          0)
       }
     } else {
       dsptools.Driver.execute(() => new wellnessGenModule(
@@ -375,7 +396,9 @@ object wellnessGenIntegrationTesterFP {
           pcaParams,
           svmParams,
           configurationMemoryParams,
-          goldenModelParameters, 0, 0)
+          goldenDatapathParamsArr,
+          goldenModelParameters,
+          0)
       }
     }
   }
