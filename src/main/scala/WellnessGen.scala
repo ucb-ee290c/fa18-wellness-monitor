@@ -272,7 +272,27 @@ object wellnessGenModuleIO {
     configurationMemoryParams: ConfigurationMemoryParams[T])
 }
 
+/*
+class wellnessGenModule:
 
+wellness monitor generator that will take an arbitrary monitor description (sequences of params for the requested blocks),
+generate all the pertinent modules, and connect them to the inputs, outputs, and to eachother according to the requested
+datapath
+
+
+@Parameters   $genParams                      Defines general wellnessGen I/O dataType
+              $datapathParamsArr              Array of datapath params that describes the requested wellness monitor hardware
+              $pcaParams                      Defines the PCA parameters
+              $svmParams                      Defines the SVM parameters
+              $configurationMemoryParams      Defines configuration memory parameters
+
+
+@Notes        - Look at wellnessGenModuleIO for i/o description
+              - DatapathParamsArr and included block params are generated in WellnessParams.scala and passed to
+              wellnessGenModule at instantiation. Look to WellnessParams.scala for more information
+              - This class is designed to never be touched by users of wellness gen, if you want to add features/blocks
+              then you need to add appropriate module instantations and connections in the match-case statements
+*/
 class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
 (val genParams: wellnessGenParams[T],
  val datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
@@ -434,6 +454,8 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   //    Seq(("FIR",filter1Params),("FFTBuffer",fftBufferParams), ("FFT",fftConfig),("bandpower",bandpower1Params)),
   //    Seq(("FIR",filter1Params),("FFTBuffer",fftBufferParams), ("FFT",fftConfig),("bandpower",bandpower2Params)))
 
+  // create mux between external input (streamIn) and Rocket's memory mapped input (in)
+  // tie output of mux to inStream
   val inStream = Wire(ValidWithSync(genParams.dataType))
   inStream.bits := Mux(io.inConf.bits.confInputMuxSel,io.streamIn.bits.asTypeOf(genParams.dataType),io.in.bits.asTypeOf(genParams.dataType))
   inStream.valid := Mux(io.inConf.bits.confInputMuxSel,io.streamIn.valid,io.in.valid)
@@ -443,25 +465,30 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   // Each param datapath: seq of (block type, block params)
 
   // Ch x (modules): arr of module datapaths
-  // Each module datapath: arr of (block type, gen'd module)
+  // Each module datapath: arr of ('block type', generated module)
+  // This actually stores all of the modules for the generated datapaths
   val generatedDatapaths: mutable.ArrayBuffer[mutable.ArrayBuffer[(String,Module)]] = mutable.ArrayBuffer()
 
-  // Just a var instantiation
+  // Just a var instantiation that will get overwritten in the coming loops
   var singlePathParamsSeq = datapathParamsArr(0)
 
-  // Gen ch x's seq of module datapaths from param datapaths
-  // For each (ith) param datapath in ch x (params)
+  // Gen ch x's seq of module datapaths from param datapaths (which is given as a LARGE param to this module)
+  // For each (ith) param datapath in ch x (params) (meaning for each individual datapath for a channel)
   for (i <- 0 until datapathParamsArr.length)
   {
-    // Param datapath i
+    // Grab param datapath i
     singlePathParamsSeq = datapathParamsArr(i)
-    // Module datapath (i)
+    // Allocate empty datapath of modules (i) where we will store module instantiations
     val generatedSinglePath: mutable.ArrayBuffer[(String,Module)] = mutable.ArrayBuffer()
 
     // For each (jth) param in param datapath i
+    // meaning walk through every 'param' in the 'param datapath' and instatiate the appropriate module with the given
+    // params
     for(j <- 0 until singlePathParamsSeq.length)
     {
       // Param j
+      // Since we can't infer the block types from generic 'Module' types, we use a match case to cast the blocks and
+      // append them in the 'generated datapath' array
       singlePathParamsSeq(j)._1 match
       {
         case "FIR" =>
@@ -491,18 +518,27 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
       }
     }
     // Add (jth) module datapath to ch x (modules)
+    // now that we have a 'generated datapath' that is pointing to actual module instantations in the given order
+    // append this datapath to the 'generatedDatapaths' datastructure that keeps track of everything
     generatedDatapaths += generatedSinglePath
   }
 
-
+  // define PCA vectors (will come into play later)
+  // we'll need to tie all the datapath outputs into a vector to be fed into the PCA block all at once
   val pcaInVector = Wire(Vec(pcaParams.nDimensions, pcaParams.protoData))
   val pcaInValVec = Wire(Vec(pcaParams.nDimensions, Bool()))
+
   // For each (ith) module datapath in ch x, connect up modules
+  // Now that we have unnconnected module instantiations organized into datapaths, we need to loop through all of blocks
+  // and connect them appropriately
+  // First pick a datapth (i)
   for(i <- 0 until generatedDatapaths.length)
     {
       // Module datapath i
       val genDatapath = generatedDatapaths(i)
+
       // For each (jth) module in module datapath i
+      // meaning loop through each module (j) in datapath (i)
       for(j <- 0 until genDatapath.length)
       {
         // Connect first module to input
@@ -524,7 +560,10 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
               genDatapath(j)._2.asInstanceOf[FFTBuffer[T]].io.in.sync  := inStream.sync
           }
         }
+
         // Other than first module, connect module to previous module
+        // The nested match is neccessary because not only do we have to cast the current block (j) but we also have to
+        // cast the previous block (j-1)
         else
         {
           genDatapath(j)._1 match
@@ -653,10 +692,11 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
     }
 
   // PCA (datapaths to PCA)
+  // instantiate PCA module and connect it to appropriate inputs and outputs
   val pca = Module(new PCA(pcaParams))
   pca.io.PCAVector := io.inConf.bits.confPCAVector
   pca.io.in.valid := pcaInValVec.asUInt().andR()
-  pca.io.in.bits := pcaInVector
+  pca.io.in.bits := pcaInVector //here is the input vector we made earlier
   pca.io.in.sync := false.B
 
   // SVM (PCA to SVM)
@@ -679,7 +719,24 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   io.in.ready := true.B
 }
 
+/*
+abstract class wellnessGenDataPathBlock:
 
+abstract class used to define wellnessGenModule, connect module to i/o on wellnessGenModule's side (Rocket side is
+connected in wellnessGenThing) and also define how it should be connected to Rocket. Takes in same params as
+wellnessGenModule in order to pass said parameters to the actual wellnessGenModule definition
+
+@Parameters   $genParams                      Defines general wellnessGen I/O dataType
+              $datapathParamsArr              Array of datapath params that describes the requested wellness monitor hardware
+              $pcaParams                      Defines the PCA parameters
+              $svmParams                      Defines the SVM parameters
+              $configurationMemoryParams      Defines configuration memory parameters
+
+
+@Notes        - wellnessGenDataPathBlock will also build streamNodes to actually connect wellnessModule to Rocket using
+                the read and write queues described earlier
+              - It's important to note that this only does half the work. We still need to connect Rocket to the queues
+*/
 abstract class wellnessGenDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real : Order : BinaryRepresentation]
 (
   val genParams: wellnessGenParams[T],
@@ -698,6 +755,7 @@ abstract class wellnessGenDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Rea
     require(streamNode.in.length == 2)
     require(streamNode.out.length == 1)
 
+    // connecting streamnodes (on wellness side) --> we'll connect streamnodes to Rocket in wellnessGenThing
     val in = streamNode.in.head._1
     val inConf = streamNode.in(1)._1
     val out = streamNode.out.head._1
@@ -710,21 +768,28 @@ abstract class wellnessGenDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Rea
       svmParams: SVMParams[T],
       configurationMemoryParams: ConfigurationMemoryParams[T]))
 
+    // config memory instantation
     val configurationMemory = Module(new ConfigurationMemory(configurationMemoryParams))
+
+    // external input declaration
     val streamIn = IO(Flipped(ValidWithSync(genParams.dataType.cloneType)))
 
+    // connecting external input to appropriate wires in wellness gen's io
     wellnessGen.io.streamIn.bits := streamIn.bits
     wellnessGen.io.streamIn.valid := streamIn.valid
     wellnessGen.io.streamIn.sync := streamIn.sync
 
+    // connecting Rocket io to wellness gen
     in.ready := wellnessGen.io.in.ready
-    // Input to Wellness
+    // Input (Rocket) to Wellness
     wellnessGen.io.in.valid := in.valid
     wellnessGen.io.in.bits := in.bits.data.asTypeOf(genParams.dataType)
-    // Wellness to Output
+
+    // Wellness to Output (Rocket)
     out.valid := wellnessGen.io.out.valid
     out.bits.data := Cat(wellnessGen.io.rawVotes(1).asUInt(),wellnessGen.io.rawVotes(0).asUInt())
 
+    // connecting config memory to appropriate wires in wellness gen
     inConf.ready := true.B
     configurationMemory.io.in.valid := inConf.valid
     configurationMemory.io.in.sync := false.B
@@ -733,6 +798,7 @@ abstract class wellnessGenDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Rea
     wellnessGen.io.inConf := configurationMemory.io.out
   }
 }
+
 
 class TLWellnessGenDataPathBlock[T <: Data : Real : Order : BinaryRepresentation]
 (
@@ -749,6 +815,20 @@ class TLWellnessGenDataPathBlock[T <: Data : Real : Order : BinaryRepresentation
     configurationMemoryParams)
   with TLDspBlock
 
+/*
+class wellnessGenThing:
+
+Class that actually connects wellness block to rocket (from rocket's end)
+
+@Parameters   $genParams                      Defines general wellnessGen I/O dataType
+              $datapathParamsArr              Array of datapath params that describes the requested wellness monitor hardware
+              $pcaParams                      Defines the PCA parameters
+              $svmParams                      Defines the SVM parameters
+              $configurationMemoryParams      Defines configuration memory parameters
+
+
+@Notes        - TLWellnessGenDataPathBlock connect streamNodes to Rocket
+*/
 class wellnessGenThing[T <: Data : Real : Order : BinaryRepresentation]
 (
   val genParams: wellnessGenParams[T],
@@ -777,12 +857,15 @@ class wellnessGenThing[T <: Data : Real : Order : BinaryRepresentation]
   lazy val module = new LazyModuleImp(this) {
     val streamIn = IO(Flipped(ValidWithSync(genParams.dataType.cloneType)))
 
+    // properly connect streamIn wires to eachother
     wellness.module.streamIn.bits := streamIn.bits
     wellness.module.streamIn.valid := streamIn.valid
     wellness.module.streamIn.sync := streamIn.sync
   }
 }
 
+// traits to allocate memory for queues and to give appropriate params to wellnessGenThing when building this with
+// Rocket
 trait HasPeripheryWellness extends BaseSubsystem {
 
   val wellnessParams = FixedPointWellnessGenParams
