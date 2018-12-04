@@ -54,7 +54,7 @@ class BandpowerTester[T <: Data](c: Bandpower[T], params: BandpowerParams[T], da
   val idxEndBin = params.idxEndBin
   val dataType = c.params.genOut.getClass.getTypeName
 
-  // Instantiates class performing bandpower calc
+  // Instantiates class performing reference bandpower calc
   val bandpower = new GoldenDoubleBandpower(nBins, idxStartBin, idxEndBin, dataType)
 
   // Random input (Double for FixedPoint, Int for UInt/SInt)
