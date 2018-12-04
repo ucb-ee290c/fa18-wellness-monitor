@@ -572,10 +572,9 @@ object FixedPointWellnessGenParams {
       val windowSize = windowLength
     }
 
-    val bufferSeq = Seq.fill(1)(1.0)
-    val bufferParams = new FIRFilterParams[FixedPoint] {
+    val bufferParams = new ShiftRegParams[FixedPoint] {
       val protoData = dataPrototype
-      val taps = bufferSeq.map(ConvertableTo[FixedPoint].fromDouble(_))
+      val delay = 1
     }
 
     val lineLengthDatapath: Seq[(String, Any)] = Seq((filterType, filterParams), ("LineLength", lineLengthParams), ("Buffer", bufferParams), ("Buffer", bufferParams))

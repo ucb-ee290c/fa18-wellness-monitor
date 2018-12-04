@@ -102,7 +102,7 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
   behavior of "WellnessGen"
 
   it should "Generate and test a Wellness Monitor (FixedPoint)" in {
-    val debug = 0
+    val debug = 1
 
     val nFFT: Int = 8
 
@@ -177,10 +177,9 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
         val windowSize = windowLength
       }
 
-      val bufferSeq = Seq.fill(1)(1.0)
-      val bufferParams = new FIRFilterParams[FixedPoint] {
+      val bufferParams = new ShiftRegParams[FixedPoint] {
         val protoData = dataPrototype
-        val taps = bufferSeq.map(ConvertableTo[FixedPoint].fromDouble(_))
+        val delay = 1
       }
 
       val lineLengthDatapath: Seq[(String, Any)] = Seq((filterType, filterParams), ("LineLength", lineLengthParams), ("Buffer", bufferParams), ("Buffer", bufferParams))

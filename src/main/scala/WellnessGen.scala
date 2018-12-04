@@ -508,7 +508,7 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
         case "Bandpower" =>
           generatedSinglePath += (("Bandpower",Module(new Bandpower(singlePathParamsSeq(j)._2.asInstanceOf[BandpowerParams[T]]))))
         case "Buffer" =>
-          generatedSinglePath += (("Buffer", Module(new ConstantCoefficientFIRFilter(singlePathParamsSeq(j)._2.asInstanceOf[FIRFilterParams[T]]))))
+          generatedSinglePath += (("Buffer", Module(new ShiftReg(singlePathParamsSeq(j)._2.asInstanceOf[ShiftRegParams[T]]))))
       }
     }
     // Add (jth) module datapath to ch x (modules)
@@ -610,7 +610,6 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
             }
             case "FFT" =>
             {
-              // FFT Buffers to FFTs
               genDatapath(j)._2.asInstanceOf[FFT[T]].io.in.valid := genDatapath(j-1)._2.asInstanceOf[FFTBuffer[T]].io.out.valid
               genDatapath(j)._2.asInstanceOf[FFT[T]].io.in.sync  := false.B
               for (i <- genDatapath(j)._2.asInstanceOf[FFT[T]].io.in.bits.indices) {
@@ -646,14 +645,14 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
             case "Buffer" => {
               genDatapath(j - 1)._1 match {
                 case "Buffer" => {
-                  genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.valid := genDatapath(j - 1)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.valid
-                  genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.bits := genDatapath(j - 1)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.bits
-                  genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.sync := false.B
+                  genDatapath(j)._2.asInstanceOf[ShiftReg[T]].io.in.valid := genDatapath(j - 1)._2.asInstanceOf[ShiftReg[T]].io.out.valid
+                  genDatapath(j)._2.asInstanceOf[ShiftReg[T]].io.in.bits := genDatapath(j - 1)._2.asInstanceOf[ShiftReg[T]].io.out.bits
+                  genDatapath(j)._2.asInstanceOf[ShiftReg[T]].io.in.sync := false.B
                 }
                 case "LineLength" => {
-                  genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.valid := genDatapath(j - 1)._2.asInstanceOf[lineLength[T]].io.out.valid
-                  genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.bits := genDatapath(j - 1)._2.asInstanceOf[lineLength[T]].io.out.bits
-                  genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.sync := false.B
+                  genDatapath(j)._2.asInstanceOf[ShiftReg[T]].io.in.valid := genDatapath(j - 1)._2.asInstanceOf[lineLength[T]].io.out.valid
+                  genDatapath(j)._2.asInstanceOf[ShiftReg[T]].io.in.bits := genDatapath(j - 1)._2.asInstanceOf[lineLength[T]].io.out.bits
+                  genDatapath(j)._2.asInstanceOf[ShiftReg[T]].io.in.sync := false.B
                 }
               }
             }
@@ -677,8 +676,8 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
               pcaInValVec(i) := genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.out.valid
               pcaInVector(i) := genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.out.bits
             case "Buffer" =>
-              pcaInValVec(i) := genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.valid
-              pcaInVector(i) := genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.bits
+              pcaInValVec(i) := genDatapath(j)._2.asInstanceOf[ShiftReg[T]].io.out.valid
+              pcaInVector(i) := genDatapath(j)._2.asInstanceOf[ShiftReg[T]].io.out.bits
           }
         }
       }

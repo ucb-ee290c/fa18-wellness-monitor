@@ -89,6 +89,8 @@ class wellnessGenTester[T <: chisel3.Data] (
   var referenceSVMAlphaVector = Seq(Seq(7.0, 3.0))
   var referenceSVMIntercept = Seq(4.0)
 
+  poke(c.io.inConf.bits.confInputMuxSel, 0)
+
   val pcaVectorMemoryParams = new MemoryBufferParams[T] {
     val protoData: T = c.configurationMemoryParams.protoData.cloneType
     val nRows: Int = c.configurationMemoryParams.nDimensions
@@ -300,7 +302,7 @@ class wellnessGenTester[T <: chisel3.Data] (
 
     if (peek(c.io.out.valid) == true)
       {
-        val tolerance = 0.3 // tolerate 10% error
+        val tolerance = 0.1 // tolerate 10% error
         for (i <- 0 until goldenModelParameters.goldenSVMParams.nClasses) {
           if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.SInt" || c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
             fixTolLSBs.withValue(204){
