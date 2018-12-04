@@ -222,7 +222,7 @@ class wellnessGenTester[T <: chisel3.Data] (
 
   for (i <- 0 until 50)
   {
-    var input = scala.util.Random.nextDouble * 6 - 3
+    var input = scala.util.Random.nextDouble * 4 - 2
     if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
       input = scala.util.Random.nextInt(16)
     }
