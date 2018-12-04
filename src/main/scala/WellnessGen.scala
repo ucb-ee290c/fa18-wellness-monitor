@@ -1,17 +1,24 @@
 package wellness
 
+// *********************************************
+// Import packages
+// *********************************************
 import firFilter._
 import iirFilter._
 import fft._
 import features._
 import pca._
 import svm._
+import memorybuffer._
+
 import chisel3._
 import chisel3.core.FixedPoint
 import chisel3.util._
+
 import dspblocks._
-import dspjunctions.ValidWithSync
 import dsptools.numbers._
+import dspjunctions.ValidWithSync
+
 import freechips.rocketchip.amba.axi4stream._
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
@@ -460,9 +467,6 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   inStream.bits := Mux(io.inConf.bits.confInputMuxSel,io.streamIn.bits.asTypeOf(genParams.dataType),io.in.bits.asTypeOf(genParams.dataType))
   inStream.valid := Mux(io.inConf.bits.confInputMuxSel,io.streamIn.valid,io.in.valid)
   inStream.sync := Mux(io.inConf.bits.confInputMuxSel,io.streamIn.sync,false.B)
-
-  // Ch x (params): arr of param datapaths
-  // Each param datapath: seq of (block type, block params)
 
   // Ch x (modules): arr of module datapaths
   // Each module datapath: arr of ('block type', generated module)
