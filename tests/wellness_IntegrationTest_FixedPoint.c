@@ -18,7 +18,7 @@
 #define DATA_MASK ((1L << DATA_WIDTH)-1)
 
 #define CONF_DATA_MASK ((1L << DATA_WIDTH)-1)
-#define CONF_ADDR_WIDTH 2
+#define CONF_ADDR_WIDTH 3
 #define CONF_ADDR_MASK ((1L << CONF_ADDR_WIDTH)-1)
 
 void printDouble(double v, int decimalDigits)
@@ -66,12 +66,6 @@ int32_t unpack_pca_1(uint64_t packed) {
   return ((int64_t)(xpack << shift)) >> shift;
 }
 
-int check_tol(double x, double exp_x, double x_tol) {
-  if(x > exp_x + x_tol) return 0;
-  else if(x < exp_x - x_tol) return 0;
-  return 1;
-}
-
 int main(void)
 {
   uint64_t write_data, read_data;
@@ -83,9 +77,12 @@ int main(void)
   double data_out_0double;
   double data_out_1double;
 
-  double tol = 0.1; // percent tolerance
+  double tol = 0.15; // percent tolerance
 
-  // pushing data into the configuration matrix
+  printf("This test uses %d bits total data width with %d bits for binary places\n",DATA_WIDTH,DATA_BP);
+
+  // pushing data into the configuration matrices
+
   // pcaVector
   for(i=1;i<=FEATURES;i++){
     for(j=1;j<=DIMENSIONS;j++){
@@ -94,6 +91,8 @@ int main(void)
         while(reg_read64(WELLNESSCONF_WRITE_COUNT) > 0);
     }
   }
+  printf("Done configuring PCA Vector: %d reduced dimension(s), %d original features\n",FEATURES,DIMENSIONS);
+
   // SVMSupportVector
   for(i=1;i<=SUPPORTS;i++){
     for(j=1;j<=FEATURES;j++){
@@ -102,6 +101,8 @@ int main(void)
         while(reg_read64(WELLNESSCONF_WRITE_COUNT) > 0);
     }
   }
+  printf("Done configuring SVM Support Vector: %d support vectors, %d reduced dimension(s)\n",SUPPORTS,FEATURES);
+
   // SVMAlphaVector
   for(i=1;i<=CLASSIFIERS;i++){
     for(j=1;j<=SUPPORTS;j++){
@@ -110,16 +111,28 @@ int main(void)
         while(reg_read64(WELLNESSCONF_WRITE_COUNT) > 0);
     }
   }
+  printf("Done configuring SVM Alpha Vector: %d classifier(s), %d support vectors\n",CLASSIFIERS,SUPPORTS);
+
   // SVMIntercept
   for(i=1;i<=CLASSIFIERS;i++){
     write_data = pack_conf_data(3,SVMIntercept[CLASSIFIERS-i]);
     reg_write64(WELLNESSCONF_WRITE, write_data);
     while(reg_read64(WELLNESSCONF_WRITE_COUNT) > 0);
   }
+  printf("Done configuring SVM Intercept: %d classifier(s)\n",CLASSIFIERS);
+
+  // Mux select for streaming input, 0 if through C code
+  write_data = pack_conf_data(4,0.0);
+  reg_write64(WELLNESSCONF_WRITE, write_data);
+  while(reg_read64(WELLNESSCONF_WRITE_COUNT) > 0);
+  printf("Passing data through C test instead of external input\n");
 
   // this is the main loop to feed the input vector one by one
-  for(i=0;i<100;i++) {
-    while(reg_read64(WELLNESS_READ_COUNT) == 0) reg_write64(WELLNESS_WRITE, pack_data(in[i]));
+  for(i=0;i<97;i++) {
+    while(reg_read64(WELLNESS_READ_COUNT) == 0) {
+        write_data = pack_data(in[i]);
+        reg_write64(WELLNESS_WRITE, write_data);
+    }
     pack_out = reg_read64(WELLNESS_READ);
     data_out_0 = unpack_pca_0(pack_out);
     data_out_1 = unpack_pca_1(pack_out);
@@ -127,13 +140,34 @@ int main(void)
     data_out_0double = (double) data_out_0 / pow(2,DATA_BP);
     data_out_1double = (double) data_out_1 / pow(2,DATA_BP);
 
-    if (i > WINDOW+NUMTAPS-1) { // This is the part where the output starts being correct
-        printDouble(data_out_1double,4); // check only 1 of the outputs, the other one is always 0
-        printDouble(ex[i-(WINDOW+NUMTAPS)][1],4); // adjust starting index 0
-        if ((data_out_1double <= ex[i-(WINDOW+NUMTAPS)][1]*(1+tol)) && // tolerance check
-            (data_out_1double >= ex[i-(WINDOW+NUMTAPS)][1]*(1-tol))) {
-            printf(" PASSED (within %d\%)", (int)(tol*100));
-            }
+    if (i > WINDOW+NUMTAPS+1) { // This is the part where the output starts being correct
+        printf("Scores: ");
+        printDouble(data_out_0double,4);
+        printf(" ");
+        printDouble(data_out_1double,4);
+        printf(" ");
+
+        printf("\tExpected: ");
+        printDouble(ex[i-(WINDOW+NUMTAPS)][0],4);
+        printf(" ");
+        printDouble(ex[i-(WINDOW+NUMTAPS)][1],4);
+
+        if (data_out_0double > 0) {
+            if ((data_out_0double <= ex[i-(WINDOW+NUMTAPS)][0]*(1+tol)) && // tolerance check
+                (data_out_0double >= ex[i-(WINDOW+NUMTAPS)][0]*(1-tol))) {
+                printf("\tPASSED (within %d\%)", (int)(tol*100));
+                }
+            else { printf("\tFAIL (not within %d\%)", (int)(tol*100));}
+            printf("\tPredicted label: No seizure");
+        } else if (data_out_1double > 0) {
+            if ((data_out_1double <= ex[i-(WINDOW+NUMTAPS)][1]*(1+tol)) && // tolerance check
+                (data_out_1double >= ex[i-(WINDOW+NUMTAPS)][1]*(1-tol))) {
+                printf("\tPASSED (within %d\%)", (int)(tol*100));
+                }
+            else { printf("\tFAIL (not within %d\%)", (int)(tol*100));}
+            printf("\tPredicted label: SEIZURE");
+        }
+
         printf("\n");
     }
   }

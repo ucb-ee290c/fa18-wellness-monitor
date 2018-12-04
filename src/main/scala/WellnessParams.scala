@@ -456,10 +456,23 @@ object SIntWellnessGenParams {
 }
 
 object FixedPointWellnessGenParams {
-  val nFFT: Int = 8
 
-  val dataWidth = 32
-  val dataBP = 8
+  // TODO: CODE SECTION RELEVANT TO USER
+//  val nFFT: Int = 8
+//  val dataWidth = 32
+//  val dataBP = 8
+  val Seq(dataWidth, dataBP) = utilities.readCSV("scripts/generated_files/datasize.csv").flatMap(_.map(_.toInt))
+  val Seq(windowLength, features, dimensions, supports, classes, degree) =
+  /* This is the order of parameters, as written in the Python file, for reference
+  fe.window,                  # windowSize, lanes, nPts, nBins
+  pca.components_.shape[0],   # nFeatures
+  pca.components_.shape[1],   # nDimensions
+  supports.shape[0],          # nSupports
+  classes,                    # nClasses
+  degree                      # nDegree */
+    utilities.readCSV("scripts/generated_files/parameters.csv").flatMap(_.map(_.toInt))
+  val nFFT: Int = windowLength
+
   val dataPrototype = FixedPoint(dataWidth.W, dataBP.BP)
 
   val wellnessGenParams1 = new wellnessGenParams[FixedPoint] {
@@ -468,18 +481,54 @@ object FixedPointWellnessGenParams {
 
   // Instantiate arr to hold param datapaths
   val datapathsArr: ArrayBuffer[Seq[(String, Any)]] = ArrayBuffer()
+
+  // this is my preliminary attempt to generalize the identification of bandpower indices
+  // looks cool :)
+  val feature_list = utilities.readCSV("scripts/generated_files/feature_list.csv").flatten
+
+  var bandpower1Index = Seq(0, 0)
+  var bandpower2Index = Seq(0, 0)
+  val band_list = Seq("delta", "theta", "alpha", "beta", "gamma")
+
+  for (i <- feature_list.indices) {
+    for (j <- band_list.indices) {
+      if (feature_list(i) == band_list(j)) {
+        if (i == 0) {
+          bandpower1Index = utilities.readCSV(f"scripts/generated_files/${band_list(j)}%s_index.csv").flatMap(_.map(_.toInt))
+        } else {
+          bandpower2Index = utilities.readCSV(f"scripts/generated_files/${band_list(j)}%s_index.csv").flatMap(_.map(_.toInt))
+        }
+      }
+    }
+  }
+
+  // TODO: CODES SECTION RELEVANT TO USER
+//  val filterTapsA: Seq[Double] = Seq(1.0, 2.0, 3.0, 4.0, 5.0, 0.0)
+  val filterTapsA: Seq[Double] = utilities.readCSV("scripts/generated_files/filter_taps.csv").flatMap(_.map(_.toDouble))
   // Bandpower 1
-  datapathsArr += makeBandpower(0, 0, 2)
+  datapathsArr += makeBandpower(0, "FIR", filterTapsA, filterTapsA, bandpower1Index(0), bandpower1Index(1))
   // Bandpower 2
-  datapathsArr += makeBandpower(0, 0, 2)
+  datapathsArr += makeBandpower(0, "FIR", filterTapsA, filterTapsA, bandpower2Index(0), bandpower2Index(1))
   // Line Length 1
-  val ll1FilterTapsA: Seq[Double] = Seq(1.0, 2.0, 3.0, 4.0, 5.0, 0.0)
-  datapathsArr += makeLineLength(0, 2, "FIR", ll1FilterTapsA, ll1FilterTapsA)
+  datapathsArr += makeLineLength(0, windowLength, "FIR", filterTapsA, filterTapsA)
+
   // Rename to pass to tester
   // TODO: Change after more channels are added
   val datapathParamsArr = datapathsArr
 
-  def makeBandpower(channel: Int, idxLowBin: Int, idxUpBin: Int): Seq[(String, Any)] = {
+  def makeBandpower(channel: Int, filterType: String, filterTapsA: Seq[Double], filterTapsB: Seq[Double], idxLowBin: Int, idxUpBin: Int): Seq[(String, Any)] = {
+    val filterParams =
+      if (filterType == "FIR")
+        new FIRFilterParams[FixedPoint] {
+          val protoData = dataPrototype
+          val taps = filterTapsA.map(ConvertableTo[FixedPoint].fromDouble(_))
+        }
+      else if (filterType == "IIR")
+        new IIRFilterParams[FixedPoint] {
+          val protoData = dataPrototype
+          val consts_A = filterTapsA.map(ConvertableTo[FixedPoint].fromDouble(_))
+          val consts_B = filterTapsB.map(ConvertableTo[FixedPoint].fromDouble(_))
+        }
     val fftBufferParams = new FFTBufferParams[FixedPoint] {
       val protoData = dataPrototype
       val lanes = nFFT
@@ -500,7 +549,7 @@ object FixedPointWellnessGenParams {
       val genOut = dataPrototype
     }
 
-    val bandpowerDatapath: Seq[(String, Any)] = Seq(("FFTBuffer", fftBufferParams), ("FFT", fftConfig), ("Bandpower", bandpowerParams))
+    val bandpowerDatapath: Seq[(String, Any)] = Seq((filterType, filterParams), ("FFTBuffer", fftBufferParams), ("FFT", fftConfig), ("Bandpower", bandpowerParams))
     bandpowerDatapath
   }
 
@@ -529,7 +578,7 @@ object FixedPointWellnessGenParams {
       val taps = bufferSeq.map(ConvertableTo[FixedPoint].fromDouble(_))
     }
 
-    val lineLengthDatapath: Seq[(String, Any)] = Seq((filterType, filterParams), ("LineLength", lineLengthParams), ("Buffer", bufferParams))
+    val lineLengthDatapath: Seq[(String, Any)] = Seq((filterType, filterParams), ("LineLength", lineLengthParams), ("Buffer", bufferParams), ("Buffer", bufferParams))
     lineLengthDatapath
   }
 
@@ -538,16 +587,16 @@ object FixedPointWellnessGenParams {
   // *********************************************
   val pcaParams = new PCAParams[FixedPoint] {
     val protoData = dataPrototype
-    val nDimensions = 3 // input dimension, minimum 1
-    val nFeatures = 2   // output dimension to SVM, minimum 1
+    val nDimensions = dimensions // input dimension, minimum 1
+    val nFeatures = features   // output dimension to SVM, minimum 1
   }
 
   val svmParams = new SVMParams[FixedPoint] {
     val protoData = dataPrototype
-    val nSupports = 2
+    val nSupports = supports
     val nFeatures = pcaParams.nFeatures
-    val nClasses = 2
-    val nDegree = 1
+    val nClasses = classes
+    val nDegree = degree
     val kernelType = "poly"
     val classifierType = "ovo"
     val codeBook = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
