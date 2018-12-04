@@ -3,10 +3,10 @@
 [![Build Status](https://travis-ci.org/ucberkeley-ee290c/fa18-wellness-monitor.svg?branch=master)](https://travis-ci.org/ucberkeley-ee290c/fa18-wellness-monitor)
 
 ## Brief Course Description
-The Fall 2018 offering of EE290C, taught by Prof. Borivoje Nikolic, covers digital signal-processing algorithms, architectures and their rapid implementation in advanced technology nodes. The class uses Chisel as a hardware construction language to design a modular baseband/system and connect it to a RISC-V system-on-a-chip. For our final project, we chose to implement a wellness monitor as described below.
+The Fall 2018 offering of EE2 90C, taught by Prof. Borivoje Nikolic, covers digital signal-processing algorithms, architectures, and their rapid implementation in advanced technology nodes. The class uses Chisel as a hardware construction language to design a modular system and connect it to a RISC-V system-on-a-chip. For our final project, we chose to implement a wellness monitor as described below.
 
 ## Project Description
-The ExG generators describe a tool box of important digital blocks for any arbitrary wellness monitor. The goal of this project is to develop a flow such that any designer could describe a wellness monitor by high level features (e.g. arythmia detection, EEG alpha wave monitoring, siezure detection, etc.) and the generator would build and connect the neccessary filters, FFT blocks, feature extractors, and learning mechanisms required to achieve the high level specification.
+The ExG generators describe a tool box of important digital blocks for any arbitrary wellness monitor. The goal of this project is to develop a flow such that any designer could describe a wellness monitor by high level features (e.g. arythmia detection, EEG alpha wave monitoring, siezure detection, etc.), and the generator would build and connect the neccessary filters, FFT blocks, feature extractors, and learning mechanisms required to achieve the high level specification.
 
 An example datapath is shown below:
 ![blockDiagram](doc/images/exgBlockDiagram.png)
@@ -15,23 +15,27 @@ An example datapath is shown below:
 Adelson Chua, Justin Doong, Ryan Kaveh, Cem Yalcin, and Rachel Zoll
 
 ## Generators
-1) Filters: 
+1) Filters:
 [FIR](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/doc/firFilter.md), 
 [IIR](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/doc/iir.md)
 2) FFT:
 [FFT Buffer](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/doc/fftbuffer.md), [FFT](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/doc/fft.md)
-3) Feature Extractors: 
-[Bandpower](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/doc/bandpower.md),
+3) Feature Extractors:
 [Line Length](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/doc/linelength.md)
+[Bandpower](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/doc/bandpower.md),
 4) [PCA](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/doc/pca.md)
 5) [SVM](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/doc/svm.md)
 6) [Memory Buffer](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/doc)
+7) Wellness Monitor
 
 ## Tape-in 1
 For tape-in 1, generators and unit tests were written for FIR and IIR filters, FFT, bandpower, PCA and SVM. These blocks were individually tested and guaranteed working. For integration, because testing functionality would have been very difficult with some incomplete blocks, RocketChip integration was confirmed using just the FIR filter block.
 
 ## Tape-in 2
 Tape-in 2's primary goal was a more complete integration. Throughout the integration process, several supporting generators were written (Memory Buffer and FFT Buffer) that will connect to the input vectors and matrices for the PCA, SVM, and FFT blocks. Additional feature generators were also constructed (Line Length and a WIP Arythmia Detection). The original blocks were updated to support various new tests and functions (FIR, IIR, FFT, SVM). Finally, a top-level module was written that connects different blocks together for functionality verification. More detail regarding this is presented in the next section.
+
+## Tape-out
+For tape-out, the top-level wellness monitor generator was written.
 
 ## How To Set Up and Test The Current Generators
 Setting up the generators is straight forward because everything is self-contained. Simply clone the repo and explore the different generators in the [src](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/src/main/scala) folder. Refer to the doc directory [doc](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/doc) for documentation on each generator.
