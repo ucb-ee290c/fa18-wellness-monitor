@@ -14,12 +14,10 @@ import scala.util.Random
 class GoldenDoubleBandpower(nBins: Int, idxStartBin: Int, idxEndBin: Int, dataType: String) {
   def poke(input: Seq[Complex]): Double = {
     // Take mag squared of FFT output
-    println(input.toString) // TODO: Delete, just for debugging
     val p2 = input.map{ case x => x.abs * x.abs}
     // Except for DC and sampling freq, 2x for 2-sided to 1-sided
     val p1Scaled = p2.slice(1, nBins / 2).map(_ * 2)
     // Concatenate back in unscaled DC and sampling freq elems
-    println(p2.toString) // TODO: Delete, just for debugging
     val p1 = Seq(p2(0)) ++ p1Scaled ++ Seq(p2(nBins / 2))
     // Sum and divide by num of bins of interest squared
     val output = p1.slice(idxStartBin, idxEndBin).sum

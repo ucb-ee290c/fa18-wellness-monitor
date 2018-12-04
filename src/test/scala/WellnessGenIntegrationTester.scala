@@ -152,7 +152,6 @@ class wellnessGenTester[T <: chisel3.Data] (
         {
           generatedSinglePath   += (("FIR", new GoldenDoubleFIRFilter(singlePathParamsSeq(i)._2.asInstanceOf[firGenParamsTemplate].taps)))
           genSinglePathResults  += 0.toDouble
-          // TODO: How do we properly initialize these?
           genSingleFFTResults   += Seq.fill(64)(Complex(0.0, 0.0))
           genSingleBufResults   += Buffer.fill(64)(0.toDouble)
         }
@@ -169,13 +168,13 @@ class wellnessGenTester[T <: chisel3.Data] (
           generatedSinglePath   += (("FFTBuffer", new GoldenFFTBuffer(singlePathParamsSeq(i)._2.asInstanceOf[fftBufferGenParamsTemplate].lanes)))
           genSinglePathResults  += 0.toDouble
           genSingleFFTResults   += Seq.fill(64)(Complex(0.0, 0.0))
-          genSingleBufResults   += Buffer.fill(64)(0.toDouble)
+          genSingleBufResults   += Buffer.fill(singlePathParamsSeq(i)._2.asInstanceOf[fftBufferGenParamsTemplate].lanes)(0.toDouble)
         }
         case "FFT" =>
         {
           generatedSinglePath   += (("FFT", new GoldenDoubleFFT(singlePathParamsSeq(i)._2.asInstanceOf[fftConfigGenTemplate].nPts)))
           genSinglePathResults  += 0.toDouble
-          genSingleFFTResults   += Seq.fill(64)(Complex(0.0, 0.0))
+          genSingleFFTResults   += Seq.fill(singlePathParamsSeq(i)._2.asInstanceOf[fftConfigGenTemplate].nPts)(Complex(0.0, 0.0))
           genSingleBufResults   += Buffer.fill(64)(0.toDouble)
         }
         case "LineLength" =>
