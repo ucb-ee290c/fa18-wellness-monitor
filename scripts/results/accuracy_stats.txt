@@ -1,2 +1,2 @@
-Sensitivity: 0.937196
-Specificity: 0.885609
+Sensitivity: 0.937360
+Specificity: 1.000000
