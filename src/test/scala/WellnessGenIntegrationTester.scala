@@ -138,7 +138,7 @@ class wellnessGenTester[T <: chisel3.Data]
   // *********************************************
   for (k <- 0 until goldenDatapathParamsArr.length)
   {
-    val singlePathParamsSeq = datapathParamsArr(k)
+    val singlePathParamsSeq = goldenDatapathParamsArr(k)
     val generatedSinglePath: ArrayBuffer[(String,Object)] = ArrayBuffer()
     val genSinglePathResults: ArrayBuffer[Double] = ArrayBuffer()
     var genSingleFFTResults: ArrayBuffer[Seq[Complex]] = ArrayBuffer()
