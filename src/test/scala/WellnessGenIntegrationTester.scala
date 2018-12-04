@@ -1,5 +1,8 @@
 package wellness
 
+// *********************************************
+// Import packages
+// *********************************************
 import firFilter._
 import iirFilter._
 import fft._
@@ -43,8 +46,7 @@ in order to verify consistent operation, and checks both datapaths output and co
  */
 
 
-class wellnessGenTester[T <: chisel3.Data]
-  (
+class wellnessGenTester[T <: chisel3.Data] (
     c: wellnessGenModule[T],
     wellnessGenParams1: wellnessGenParams[T],
     datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
@@ -56,9 +58,7 @@ class wellnessGenTester[T <: chisel3.Data]
     testType: Int
   ) extends DspTester(c) {
 
-  val dataBP = 8
-
-  val newDatapathParamsArr: ArrayBuffer[Seq[(String, Object)]] = ArrayBuffer()
+  val dataBP = 8 // TODO: Get this from a param?
 
   val generatedDatapaths: ArrayBuffer[ArrayBuffer[(String,Object)]] = ArrayBuffer()
 
