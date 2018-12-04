@@ -1,11 +1,15 @@
 package wellness
 
+// *********************************************
+// Import packages
+// *********************************************
 import firFilter._
 import iirFilter._
 import fft._
 import features._
 import pca._
 import svm._
+
 import chisel3._
 import chisel3.core.FixedPoint
 import dsptools.numbers._
@@ -323,27 +327,91 @@ object FixedPointModelWellnessParams {
   }
 }
 
-/*
-*************************************************************
-* Generated params (for WellnessGen and its tester)
-*************************************************************
-*/
 
+// *********************************************
+// Param generation (for actual use/C tests
+// *********************************************
 object SIntWellnessGenParams {
-  val nPts = 4
+  val nFFT = 4
+
+  val dataPrototype = SInt(64.W)
 
   val wellnessGenParams1 = new wellnessGenParams[SInt] {
-    val dataType = SInt(64.W)
+    val dataType = dataPrototype
   }
 
+  // Instantiate arr to hold param datapaths
+  val datapathsArr: ArrayBuffer[Seq[(String, Any)]] = ArrayBuffer()
+  // Bandpower 1
+  datapathsArr += makeBandpower(0, 0, 2)
+  // Bandpower 2
+  datapathsArr += makeBandpower(0, 0, 2)
+  // Line Length 1
+  val ll1FilterTapsA: Seq[Double] = Seq(1.0, 2.0, 3.0, 4.0, 5.0, 0.0)
+  datapathsArr += makeLineLength(0, 2, "FIR", ll1FilterTapsA, ll1FilterTapsA)
+  // Rename to pass to tester
+  // TODO: Change after more channels are added
+  val datapathParamsArr = datapathsArr
+
+  def makeBandpower(channel: Int, idxLowBin: Int, idxUpBin: Int): Seq[(String, Any)] = {
+    val fftBufferParams = new FFTBufferParams[SInt] {
+      val protoData = dataPrototype
+      val lanes = nFFT
+    }
+    val fftConfig = FFTConfig(
+      genIn = DspComplex(dataPrototype, dataPrototype),
+      genOut = DspComplex(dataPrototype, dataPrototype),
+      n = nFFT,
+      lanes = nFFT,
+      pipelineDepth = 0,
+      quadrature = false,
+    )
+    val bandpowerParams = new BandpowerParams[SInt] {
+      val idxStartBin = idxLowBin
+      val idxEndBin = idxUpBin
+      val nBins = nFFT
+      val genIn = DspComplex(dataPrototype, dataPrototype)
+      val genOut = dataPrototype
+    }
+
+    val bandpowerDatapath: Seq[(String, Any)] = Seq(("FFTBuffer", fftBufferParams), ("FFT", fftConfig), ("Bandpower", bandpowerParams))
+    bandpowerDatapath
+  }
+
+  def makeLineLength(channel: Int, windowLength: Int, filterType: String, filterTapsA: Seq[Double], filterTapsB: Seq[Double]): Seq[(String, Any)] = {
+    val filterParams =
+      if (filterType == "FIR")
+        new FIRFilterParams[SInt] {
+          val protoData = dataPrototype
+          val taps = filterTapsA.map(ConvertableTo[SInt].fromDouble(_))
+        }
+      else if (filterType == "IIR")
+        new IIRFilterParams[SInt] {
+          val protoData = dataPrototype
+          val consts_A = filterTapsA.map(ConvertableTo[SInt].fromDouble(_))
+          val consts_B = filterTapsB.map(ConvertableTo[SInt].fromDouble(_))
+        }
+
+    val lineLengthParams = new lineLengthParams[SInt] {
+      val protoData = dataPrototype
+      val windowSize = windowLength
+    }
+
+    val lineLengthDatapath: Seq[(String, Any)] = Seq((filterType, filterParams), ("LineLength", lineLengthParams))
+    lineLengthDatapath
+  }
+
+  // *********************************************
+  // PCA, SVM, and Configuration Memory params
+  // *********************************************
   val pcaParams = new PCAParams[SInt] {
-    val protoData = SInt(32.W)
+    val protoData = dataPrototype
     val nDimensions = 3 // input dimension, minimum 1
     val nFeatures = 2 // output dimension to SVM, minimum 1
   }
 
   val svmParams = new SVMParams[SInt] {
-    val protoData = pcaParams.protoData.cloneType
+    val protoData = dataPrototype
     val nSupports = 2
     val nFeatures = pcaParams.nFeatures
     val nClasses = 2
@@ -372,8 +440,7 @@ object SIntWellnessGenParams {
         }
         else 1
     }
-
-    val protoData = pcaParams.protoData.cloneType
+    val protoData = dataPrototype
     val nDimensions: Int = pcaParams.nDimensions
     val nFeatures: Int = pcaParams.nFeatures
     val nSupports: Int = svmParams.nSupports
@@ -381,9 +448,8 @@ object SIntWellnessGenParams {
   }
 }
 
-
 object FixedPointWellnessGenParams {
-  val nFFT: Int = 4
+  val nFFT: Int = 8
 
   val dataWidth = 32
   val dataBP = 8
@@ -393,13 +459,18 @@ object FixedPointWellnessGenParams {
     val dataType = dataPrototype
   }
 
-  // Ch 0
-  val ch0DatapathsArr: ArrayBuffer[Seq[(String, Any)]] = ArrayBuffer()
-  ch0DatapathsArr += makeBandpower(0, 0, 2)
-  ch0DatapathsArr += makeBandpower(0, 0, 2)
-  val ch0LL1FilterTapsA: Seq[Double] = Seq(1.0, 2.0, 3.0, 4.0, 5.0, 0.0)
-  ch0DatapathsArr += makeLineLength(0, 2, "FIR", ch0LL1FilterTapsA, ch0LL1FilterTapsA)
-  val datapathParamsArr = ch0DatapathsArr
+  // Instantiate arr to hold param datapaths
+  val datapathsArr: ArrayBuffer[Seq[(String, Any)]] = ArrayBuffer()
+  // Bandpower 1
+  datapathsArr += makeBandpower(0, 0, 2)
+  // Bandpower 2
+  datapathsArr += makeBandpower(0, 0, 2)
+  // Line Length 1
+  val ll1FilterTapsA: Seq[Double] = Seq(1.0, 2.0, 3.0, 4.0, 5.0, 0.0)
+  datapathsArr += makeLineLength(0, 2, "FIR", ll1FilterTapsA, ll1FilterTapsA)
+  // Rename to pass to tester
+  // TODO: Change after more channels are added
+  val datapathParamsArr = datapathsArr
 
   def makeBandpower(channel: Int, idxLowBin: Int, idxUpBin: Int): Seq[(String, Any)] = {
     val fftBufferParams = new FFTBufferParams[FixedPoint] {
@@ -423,7 +494,6 @@ object FixedPointWellnessGenParams {
     }
 
     val bandpowerDatapath: Seq[(String, Any)] = Seq(("FFTBuffer", fftBufferParams), ("FFT", fftConfig), ("Bandpower", bandpowerParams))
-
     bandpowerDatapath
   }
 
@@ -450,7 +520,9 @@ object FixedPointWellnessGenParams {
     lineLengthDatapath
   }
 
-
+  // *********************************************
+  // PCA, SVM, and Configuration Memory params
+  // *********************************************
   val pcaParams = new PCAParams[FixedPoint] {
     val protoData = dataPrototype
     val nDimensions = 3 // input dimension, minimum 1
@@ -487,7 +559,7 @@ object FixedPointWellnessGenParams {
         }
         else 1
     }
-    val protoData = pcaParams.protoData.cloneType
+    val protoData = dataPrototype
     val nDimensions: Int = pcaParams.nDimensions
     val nFeatures: Int = pcaParams.nFeatures
     val nSupports: Int = svmParams.nSupports
