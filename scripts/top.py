@@ -70,11 +70,11 @@ penalty = 1
 dataset = 'actual'
 # actual dataset parameters, what pair in 151? how many channels?
 train_pair_num = [3]
-test_pair_num = [4]
+test_pair_num = [4,5,6]
 channel_num = [1]
 
 # handcrafted test set?
-cheat_test = 0
+cheat_test = 1
 # number of handcrafted test set
 n_handcraft = 50
 # number of support vectors to retain
