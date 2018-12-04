@@ -3,6 +3,8 @@ package wellness
 // *********************************************
 // Import packages
 // *********************************************
+import java.io.{File, FileWriter}
+
 import firFilter._
 import iirFilter._
 import fft._
@@ -10,18 +12,15 @@ import features._
 import pca._
 import svm._
 import memorybuffer._
-
 import chisel3._
 import chisel3.core.FixedPoint
 import chisel3.util.log2Ceil
 import dsptools.DspTester
 import dsptools.numbers._
-
 import freechips.rocketchip.config.Parameters
 
 import scala.collection.Seq
-import scala.collection.mutable.{Buffer, ArrayBuffer}
-
+import scala.collection.mutable.{ArrayBuffer, Buffer}
 import breeze.math.Complex
 
 /*
@@ -58,7 +57,8 @@ class wellnessGenTester[T <: chisel3.Data] (
     testType: Int
   ) extends DspTester(c) {
 
-  val dataBP = 8 // TODO: Get this from a param?
+  val dataWidth = utilities.readCSV("scripts/generated_files/datasize.csv").flatMap(_.map(_.toInt)).head
+  val dataBP = utilities.readCSV("scripts/generated_files/datasize.csv").flatMap(_.map(_.toInt)).last
 
   val generatedDatapaths: ArrayBuffer[ArrayBuffer[(String,Object)]] = ArrayBuffer()
 
@@ -88,6 +88,13 @@ class wellnessGenTester[T <: chisel3.Data] (
   var referenceSVMSupportVector = Seq(Seq(1.0, 2.0), Seq(3.0, 4.0))
   var referenceSVMAlphaVector = Seq(Seq(7.0, 3.0))
   var referenceSVMIntercept = Seq(4.0)
+
+  if (testType == 1) { // this is the file loading sequence for the configuration parameters
+    referencePCAVector = utilities.readCSV("scripts/generated_files/pca_vectors.csv").map(_.map(_.toDouble))
+    referenceSVMSupportVector = utilities.readCSV("scripts/generated_files/support_vectors.csv").map(_.map(_.toDouble))
+    referenceSVMAlphaVector = utilities.readCSV("scripts/generated_files/alpha_vectors.csv").map(_.map(_.toDouble))
+    referenceSVMIntercept = utilities.readCSV("scripts/generated_files/intercepts.csv").flatMap(_.map(_.toDouble))
+  }
 
   poke(c.io.inConf.bits.confInputMuxSel, 0)
 
@@ -222,14 +229,74 @@ class wellnessGenTester[T <: chisel3.Data] (
     referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
 
 
+  // *********************************************
+  // Loop over inputs
+  // *********************************************
+  var referenceInput = Seq(0.0)
+  if (testType == 1) { // load the input matrix
+    referenceInput = utilities.readCSV("scripts/generated_files/input.csv").flatMap(_.map(_.toDouble))
+  }
+
+  if (testType == 1) { // create the .h file to contain the reference arrays
+    val Seq(windowLength, features, dimensions, supports, classes, degree) =
+    /* This is the order of parameters, as written in the Python file, for reference
+    fe.window,                  # windowSize, lanes, nPts, nBins
+    pca.components_.shape[0],   # nFeatures
+    pca.components_.shape[1],   # nDimensions
+    supports.shape[0],          # nSupports
+    classes,                    # nClasses
+    degree                      # nDegree */
+      utilities.readCSV("scripts/generated_files/parameters.csv").flatMap(_.map(_.toInt))
+    val nFFT: Int = windowLength
+    val filterTapsA = utilities.readCSV("scripts/generated_files/filter_taps.csv").flatMap(_.map(_.toDouble))
+    val file = new FileWriter(new File("tests/arrays.h"))
+    // write out the preambles and define statements
+    file.write( "#ifndef __ARRAY_H__\n" +
+      "#define __ARRAY_H__\n\n" +
+      f"#define DIMENSIONS ${c.configurationMemoryParams.nDimensions}         // number of channels going into the PCA\n" +
+      f"#define FEATURES ${c.configurationMemoryParams.nFeatures}           // number of reduced dimensions going into the SVM\n" +
+      f"#define SUPPORTS ${c.configurationMemoryParams.nSupports}           // number of support vectors for SVM\n" +
+      f"#define CLASSIFIERS ${c.configurationMemoryParams.nClassifiers}        // number of classifiers created\n\n" +
+
+      f"#define NUMTAPS ${filterTapsA.length}         // number of filter taps, for output adjustment\n" +
+      f"#define WINDOW ${nFFT}         // number of lanes/bins/window, for output adjustment\n\n" +
+
+      f"#define DATA_WIDTH $dataWidth         // total bit size\n" +
+      f"#define DATA_BP $dataBP         // number of fractional components\n\n")
+
+    // write out all the configuration matrices to the file
+    file.write("static double pcaVector[FEATURES][DIMENSIONS] = ")
+    file.write(referencePCAVector.map(_.mkString("{", ", ", "}")).mkString("{", ", ", "};\n\n"))
+
+    file.write("static double SVMSupportVector[SUPPORTS][FEATURES] = ")
+    file.write(referenceSVMSupportVector.map(_.mkString("{", ", ", "}")).mkString("{", ", ", "};\n\n"))
+
+    file.write("static double SVMAlphaVector[CLASSIFIERS][SUPPORTS] = ")
+    file.write(referenceSVMAlphaVector.map(_.mkString("{", ", ", "}")).mkString("{", ", ", "};\n\n"))
+
+    file.write("static double SVMIntercept[CLASSIFIERS] = ")
+    file.write(referenceSVMIntercept.mkString("{", ", ", "};\n\n"))
+
+    file.write("static double in[] = ")
+    file.write(referenceInput.mkString("{", ", ", "};\n\n"))
+
+    file.close()
+  }
+
+  val outputContainer = ArrayBuffer[Array[Double]]() // this will hold the rawVotes from SVM for printout
   for (i <- 0 until 50)
   {
     var input = scala.util.Random.nextDouble * 4 - 2
-    if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
-      input = scala.util.Random.nextInt(16)
+    if (testType == 1) {
+      input = referenceInput(i)
     }
-    else if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
-      input = scala.util.Random.nextInt(32) - 16
+    else {
+      if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
+        input = scala.util.Random.nextInt(16)
+      }
+      else if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
+        input = scala.util.Random.nextInt(32) - 16
+      }
     }
 
     // poke SVM with PCA output
@@ -301,22 +368,33 @@ class wellnessGenTester[T <: chisel3.Data] (
     val check_j = generatedDoubleResults(check_i).length-1
 
     if (peek(c.io.out.valid) == true)
-      {
-        val tolerance = 0.1 // tolerate 10% error
-        for (i <- 0 until goldenModelParameters.goldenSVMParams.nClasses) {
-          if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.SInt" || c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
-            fixTolLSBs.withValue(204){
-              expect(c.io.rawVotes(i), svmResult(0)(i))
-            }
-          } else {
-            // Due to the series of multiply and accumulates, error actually blows up, let's be lenient
-            // +-16, 4 extra bits after the binary point
-            fixTolLSBs.withValue(log2Ceil((svmResult(0)(i).abs * tolerance).toInt + 1) + dataBP + 1) {
-              expect(c.io.rawVotes(i), svmResult(0)(i))
-            }
+    {
+      val tolerance = 0.1 // tolerate 10% error
+      for (i <- 0 until goldenModelParameters.goldenSVMParams.nClasses) {
+        if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.SInt" || c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
+          fixTolLSBs.withValue(204){
+            expect(c.io.rawVotes(i), svmResult(0)(i))
+          }
+        } else {
+          // Due to the series of multiply and accumulates, error actually blows up, let's be lenient
+          // +-16, 4 extra bits after the binary point
+          fixTolLSBs.withValue(log2Ceil((svmResult(0)(i).abs * tolerance).toInt + 1) + dataBP + 1) {
+            expect(c.io.rawVotes(i), svmResult(0)(i))
           }
         }
       }
+      outputContainer += svmResult(0).toArray // inside the valid checks, only the valid outputs are recorded
+    }
+  }
+
+  if (testType == 1) { // write out the expected rawVotes to the file
+    val file = new FileWriter("tests/arrays.h",true)
+    file.write("static double ex[][2] = ")
+    file.write(outputContainer.map(_.mkString("{", ", ", "}")).mkString("{", ", ", "};\n\n"))
+
+    file.write("#endif\n") // the end of the .h file
+
+    file.close()
   }
 }
 
@@ -379,7 +457,8 @@ object wellnessGenIntegrationTesterFP {
             configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
             goldenDatapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
             goldenModelParameters: wellnessGenIntegrationParameterBundle,
-            debug: Int): Boolean = {
+            debug: Int,
+            testType: Int): Boolean = {
     if (debug == 1) {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new wellnessGenModule(
         wellnessGenParams1,
@@ -395,7 +474,7 @@ object wellnessGenIntegrationTesterFP {
           configurationMemoryParams,
           goldenDatapathParamsArr,
           goldenModelParameters,
-          0)
+          testType)
       }
     } else {
       dsptools.Driver.execute(() => new wellnessGenModule(
@@ -413,7 +492,7 @@ object wellnessGenIntegrationTesterFP {
           configurationMemoryParams,
           goldenDatapathParamsArr,
           goldenModelParameters,
-          0)
+          testType)
       }
     }
   }

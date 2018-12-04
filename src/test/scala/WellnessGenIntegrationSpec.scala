@@ -3,6 +3,8 @@ package wellness
 // *********************************************
 // Import packages
 // *********************************************
+import java.io.{File, FileWriter}
+
 import firFilter._
 import iirFilter._
 import fft._
@@ -102,7 +104,7 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
   behavior of "WellnessGen"
 
   it should "Generate and test a Wellness Monitor (FixedPoint)" in {
-    val debug = 1
+    val debug = 0
 
     val nFFT: Int = 8
 
@@ -353,7 +355,303 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
       configurationMemoryParams,
       goldenDatapathParamsArr,
       goldenParams,
-      debug
+      debug,
+      0
+    ) should be (true)
+  }
+
+  it should "Generate and test a Wellness Monitor with Python model (FixedPoint)" in {
+    val debug = 1
+
+//    val nFFT: Int = 8
+
+    val dataWidth = 32
+    val dataBP = 8
+    val dataPrototype = FixedPoint(dataWidth.W, dataBP.BP)
+    // write out the dataWidth and dataBP to a file
+    // these values need to be consistent between WellnessIntegrationTester, Wellness, and the C code
+    val file = new FileWriter(new File("scripts/generated_files/datasize.csv"))
+    file.write(f"$dataWidth,$dataBP")
+    file.close()
+
+    val Seq(windowLength, features, dimensions, supports, classes, degree) =
+    /* This is the order of parameters, as written in the Python file, for reference
+    fe.window,                  # windowSize, lanes, nPts, nBins
+    pca.components_.shape[0],   # nFeatures
+    pca.components_.shape[1],   # nDimensions
+    supports.shape[0],          # nSupports
+    classes,                    # nClasses
+    degree                      # nDegree */
+      utilities.readCSV("scripts/generated_files/parameters.csv").flatMap(_.map(_.toInt))
+    val nFFT: Int = windowLength
+
+    val wellnessGenParams1 = new wellnessGenParams[FixedPoint] {
+      val dataType = dataPrototype
+    }
+
+    // Generate arr of params datapaths
+    val datapathsArr: ArrayBuffer[Seq[(String, Any)]] = ArrayBuffer()
+    val goldenDatapathsArr: ArrayBuffer[Seq[(String, Any)]] = ArrayBuffer()
+
+    // this is my preliminary attempt to generalize the identification of bandpower indices
+    // looks cool :)
+    val feature_list = utilities.readCSV("scripts/generated_files/feature_list.csv").flatten
+
+    var bandpower1Index = Seq(0, 0)
+    var bandpower2Index = Seq(0, 0)
+    val band_list = Seq("delta", "theta", "alpha", "beta", "gamma")
+
+    for (i <- feature_list.indices) {
+      for (j <- band_list.indices) {
+        if (feature_list(i) == band_list(j)) {
+          if (i == 0) {
+            bandpower1Index = utilities.readCSV(f"scripts/generated_files/${band_list(j)}%s_index.csv").flatMap(_.map(_.toInt))
+          } else {
+            bandpower2Index = utilities.readCSV(f"scripts/generated_files/${band_list(j)}%s_index.csv").flatMap(_.map(_.toInt))
+          }
+        }
+      }
+    }
+
+    // *********************************************
+    // Generate Chisel datapath from feature request
+    // *********************************************
+    def makeChiselBandpower(channel: Int, filterType: String, filterTapsA: Seq[Double], filterTapsB: Seq[Double], idxLowBin: Int, idxUpBin: Int): Seq[(String, Any)] = {
+      val filterParams =
+        if (filterType == "FIR")
+          new FIRFilterParams[FixedPoint] {
+            val protoData = dataPrototype
+            val taps = filterTapsA.map(ConvertableTo[FixedPoint].fromDouble(_))
+          }
+        else if (filterType == "IIR")
+          new IIRFilterParams[FixedPoint] {
+            val protoData = dataPrototype
+            val consts_A = filterTapsA.map(ConvertableTo[FixedPoint].fromDouble(_))
+            val consts_B = filterTapsB.map(ConvertableTo[FixedPoint].fromDouble(_))
+          }
+      val fftBufferParams = new FFTBufferParams[FixedPoint] {
+        val protoData = dataPrototype
+        val lanes = nFFT
+      }
+      val fftConfig = FFTConfig(
+        genIn = DspComplex(dataPrototype, dataPrototype),
+        genOut = DspComplex(dataPrototype, dataPrototype),
+        n = nFFT,
+        lanes = nFFT,
+        pipelineDepth = 0,
+        quadrature = false,
+      )
+      val bandpowerParams = new BandpowerParams[FixedPoint] {
+        val idxStartBin = idxLowBin
+        val idxEndBin = idxUpBin
+        val nBins = nFFT
+        val genIn = DspComplex(dataPrototype, dataPrototype)
+        val genOut = dataPrototype
+      }
+
+      val bandpowerDatapath: Seq[(String, Any)] = Seq((filterType, filterParams), ("FFTBuffer", fftBufferParams), ("FFT", fftConfig), ("Bandpower", bandpowerParams))
+      bandpowerDatapath
+    }
+
+    def makeChiselLineLength(channel: Int, windowLength: Int, filterType: String, filterTapsA: Seq[Double], filterTapsB: Seq[Double]): Seq[(String, Any)] = {
+      val filterParams =
+        if (filterType == "FIR")
+          new FIRFilterParams[FixedPoint] {
+            val protoData = dataPrototype
+            val taps = filterTapsA.map(ConvertableTo[FixedPoint].fromDouble(_))
+          }
+        else if (filterType == "IIR")
+          new IIRFilterParams[FixedPoint] {
+            val protoData = dataPrototype
+            val consts_A = filterTapsA.map(ConvertableTo[FixedPoint].fromDouble(_))
+            val consts_B = filterTapsB.map(ConvertableTo[FixedPoint].fromDouble(_))
+          }
+
+      val lineLengthParams = new lineLengthParams[FixedPoint] {
+        val protoData = dataPrototype
+        val windowSize = windowLength
+      }
+
+      val bufferParams = new ShiftRegParams[FixedPoint] {
+        val protoData = dataPrototype
+        val delay = 1
+      }
+
+      val lineLengthDatapath: Seq[(String, Any)] = Seq((filterType, filterParams), ("LineLength", lineLengthParams), ("Buffer", bufferParams), ("Buffer", bufferParams))
+      lineLengthDatapath
+    }
+
+    // *********************************************
+    // Generate golden datapath from feature request
+    // *********************************************
+    def makeGoldenBandpower(channel: Int, filterType: String, filterTapsA: Seq[Double], filterTapsB: Seq[Double], idxLowBin: Int, idxUpBin: Int): Seq[(String, Any)] = {
+      val filterParams =
+        if (filterType == "FIR")
+          new firGenParamsTemplate {
+            override val taps: Seq[Double] = filterTapsA
+          }
+        else if (filterType == "IIR")
+          new iirGenParamsTemplate {
+            override val tapsA: Seq[Double] = filterTapsA
+            override val tapsB: Seq[Double] = filterTapsB
+          }
+      val fftBufferParams = new fftBufferGenParamsTemplate {
+        override val lanes: Int = nFFT
+      }
+      val fftConfig = new fftConfigGenTemplate {
+        override val nPts: Int = nFFT
+      }
+      val bandpowerParams = new bandpowerParamsGenTemplate {
+        override val idxStartBin: Int = idxLowBin
+        override val idxEndBin: Int = idxUpBin
+        override val nBins: Int = nFFT
+      }
+
+      val bandpowerDatapath: Seq[(String, Any)] = Seq((filterType, filterParams), ("FFTBuffer", fftBufferParams), ("FFT", fftConfig), ("Bandpower", bandpowerParams))
+      bandpowerDatapath
+    }
+
+    def makeGoldenLineLength(channel: Int, windowLength: Int, filterType: String, filterTapsA: Seq[Double], filterTapsB: Seq[Double]): Seq[(String, Any)] = {
+      val filterParams =
+        if (filterType == "FIR")
+          new firGenParamsTemplate {
+            override val taps: Seq[Double] = filterTapsA
+          }
+        else if (filterType == "IIR")
+          new iirGenParamsTemplate {
+            override val tapsA: Seq[Double] = filterTapsA
+            override val tapsB: Seq[Double] = filterTapsB
+          }
+
+      val lineLengthParams = new lineLengthGenParamsTemplate {
+        override val windowSize: Int = windowLength
+      }
+
+      val lineLengthDatapath: Seq[(String, Any)] = Seq((filterType, filterParams), ("LineLength", lineLengthParams), ("Buffer", 1), ("Buffer", 1))
+      lineLengthDatapath
+    }
+
+    // TODO: CODE SECTION RELEVANT TO USER
+    // Bandpower 1
+//    val filterTapsA: Seq[Double] = Seq(1.0, 2.0, 3.0, 4.0, 5.0, 0.0)
+    // get the filter taps from the file, generated in Python
+    val filterTapsA = utilities.readCSV("scripts/generated_files/filter_taps.csv").flatMap(_.map(_.toDouble))
+    datapathsArr += makeChiselBandpower(0, "FIR", filterTapsA, filterTapsA, bandpower1Index(0), bandpower1Index(1))
+    goldenDatapathsArr += makeGoldenBandpower(0, "FIR", filterTapsA, filterTapsA, bandpower1Index(0), bandpower1Index(1))
+    // Bandpower 2
+    datapathsArr += makeChiselBandpower(0, "FIR", filterTapsA, filterTapsA, bandpower2Index(0), bandpower2Index(1))
+    goldenDatapathsArr += makeGoldenBandpower(0, "FIR", filterTapsA, filterTapsA, bandpower2Index(0), bandpower2Index(1))
+    // Line Length 1
+    datapathsArr += makeChiselLineLength(0, 2, "FIR", filterTapsA, filterTapsA)
+    goldenDatapathsArr += makeGoldenLineLength(0, 2, "FIR", filterTapsA, filterTapsA)
+
+    // Rename to pass to tester
+    // TODO: Change after more channels are added
+    val datapathParamsArr: ArrayBuffer[Seq[(String, Any)]] = datapathsArr
+    val goldenDatapathParamsArr: ArrayBuffer[Seq[(String, Any)]] = goldenDatapathsArr
+
+    // *********************************************
+    // Chisel PCA, SVM, and
+    // Configuration Memory params
+    // *********************************************
+    val pcaParams = new PCAParams[FixedPoint] {
+      val protoData = dataPrototype
+      val nDimensions = dimensions // input dimension, minimum 1
+      val nFeatures = features // output dimension to SVM, minimum 1
+    }
+
+    val svmParams = new SVMParams[FixedPoint] {
+      val protoData = dataPrototype
+      val nSupports = supports
+      val nFeatures = pcaParams.nFeatures
+      val nClasses = classes
+      val nDegree = degree
+      val kernelType = "poly"
+      val classifierType = "ovo"
+      val codeBook = Seq.fill(nClasses, nClasses * 2)((scala.util.Random.nextInt(2) * 2) - 1) // ignored for this test case
+    }
+
+    val configurationMemoryParams = new ConfigurationMemoryParams[FixedPoint] {
+      object computeNClassifiers {
+        def apply(params: SVMParams[FixedPoint] with Object {
+          val nClasses: Int
+          val codeBook: Seq[Seq[Int]]
+          val classifierType: String
+        }): Int =
+          if (params.classifierType == "ovr") {
+            if (params.nClasses == 2) params.nClasses - 1
+            else 1
+          }
+          else if (params.classifierType == "ovo") {
+            (params.nClasses * (params.nClasses - 1)) / 2
+          }
+          else if (params.classifierType == "ecoc") {
+            params.codeBook.head.length
+          }
+          else 1
+      }
+      val protoData = dataPrototype
+      val nDimensions: Int = pcaParams.nDimensions
+      val nFeatures: Int = pcaParams.nFeatures
+      val nSupports: Int = svmParams.nSupports
+      val nClassifiers: Int = computeNClassifiers(svmParams)
+    }
+
+    // *********************************************
+    // Golden PCA, SVM, and
+    // Configuration Memory params
+    // *********************************************
+    val goldenParams = new wellnessGenIntegrationParameterBundle {
+      override val goldenPCAParams: pcaParamsGenTemplate = new pcaParamsGenTemplate {
+        val nDimensions: Int = pcaParams.nDimensions
+        val nFeatures: Int = pcaParams.nFeatures
+      }
+      override val goldenSVMParams: svmParamsGenTemplate = new svmParamsGenTemplate {
+        val nSupports: Int = svmParams.nSupports
+        val nFeatures: Int = svmParams.nFeatures
+        val nClasses: Int = svmParams.nClasses
+        val nDegree: Int = svmParams.nDegree
+        val kernelType: String = svmParams.kernelType
+        val classifierType: String = svmParams.classifierType
+        val codeBook: Seq[Seq[Int]] = svmParams.codeBook
+      }
+      override val goldenConfigurationMemoryParams: configurationMemoryParamsGenTemplate = new configurationMemoryParamsGenTemplate {
+        object computeNClassifiers {
+          def apply(params: svmParamsGenTemplate with Object {
+            val nClasses: Int
+            val codeBook: Seq[Seq[Int]]
+            val classifierType: String
+          }): Int =
+            if (params.classifierType == "ovr") {
+              if (params.nClasses == 2) params.nClasses - 1
+              else 1
+            }
+            else if (params.classifierType == "ovo") {
+              (params.nClasses*(params.nClasses - 1))/2
+            }
+            else if (params.classifierType == "ecoc") {
+              params.codeBook.head.length
+            }
+            else 1
+        }
+        val nDimensions: Int = goldenPCAParams.nDimensions
+        val nFeatures: Int = goldenPCAParams.nFeatures
+        val nSupports: Int = goldenSVMParams.nSupports
+        val nClassifiers: Int = computeNClassifiers(goldenSVMParams)
+      }
+    }
+
+    // Call tester
+    wellnessGenIntegrationTesterFP(
+      wellnessGenParams1,
+      datapathParamsArr,
+      pcaParams,
+      svmParams,
+      configurationMemoryParams,
+      goldenDatapathParamsArr,
+      goldenParams,
+      debug,
+      1
     ) should be (true)
   }
 }
