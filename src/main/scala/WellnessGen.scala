@@ -643,10 +643,20 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
               genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.in.valid := genDatapath(j-1)._2.asInstanceOf[FFT[T]].io.out.valid
               genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.in.bits  := genDatapath(j-1)._2.asInstanceOf[FFT[T]].io.out.bits
               genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.in.sync  := false.B
-            case "Buffer" =>
-              genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.valid :=  genDatapath(j-1)._2.asInstanceOf[lineLength[T]].io.out.valid
-              genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.bits  :=  genDatapath(j-1)._2.asInstanceOf[lineLength[T]].io.out.bits
-              genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.sync  :=  false.B
+            case "Buffer" => {
+              genDatapath(j - 1)._1 match {
+                case "Buffer" => {
+                  genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.valid := genDatapath(j - 1)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.valid
+                  genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.bits := genDatapath(j - 1)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.bits
+                  genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.sync := false.B
+                }
+                case "LineLength" => {
+                  genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.valid := genDatapath(j - 1)._2.asInstanceOf[lineLength[T]].io.out.valid
+                  genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.bits := genDatapath(j - 1)._2.asInstanceOf[lineLength[T]].io.out.bits
+                  genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.sync := false.B
+                }
+              }
+            }
           }
         }
         // Connect output to last module
