@@ -41,8 +41,8 @@ class BandpowerSpec extends FlatSpec with Matchers {
   it should "calc average bandpower 2 in slice (FixedPoint)" in {
     val debug = 0
 
-    val dataWidth = 35
-    val dataBP = 19
+    val dataWidth = 32
+    val dataBP = 8
     val params = new BandpowerParams[FixedPoint] {
       val idxStartBin = 32
       val idxEndBin = 64
