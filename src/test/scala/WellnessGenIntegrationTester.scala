@@ -152,38 +152,39 @@ class wellnessGenTester[T <: chisel3.Data]
         {
           generatedSinglePath   += (("FIR", new GoldenDoubleFIRFilter(singlePathParamsSeq(i)._2.asInstanceOf[firGenParamsTemplate].taps)))
           genSinglePathResults  += 0.toDouble
-          genSingleFFTResults   += Seq.fill(2)(Complex(0.0, 0.0))
-          genSingleBufResults   += Buffer.fill(2)(0.toDouble)
+          // TODO: How do we properly initialize these?
+          genSingleFFTResults   += Seq.fill(64)(Complex(0.0, 0.0))
+          genSingleBufResults   += Buffer.fill(64)(0.toDouble)
         }
         case "IIR" =>
         {
           generatedSinglePath   += (("IIR", new GoldenIIRFilter(singlePathParamsSeq(i)._2.asInstanceOf[iirGenParamsTemplate].tapsA,
             singlePathParamsSeq(i)._2.asInstanceOf[iirGenParamsTemplate].tapsB)))
           genSinglePathResults  += 0.toDouble
-          genSingleFFTResults   += Seq.fill(2)(Complex(0.0, 0.0))
-          genSingleBufResults   += Buffer.fill(2)(0.toDouble)
+          genSingleFFTResults   += Seq.fill(64)(Complex(0.0, 0.0))
+          genSingleBufResults   += Buffer.fill(64)(0.toDouble)
         }
         case "FFTBuffer" =>
         {
           generatedSinglePath   += (("FFTBuffer", new GoldenFFTBuffer(singlePathParamsSeq(i)._2.asInstanceOf[fftBufferGenParamsTemplate].lanes)))
           genSinglePathResults  += 0.toDouble
-          genSingleFFTResults   += Seq.fill(2)(Complex(0.0, 0.0))
-          genSingleBufResults   += Buffer.fill(2)(0.toDouble)
+          genSingleFFTResults   += Seq.fill(64)(Complex(0.0, 0.0))
+          genSingleBufResults   += Buffer.fill(64)(0.toDouble)
         }
         case "FFT" =>
         {
           generatedSinglePath   += (("FFT", new GoldenDoubleFFT(singlePathParamsSeq(i)._2.asInstanceOf[fftConfigGenTemplate].nPts)))
           genSinglePathResults  += 0.toDouble
-          genSingleFFTResults   += Seq.fill(2)(Complex(0.0, 0.0))
-          genSingleBufResults   += Buffer.fill(2)(0.toDouble)
+          genSingleFFTResults   += Seq.fill(64)(Complex(0.0, 0.0))
+          genSingleBufResults   += Buffer.fill(64)(0.toDouble)
         }
         case "LineLength" =>
         {
           generatedSinglePath   += (("LineLength", new GoldenDoubleLineLength(singlePathParamsSeq(i)._2.asInstanceOf[lineLengthGenParamsTemplate].windowSize,
             wellnessGenParams1.dataType.getClass.getTypeName)))
           genSinglePathResults  += 0.toDouble
-          genSingleFFTResults   += Seq.fill(2)(Complex(0.0, 0.0))
-          genSingleBufResults   += Buffer.fill(2)(0.toDouble)
+          genSingleFFTResults   += Seq.fill(64)(Complex(0.0, 0.0))
+          genSingleBufResults   += Buffer.fill(64)(0.toDouble)
         }
         case "Bandpower" =>
         {
@@ -193,8 +194,8 @@ class wellnessGenTester[T <: chisel3.Data]
             singlePathParamsSeq(i)._2.asInstanceOf[bandpowerParamsGenTemplate].idxEndBin,
             wellnessGenParams1.dataType.getClass.getTypeName)))
           genSinglePathResults  += 0.toDouble
-          genSingleFFTResults   += Seq.fill(2)(Complex(0.0, 0.0))
-          genSingleBufResults   += Buffer.fill(2)(0.toDouble)
+          genSingleFFTResults   += Seq.fill(64)(Complex(0.0, 0.0))
+          genSingleBufResults   += Buffer.fill(64)(0.toDouble)
         }
       }
     }
