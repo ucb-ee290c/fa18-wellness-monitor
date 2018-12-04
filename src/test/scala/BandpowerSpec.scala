@@ -8,7 +8,7 @@ import org.scalatest.{FlatSpec, Matchers}
 class BandpowerSpec extends FlatSpec with Matchers {
   behavior of "Bandpower"
 
-  it should "sum squares of inputs (UInt)" in {
+  it should "calc average bandpower in slice (UInt)" in {
     val debug = 0
 
     val params = new BandpowerParams[UInt] {
@@ -22,7 +22,7 @@ class BandpowerSpec extends FlatSpec with Matchers {
     UIntBandpowerTester(params, debug) should be (true)
   }
 
-  it should "sum squares of inputs (FixedPoint)" in {
+  it should "calc average bandpower in slice (FixedPoint)" in {
     val debug = 0
 
     val dataWidth = 35
