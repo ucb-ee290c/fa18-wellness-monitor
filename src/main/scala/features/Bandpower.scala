@@ -6,8 +6,19 @@ import dsptools.numbers._
 import dspjunctions._
 import breeze.numerics.log2
 
-// Currently designed with a lane for each bin
-
+/**
+  * @tparam T
+  *
+  * idxStartBin   Index of lower freq bound of freq range of interest (inclusive)
+  * idxEndBin     Index of upper freq bound of freq range of interest (exclusive!)
+  * nBins         Length of incoming FFT signal
+  * genIn         Input data type (a DspComplex bundle of type T)
+  * genOut        Output data type
+  *
+  * Reqs:         End index must be > start index
+  *               Diff b/w end (exclusive) and start indices must be a power of 2
+  *               End index must be <= nBins/2
+  */
 trait BandpowerParams[T <: Data] {
   val idxStartBin: Int
   val idxEndBin: Int
@@ -16,6 +27,16 @@ trait BandpowerParams[T <: Data] {
   val genOut: T
 }
 
+/**
+  * @param params   See BandpowerParams above
+  * @tparam T
+  *
+  * in              bits: vector of length nBins and same type as genIn
+  *                   containing incoming FFT signal
+  *                 valid
+  *                 sync
+  * out             bits: same type as genOut containing scalar average bandpower output
+  */
 class BandpowerIO[T <: Data](params: BandpowerParams[T]) extends Bundle {
   val in = Flipped(ValidWithSync(Vec(params.nBins, params.genIn.cloneType)))
   val out = ValidWithSync(params.genOut.cloneType)
@@ -26,8 +47,20 @@ object BandpowerIO {
   def apply[T <: Data](params: BandpowerParams[T]): BandpowerIO[T] = new BandpowerIO(params)
 }
 
+/**
+  * Takes incoming FFT signal and output average power in frequency band of interest
+  *
+  * @param params                   See trait BandpowerParams above
+  *
+  * @param real$T
+  * @param binaryRepresentation$T
+  * @tparam T
+  *
+  * IO                              See class BandpowerIO above
+  */
 class Bandpower[T <: Data : Real : BinaryRepresentation](val params: BandpowerParams[T]) extends Module {
   require(params.idxEndBin > params.idxStartBin, f"End index ${params.idxEndBin} must be greater than start index ${params.idxStartBin}")
+  // TODO: Check this one
   require(((params.idxEndBin - params.idxStartBin) & (params.idxEndBin - params.idxStartBin - 1)) == 0,
     f"Difference between the two indices must be a power of 2, currently ${params.idxEndBin - params.idxStartBin}")
   require(params.nBins/2 >= params.idxEndBin,
@@ -44,6 +77,8 @@ class Bandpower[T <: Data : Real : BinaryRepresentation](val params: BandpowerPa
   // Sum and divide by num of bins of interest squared
   val outNext = p1.slice(params.idxStartBin, params.idxEndBin).reduce(_ + _) >> (2 * log2(params.idxEndBin - params.idxStartBin).toInt)
 
+  // Pipeline register at output
+  // (to prevent system critical path from exploding)
   val outReg = RegEnable(outNext, io.in.valid)
   val valReg = RegNext(io.in.valid)
   val syncReg = RegNext(io.in.sync)
