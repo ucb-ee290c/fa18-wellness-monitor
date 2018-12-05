@@ -10,7 +10,7 @@
 #define WINDOW 32         // number of lanes/bins/window, for output adjustment
 
 #define DATA_WIDTH 32         // total bit size
-#define DATA_BP 8         // number of fractional components
+#define DATA_BP 8          // number of fractional components
 
 static double pcaVector[FEATURES][DIMENSIONS] = {{0.5431032698, 0.5818986773, 0.6053369043}};
 
