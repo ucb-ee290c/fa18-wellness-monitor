@@ -161,11 +161,10 @@ abstract class ReadQueue
   }
 }
 
- */
 /**
-  * class TLWriteQueue:
+  * class TLReadQueue:
   *
-  * Defines the specific WriteQueue that will connect to Rocket's tile link interface.
+  * Defines the specific ReadQueue that will connect to Rocket's tile link interface.
   *
   * @parameters $depth                  Defines the depth of the queue
   *             $csrAddress             Defines the base address where the queue will live in Rocket's memory
