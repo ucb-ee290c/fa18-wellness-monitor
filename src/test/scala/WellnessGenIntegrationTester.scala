@@ -82,18 +82,21 @@ class wellnessGenTester[T <: chisel3.Data] (
     goldenModelParameters.goldenSVMParams.codeBook,
     flag = 0,
     c.svmParams.protoData.getClass.getTypeName)
+  val PCANormalizer = new GoldenIntPCANormalizer(goldenModelParameters.goldenPCAParams.nDimensions)
   val PCA = new GoldenIntPCA(goldenModelParameters.goldenPCAParams.nDimensions, goldenModelParameters.goldenPCAParams.nFeatures)
 
   var referencePCAVector = Seq(Seq(5.0, 0.0, -2.0), Seq(1.0, 2.0, 3.0))
   var referenceSVMSupportVector = Seq(Seq(1.0, 2.0), Seq(3.0, 4.0))
   var referenceSVMAlphaVector = Seq(Seq(7.0, 3.0))
   var referenceSVMIntercept = Seq(4.0)
+  var referencePCANormalizationData = Seq(Seq(10.0,2.0),Seq(3.0,5.0),Seq(1.0,1.0))
 
   if (testType == 1) { // this is the file loading sequence for the configuration parameters
     referencePCAVector = utilities.readCSV("scripts/generated_files/pca_vectors.csv").map(_.map(_.toDouble))
     referenceSVMSupportVector = utilities.readCSV("scripts/generated_files/support_vectors.csv").map(_.map(_.toDouble))
     referenceSVMAlphaVector = utilities.readCSV("scripts/generated_files/alpha_vectors.csv").map(_.map(_.toDouble))
     referenceSVMIntercept = utilities.readCSV("scripts/generated_files/intercepts.csv").flatMap(_.map(_.toDouble))
+    referencePCANormalizationData = utilities.readCSV("scripts/generated_files/normalization.csv").map(_.map(_.toDouble))
   }
 
   poke(c.io.inConf.bits.confInputMuxSel, 0)
@@ -102,6 +105,12 @@ class wellnessGenTester[T <: chisel3.Data] (
     val protoData: T = c.configurationMemoryParams.protoData.cloneType
     val nRows: Int = c.configurationMemoryParams.nDimensions
     val nColumns: Int = c.configurationMemoryParams.nFeatures
+  }
+
+  val pcaNormalizationMemoryParams = new MemoryBufferParams[T] {
+    val protoData: T = c.configurationMemoryParams.protoData.cloneType
+    val nRows: Int = 2
+    val nColumns: Int = c.configurationMemoryParams.nDimensions
   }
 
   val svmSupportVectorMemoryParams = new MemoryBufferParams[T] {
@@ -139,6 +148,11 @@ class wellnessGenTester[T <: chisel3.Data] (
   }
   for (y <- 0 until svmInterceptMemoryParams.nRows) {
     poke(c.io.inConf.bits.confSVMIntercept(y), referenceSVMIntercept(y))
+  }
+  for(x <- 0 until pcaNormalizationMemoryParams.nColumns) {
+    for (y <- 0 until pcaNormalizationMemoryParams.nRows) {
+      poke(c.io.inConf.bits.confPCANormalizationData(x)(y), referencePCANormalizationData(x)(y))
+    }
   }
 
   // *********************************************
@@ -224,6 +238,7 @@ class wellnessGenTester[T <: chisel3.Data] (
 
 
   var PCA_inputs = Seq.fill(generatedDatapaths.length)(0.toDouble)
+  var pcaNormalizerResult = PCANormalizer.poke(Seq(0,0,0),referencePCANormalizationData.map(_.map(_.toDouble)))
   var pcaResult = PCA.poke(PCA_inputs, referencePCAVector.map(_.map(_.toDouble)))
   var svmResult = SVM.poke(pcaResult.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),
     referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
@@ -284,7 +299,7 @@ class wellnessGenTester[T <: chisel3.Data] (
   }
 
   val outputContainer = ArrayBuffer[Array[Double]]() // this will hold the rawVotes from SVM for printout
-  for (i <- 0 until 50)
+  for (i <- 0 until 100)
   {
     var input = scala.util.Random.nextDouble * 4 - 2
     if (testType == 1) {
@@ -308,7 +323,8 @@ class wellnessGenTester[T <: chisel3.Data] (
     {
         PCA_inputs = PCA_inputs.updated(x,generatedDoubleResults(x)(generatedDoubleResults(x).length - 1))
     }
-    pcaResult = PCA.poke(PCA_inputs, referencePCAVector.map(_.map(_.toDouble)))
+    pcaResult = PCA.poke(pcaNormalizerResult, referencePCAVector.map(_.map(_.toDouble)))
+    pcaNormalizerResult = PCANormalizer.poke(PCA_inputs, referencePCANormalizationData.map(_.map(_.toDouble)))
 
     for (k <- 0 until generatedDatapaths.length)
       {

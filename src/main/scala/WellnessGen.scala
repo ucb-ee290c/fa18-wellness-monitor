@@ -214,6 +214,7 @@ class WellnessConfigurationBundle[T <: Data](params: ConfigurationMemoryParams[T
   val confSVMAlphaVector = Vec(params.nClassifiers,Vec(params.nSupports,params.protoData))
   val confSVMIntercept = Vec(params.nClassifiers,params.protoData)
   val confInputMuxSel = Bool()
+  val confPCANormalizationData = Vec(params.nDimensions,Vec(2,params.protoData))
 
   override def cloneType: this.type = WellnessConfigurationBundle(params).asInstanceOf[this.type]
 }
@@ -683,12 +684,19 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
       }
     }
 
+  // PCA normalizer
+  val pcaNorm = Module(new PCANormalizer(pcaParams))
+  pcaNorm.io.PCANormalizationData := io.inConf.bits.confPCANormalizationData
+  pcaNorm.io.in.valid := pcaInValVec.asUInt().andR()
+  pcaNorm.io.in.bits := pcaInVector
+  pcaNorm.io.in.sync := false.B
+
   // PCA (datapaths to PCA)
   // instantiate PCA module and connect it to appropriate inputs and outputs
   val pca = Module(new PCA(pcaParams))
   pca.io.PCAVector := io.inConf.bits.confPCAVector
-  pca.io.in.valid := pcaInValVec.asUInt().andR()
-  pca.io.in.bits := pcaInVector //here is the input vector we made earlier
+  pca.io.in.valid := pcaNorm.io.out.valid
+  pca.io.in.bits := pcaNorm.io.out.bits
   pca.io.in.sync := false.B
 
   // SVM (PCA to SVM)
