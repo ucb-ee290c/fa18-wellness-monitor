@@ -27,7 +27,7 @@ Adelson Chua, Justin Doong, Ryan Kaveh, Cem Yalcin, and Rachel Zoll
 4) [PCA](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/doc/pca.md)
 5) [SVM](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/doc/svm.md)
 6) [Memory Buffer](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/doc)
-7) Wellness Monitor
+7) [Wellness Monitor](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/doc/wellness-monitor.md)
 
 ## Tape-in 1
 For tape-in 1, generators and unit tests were written for FIR and IIR filters, FFT, bandpower, PCA and SVM. These blocks were individually tested and guaranteed working. For integration, because testing functionality would have been very difficult with some incomplete blocks, RocketChip integration was confirmed using just the FIR filter block.
@@ -57,20 +57,16 @@ testOnly firFilter.FIRFilterSpec
 ```
 
 ### Wellness Integration Tests
-In order to test the entire flow, each block has been connected in an WIP [tester](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/src/test/scala/WellnessIntegrationTester.scala). The current test datapath involves a realistic assortment of different blocks for simple siezure detection. All data is pre-filtered and then split to separate frequency domain and time domain branches. The time domain branch consists of a single line length block (for now) while the frequency domain path involves a serial-to-parallel buffer, FFT and different bandpower blocks. The outputs of the line length and bandpower blocks are fed into a PCA and lastly an SVM. A block diagram for this tester is shown below.
+In order to test the entire flow, each block has been connected in a [tester](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/src/test/scala/WellnessGenIntegrationSpec.scala) that generates an example system. The current test datapath involves a realistic assortment of different blocks for simple siezure detection. All data is pre-filtered and then split to separate frequency domain and time domain branches. The time domain branch consists of a single line length block (for now) while the frequency domain path involves a serial-to-parallel buffer, FFT, and different bandpower blocks. The outputs of the line length and bandpower blocks are fed into a PCA and lastly an SVM. A block diagram for this tester is shown below.
 
 ![blockDiagram](doc/images/testBlockDiagram.png)
 
-In parallel to the simulated hardware, the integration test also calculates an expected output using a Scala golden model of the entire datapath. The golden model uses all of the smaller unit golden models strung together to build a Scala version of the wellness datapath. 
+In parallel to the simulated hardware, the integration test also calculates an expected output using a Scala golden model of the entire system. The golden model uses all of the smaller unit golden models strung together to build a Scala version of the wellness datapath. Like the actual Chisel hardware, the golden model is also [generated](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/src/test/scala/WellnessGenIntegrationTester.scala).
 
 You can run it as part of the all encompassing SBT 'tests' or a similar testOnly as the unit tests:
 ```
-testOnly wellness.WellnessIntegrationSpec
+testOnly wellness.wellnessGenIntegrationSpec
 ```
-
-### Rocket Core Integration Tests
-Currently there are two C code tests in the [tests](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/tests) directory that both integrate FIR filters with rocket core. [Wellness_TLtest.c](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/tests/wellness_TLtest.c) tests a single writer and reader to/from the 'wellness' block (which is assumed to be a constant coefficient FIR filter. [wellness_IntegrationTest.c](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/tests/wellness_IntegrationTest.c) tests a more substantial version of the 'wellness' block. The C code writes to two queues (that are asynchronous in respect to eachother). One queue feeds into multiple FIR filters while the other feeds into a configuration memory that sets parameters and reference vectors for the PCA and SVM blocks. As data is pushed into the filters, it propogates through to the PCA and then the SVM. Results are read from a read queue and then the C-code will print out the read values and expected values (that are generated using golden C models).
-
 ---
 
 ### Application-specific and Comprehensive Test Setup
@@ -86,31 +82,23 @@ A [Python script](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tre
 * Run the ``top.py``, all configuration files will be saved as CSV in ``fa18-wellness-monitor/scripts/generated_files/``
 
 #### Scala-based testing
-The CSV files will then be read by the [top-level tester](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/src/test/scala/WellnessIntegrationTester.scala). The tester sets all submodule generator parameters accordingly and passes an actual input from the test dataset through the datapath chain. Afterwards, the expected values from the SVM classifier and the configuration matrices are written to a [C header file](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/tests/arrays.h).
+The CSV files will then be read by the [top-level tester](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/src/test/scala/WellnessGenIntegrationTester.scala). The tester sets all submodule generator parameters accordingly and passes an actual input from the test dataset through the datapath chain. Afterwards, the expected values from the SVM classifier and the configuration matrices are written to a [C header file](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/tests/arrays.h).
 
 * Make sure that there are files in the ``fa18-wellness-monitor/scripts/generated_files/`` directory. Else, you would need to run the Python script from the previous section.
 
-* Also make sure that the ``integrated`` flag has been set in the ``WellnessIntegrationSpec.scala``
+* This test is the second test in `wellnessGenIntegrationSpec.scala`.
 
-```
-class WellnessIntegrationSpec extends FlatSpec with Matchers {
-  behavior of "Wellness"
-
-  // set this to 1 to use the generated files from the Python model
-  val integrated = 1
-```
-
-* Run the ``WellnessIntegrationSpec`` either as stand-alone or through ``sbt test``. It will generate a C header file named ``fa18-wellness-monitor/tests/array.h``
+* Run the ``wellnessGenIntegrationSpec`` either as stand-alone or through ``sbt test``. It will generate a C header file named ``fa18-wellness-monitor/tests/array.h``
 
 #### C-based integration test
 The C header file will be used in the C integration test where the wellness datapath is already integrated with a RISC-V core. This checks that the expected output from the Python model are consistent and are synthesizeable in hardware.
 
-* Make sure that the ``wellnessParams`` inside the ``fa18-wellness-monitor/src/test/scala/Wellness.scala`` is pointed to ``FixedPointModelWellnessParams``. This gets the parameters from the same files used in the Scala-based test.
+* Make sure that the ``wellnessParams`` inside the ``fa18-wellness-monitor/src/test/scala/WellnessGen.scala`` is pointed to ``FixedPointModelWellnessGenParams``. This gets the parameters from the same files used in the Scala-based test.
 
 ```
 trait HasPeripheryWellness extends BaseSubsystem {
 
-  val wellnessParams = FixedPointModelWellnessParams
+  val wellnessParams = FixedPointModelWellnessGenParams
 ```
 
 * Build the project by running ``make`` inside the ``fa18-wellness-monitor/verisim`` folder. It will take a while. 
