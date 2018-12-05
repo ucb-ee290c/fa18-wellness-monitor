@@ -86,6 +86,7 @@ class wellnessGenTester[T <: chisel3.Data] (
   var referenceSVMIntercept = Seq(4.0)
   var referencePCANormalizationData = Seq(Seq(10.0,2.0),Seq(3.0,5.0),Seq(1.0,1.0))
 
+  // If doing test with Python model
   if (testType == 1) { // this is the file loading sequence for the configuration parameters
     referencePCAVector = utilities.readCSV("scripts/generated_files/pca_vectors.csv").map(_.map(_.toDouble))
     referenceSVMSupportVector = utilities.readCSV("scripts/generated_files/support_vectors.csv").map(_.map(_.toDouble))
@@ -231,13 +232,14 @@ class wellnessGenTester[T <: chisel3.Data] (
     generatedFFTBufferResults  += genSingleBufResults
   }
 
-
+  // *********************************************
+  // Initialize results
+  // *********************************************
   var PCA_inputs = Seq.fill(generatedDatapaths.length)(0.toDouble)
   var pcaNormalizerResult = PCANormalizer.poke(Seq(0,0,0),referencePCANormalizationData.map(_.map(_.toDouble)))
   var pcaResult = PCA.poke(PCA_inputs, referencePCAVector.map(_.map(_.toDouble)))
   var svmResult = SVM.poke(pcaResult.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),
     referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
-
 
   // *********************************************
   // Loop over inputs
@@ -324,6 +326,7 @@ class wellnessGenTester[T <: chisel3.Data] (
     pcaResult = PCA.poke(pcaNormalizerResult, referencePCAVector.map(_.map(_.toDouble)))
     pcaNormalizerResult = PCANormalizer.poke(PCA_inputs, referencePCANormalizationData.map(_.map(_.toDouble)))
 
+    // Get golden model results
     for (k <- 0 until generatedDatapaths.length)
     {
       val generatedSinglePath      = generatedDatapaths(k)
