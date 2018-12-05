@@ -9,10 +9,8 @@ import fft._
 import features._
 import pca._
 import svm._
-import memorybuffer._
 
 import chisel3._
-import chisel3.core.FixedPoint
 import chisel3.util._
 
 import dspblocks._

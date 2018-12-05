@@ -292,6 +292,9 @@ class wellnessGenTester[T <: chisel3.Data] (
     file.write("static double SVMIntercept[CLASSIFIERS] = ")
     file.write(referenceSVMIntercept.mkString("{", ", ", "};\n\n"))
 
+    file.write("static double PCANormVector[DIMENSIONS][2] = ")
+    file.write(referencePCANormalizationData.map(_.mkString("{", ", ", "}")).mkString("{", ", ", "};\n\n"))
+
     file.write("static double in[] = ")
     file.write(referenceInput.mkString("{", ", ", "};\n\n"))
 
@@ -327,54 +330,54 @@ class wellnessGenTester[T <: chisel3.Data] (
     pcaNormalizerResult = PCANormalizer.poke(PCA_inputs, referencePCANormalizationData.map(_.map(_.toDouble)))
 
     for (k <- 0 until generatedDatapaths.length)
-      {
-        val generatedSinglePath      = generatedDatapaths(k)
-        val genSinglePathResult      = generatedDoubleResults(k)
-        val genSingleFFTPathResults  = generatedFFTResults(k)
-        val genSingleBufPathResults  = generatedFFTBufferResults(k)
+    {
+      val generatedSinglePath      = generatedDatapaths(k)
+      val genSinglePathResult      = generatedDoubleResults(k)
+      val genSingleFFTPathResults  = generatedFFTResults(k)
+      val genSingleBufPathResults  = generatedFFTBufferResults(k)
 
-        for (j <- (generatedSinglePath.length - 1) to 0 by -1)
+      for (j <- (generatedSinglePath.length - 1) to 0 by -1)
+      {
+        val name = generatedSinglePath(j)._1
+        if (j == 0)
         {
-          val name = generatedSinglePath(j)._1
-          if (j == 0)
+          name match
           {
-            name match
-            {
-              case "FIR" =>
-                genSinglePathResult(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenDoubleFIRFilter].poke(input)
-              case "LineLength" =>
-                genSinglePathResult(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenDoubleLineLength].poke(input)
-              case "FFTBuffer" =>
-                genSingleBufPathResults(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenFFTBuffer].poke(input).regs
-              case "Buffer" =>
-                genSinglePathResult(j) = input
-            }
+            case "FIR" =>
+              genSinglePathResult(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenDoubleFIRFilter].poke(input)
+            case "LineLength" =>
+              genSinglePathResult(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenDoubleLineLength].poke(input)
+            case "FFTBuffer" =>
+              genSingleBufPathResults(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenFFTBuffer].poke(input).regs
+            case "Buffer" =>
+              genSinglePathResult(j) = input
           }
-          else
+        }
+        else
+        {
+          name match
           {
-            name match
-            {
-              case "FIR" =>
-                genSinglePathResult(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenDoubleFIRFilter].
-                  poke(genSinglePathResult(j-1))
-              case "LineLength" =>
-                genSinglePathResult(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenDoubleLineLength].
-                  poke(genSinglePathResult(j-1))
-              case "FFTBuffer" =>
-                genSingleBufPathResults(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenFFTBuffer].
-                  poke(genSinglePathResult(j-1)).regs
-              case "FFT" =>
-                genSingleFFTPathResults(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenDoubleFFT].
-                  poke(genSingleBufPathResults(j-1).map(x => Complex(x.toDouble, 0.0)))
-              case "Bandpower" =>
-                genSinglePathResult(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenDoubleBandpower].
-                  poke(genSingleFFTPathResults(j-1))
-              case "Buffer" =>
-                genSinglePathResult(j) = genSinglePathResult(j-1)
-            }
+            case "FIR" =>
+              genSinglePathResult(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenDoubleFIRFilter].
+                poke(genSinglePathResult(j-1))
+            case "LineLength" =>
+              genSinglePathResult(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenDoubleLineLength].
+                poke(genSinglePathResult(j-1))
+            case "FFTBuffer" =>
+              genSingleBufPathResults(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenFFTBuffer].
+                poke(genSinglePathResult(j-1)).regs
+            case "FFT" =>
+              genSingleFFTPathResults(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenDoubleFFT].
+                poke(genSingleBufPathResults(j-1).map(x => Complex(x.toDouble, 0.0)))
+            case "Bandpower" =>
+              genSinglePathResult(j) = generatedSinglePath(j)._2.asInstanceOf[GoldenDoubleBandpower].
+                poke(genSingleFFTPathResults(j-1))
+            case "Buffer" =>
+              genSinglePathResult(j) = genSinglePathResult(j-1)
           }
         }
       }
+    }
 
     poke(c.io.in.bits, input)
     poke(c.io.in.valid, 1)

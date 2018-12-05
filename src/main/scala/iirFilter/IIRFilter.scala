@@ -1,8 +1,6 @@
 package iirFilter
 
 import chisel3._
-import chisel3.util.RegEnable
-import chisel3.experimental.FixedPoint
 import dspblocks.ShiftRegisterWithReset
 import dspjunctions.ValidWithSync
 import dsptools.numbers._

@@ -127,8 +127,18 @@ int main(void)
   while(reg_read64(WELLNESSCONF_WRITE_COUNT) > 0);
   printf("Passing data through C test instead of external input\n");
 
+  // PCANormVector
+  for(i=1;i<=DIMENSIONS;i++){
+    for(j=1;j<=2;j++){
+        write_data = pack_conf_data(5,PCANormVector[DIMENSIONS-i][2-j]);
+        reg_write64(WELLNESSCONF_WRITE, write_data);
+        while(reg_read64(WELLNESSCONF_WRITE_COUNT) > 0);
+    }
+  }
+  printf("Done configuring PCA Normalization Vector\n");
+
   // this is the main loop to feed the input vector one by one
-  for(i=0;i<97;i++) {
+  for(i=0;i<96;i++) {
     while(reg_read64(WELLNESS_READ_COUNT) == 0) {
         write_data = pack_data(in[i]);
         reg_write64(WELLNESS_WRITE, write_data);
@@ -140,7 +150,7 @@ int main(void)
     data_out_0double = (double) data_out_0 / pow(2,DATA_BP);
     data_out_1double = (double) data_out_1 / pow(2,DATA_BP);
 
-    if (i > WINDOW+NUMTAPS+1) { // This is the part where the output starts being correct
+    if (i > WINDOW+NUMTAPS+2) { // This is the part where the output starts being correct
         printf("Scores: ");
         printDouble(data_out_0double,4);
         printf(" ");

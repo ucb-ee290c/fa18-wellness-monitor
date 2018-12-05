@@ -11,12 +11,10 @@ import fft._
 import features._
 import pca._
 import svm._
-import memorybuffer._
 import chisel3._
 import chisel3.core.FixedPoint
 import dsptools.numbers._
 import org.scalatest.{FlatSpec, Matchers}
-import wellness.FixedPointWellnessGenParams.dataPrototype
 
 import scala.collection.Seq
 import scala.collection.mutable.ArrayBuffer
