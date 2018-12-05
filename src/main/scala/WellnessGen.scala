@@ -32,41 +32,37 @@ trait wellnessGenParams[T <: Data] {
   val dataType: T
 }
 
-/*
-General Description:
-
-WellnessGen.scala contains all the required class definitions to generate a wellness monitor and connect it to Rocket.
-
-@Classes  $WriteQueue
-          $ReadQueue
-          $TLWriteQueue
-          $TLReadQueue
-          $WellnessConfigurationBundle
-          $wellnessGenModuleIO
-          $wellnessGenModule
-          $wellnessGenDataPathBlock
-          $TLWellnessGenDataPathBlock
-          $wellnessGenThing
-
-@traits   $wellnessGenParams
-          $HasPeripheryWellness
-          $HasPeripheryWellnessImp
-
-@notes    - There are duplicate class and trait definitions inside Wellness.scala so all of Wellness.scala must removed
-          from the project directory or commented out
-          - specific class commentary is above the appropriate class definition
-          - all tester definitions are in the test/scala directory
-
- */
-
+/**
+  * General Description:
+  *
+  * WellnessGen.scala contains all the required class definitions to generate a wellness monitor and connect it to Rocket.
+  *
+  * @Classes $WriteQueue
+  *          $ReadQueue
+  *          $TLWriteQueue
+  *          $TLReadQueue
+  *          $WellnessConfigurationBundle
+  *          $wellnessGenModuleIO
+  *          $wellnessGenModule
+  *          $wellnessGenDataPathBlock
+  *          $TLWellnessGenDataPathBlock
+  *          $wellnessGenThing
+  * @traits $wellnessGenParams
+  *         $HasPeripheryWellness
+  *         $HasPeripheryWellnessImp
+  * @notes    - There are duplicate class and trait definitions inside Wellness.scala so all of Wellness.scala must removed
+  *           from the project directory or commented out
+  *           - specific class commentary is above the appropriate class definition
+  *           - all tester definitions are in the test/scala directory
+  */
 
 // For RocketChip integration
-/*
-abstract class WriteQueue:
-
-Generally defines a 'write' queue. Use this to connect your block to Rocket that one can send data from Rocket to your
-accelerator. Keep in mind that you define the the width of the queue and that in turn builds an internal, relatively
-addressed memory map. TLWriteQueue will extend WriteQueue to define the queue's base address in Rocket's memory
+/**
+  * abstract class WriteQueue:
+  *
+  * Generally defines a 'write' queue. Use this to connect your block to Rocket that one can send data from Rocket to your
+  * accelerator. Keep in mind that you define the the width of the queue and that in turn builds an internal, relatively
+  * addressed memory map. TLWriteQueue will extend WriteQueue to define the queue's base address in Rocket's memory
  */
 abstract class WriteQueue
 (
@@ -101,16 +97,15 @@ abstract class WriteQueue
   }
 }
 
-/*
-class TLWriteQueue:
-
-Defines the specific WriteQueue that will connect to Rocket's tile link interface.
-
-@parameters   $depth                  Defines the depth of the queue
-              $csrAddress             Defines the base address where the queue will live in Rocket's memory
-              $beatBytes
-
- */
+/**
+  * class TLWriteQueue:
+  *
+  * Defines the specific WriteQueue that will connect to Rocket's tile link interface.
+  *
+  * @parameters $depth                  Defines the depth of the queue
+  *             $csrAddress             Defines the base address where the queue will live in Rocket's memory
+  *             $beatBytes
+  */
 class TLWriteQueue
 (
   depth: Int = 8,
@@ -129,13 +124,13 @@ class TLWriteQueue
   override val mem = Some(TLRegisterNode(address = Seq(csrAddress), device = device, beatBytes = beatBytes))
 }
 
-/*
-abstract class ReadQueue:
-
-Generally defines a 'read' queue. Use this to connect your block to Rocket that one can read data from your accelerator.
-Keep in mind that you define the the width of the queue and that in turn builds an internal, relatively
-addressed memory map. TLReadQueue will extend ReadQueue to define the queue's base address in Rocket's memory
- */
+/**
+  * abstract class ReadQueue:
+  *
+  * Generally defines a 'read' queue. Use this to connect your block to Rocket that one can read data from your accelerator.
+  * Keep in mind that you define the the width of the queue and that in turn builds an internal, relatively
+  * addressed memory map. TLReadQueue will extend ReadQueue to define the queue's base address in Rocket's memory
+  */
 abstract class ReadQueue
 (
   val depth: Int = 8,
@@ -166,16 +161,16 @@ abstract class ReadQueue
   }
 }
 
-/*
-class TLWriteQueue:
-
-Defines the specific WriteQueue that will connect to Rocket's tile link interface.
-
-@parameters   $depth                  Defines the depth of the queue
-              $csrAddress             Defines the base address where the queue will live in Rocket's memory
-              $beatBytes
-
  */
+/**
+  * class TLWriteQueue:
+  *
+  * Defines the specific WriteQueue that will connect to Rocket's tile link interface.
+  *
+  * @parameters $depth                  Defines the depth of the queue
+  *             $csrAddress             Defines the base address where the queue will live in Rocket's memory
+  *             $beatBytes
+  */
 class TLReadQueue
 (
   depth: Int = 8,
@@ -195,17 +190,17 @@ class TLReadQueue
 
 }
 
-/*
-class WellnessConfigurationBundle:
-
-Defines the wire bundle that configures the PCA, SVM, and the input select bit that determines whether or not channel
-data will come from Rocket or an external input. This bundle connects the configuration memory to the appropriate ports
-inside wellnessGen (namely the PCA/SVM configuration inputs and the input mux)
-
-@parameter    $ConfigurationMemoryParams              describes the PCA & SVM configuration memory width and thus contains
-                                                      all the pertinent information for defining the wire widths that
-                                                      connect the configuration memory to the PCA and SVM
- */
+/**
+  * class WellnessConfigurationBundle:
+  *
+  * Defines the wire bundle that configures the PCA, SVM, and the input select bit that determines whether or not channel
+  * data will come from Rocket or an external input. This bundle connects the configuration memory to the appropriate ports
+  * inside wellnessGen (namely the PCA/SVM configuration inputs and the input mux)
+  *
+  * @parameter $ConfigurationMemoryParams              describes the PCA & SVM configuration memory width and thus contains
+  *            all the pertinent information for defining the wire widths that
+  *            connect the configuration memory to the PCA and SVM
+  */
 class WellnessConfigurationBundle[T <: Data](params: ConfigurationMemoryParams[T]) extends Bundle {
   val confPCAVector = Vec(params.nFeatures,Vec(params.nDimensions,params.protoData))
   val confSVMSupportVector = Vec(params.nSupports,Vec(params.nFeatures,params.protoData))
@@ -221,27 +216,23 @@ object WellnessConfigurationBundle {
     = new WellnessConfigurationBundle(params)
 }
 
-/*
-class wellnessGenModuleIO:
-
-Defines the IO characteristics for wellnessGen.
-
-@Parameters   $genParams                      Defines general wellnessGen I/O dataType
-              $svmParams                      Used to define the width of different output ports
-              $configurationMemoryParams      Used to define the inConf width
-
-
-@Inputs       $streamIn                       External input (e.g. an ADC output) that can drive the wellness monitor input
-              $in                             Wellness monitor memory mapped input that's ultimately driven by Rocket
-              $inConf                         Memory mapped input that drives the configuration memory decides and ultimately
-                                              sets the PCA and SVM configuration vectors and whether or not wellness
-                                              monitor gets data from 'streamIn' or 'in'
-
-@Outputs      $out                            bool output that can be used for status checks (currently is dummy)
-              $rawVotes                       rawVotes output from SVM
-              $classVotes                     classVotes output from SVM
-
-*/
+/**
+  * class wellnessGenModuleIO:
+  *
+  * Defines the IO characteristics for wellnessGen.
+  *
+  * @Parameters $genParams                      Defines general wellnessGen I/O dataType
+  *             $svmParams                      Used to define the width of different output ports
+  *             $configurationMemoryParams      Used to define the inConf width
+  * @Inputs $streamIn                       External input (e.g. an ADC output) that can drive the wellness monitor input
+  *         $in                             Wellness monitor memory mapped input that's ultimately driven by Rocket
+  *         $inConf                         Memory mapped input that drives the configuration memory decides and ultimately
+  *         sets the PCA and SVM configuration vectors and whether or not wellness
+  *         monitor gets data from 'streamIn' or 'in'
+  * @Outputs $out                            bool output that can be used for status checks (currently is dummy)
+  *          $rawVotes                       rawVotes output from SVM
+  *          $classVotes                     classVotes output from SVM
+  */
 class wellnessGenModuleIO[T <: Data : Real : Order : BinaryRepresentation]
 (genParams: wellnessGenParams[T],
  svmParams: SVMParams[T],
@@ -278,27 +269,25 @@ object wellnessGenModuleIO {
     configurationMemoryParams: ConfigurationMemoryParams[T])
 }
 
-/*
-class wellnessGenModule:
-
-wellness monitor generator that will take an arbitrary monitor description (sequences of params for the requested blocks),
-generate all the pertinent modules, and connect them to the inputs, outputs, and to eachother according to the requested
-datapath
-
-
-@Parameters   $genParams                      Defines general wellnessGen I/O dataType
-              $datapathParamsArr              Array of datapath params that describes the requested wellness monitor hardware
-              $pcaParams                      Defines the PCA parameters
-              $svmParams                      Defines the SVM parameters
-              $configurationMemoryParams      Defines configuration memory parameters
-
-
-@Notes        - Look at wellnessGenModuleIO for i/o description
-              - DatapathParamsArr and included block params are generated in WellnessParams.scala and passed to
-              wellnessGenModule at instantiation. Look to WellnessParams.scala for more information
-              - This class is designed to never be touched by users of wellness gen, if you want to add features/blocks
-              then you need to add appropriate module instantations and connections in the match-case statements
-*/
+/**
+  * class wellnessGenModule:
+  *
+  * wellness monitor generator that will take an arbitrary monitor description (sequences of params for the requested blocks),
+  * generate all the pertinent modules, and connect them to the inputs, outputs, and to eachother according to the requested
+  * datapath
+  *
+  * @Parameters $genParams                      Defines general wellnessGen I/O dataType
+  *             $datapathParamsArr              Array of datapath params that describes the requested wellness monitor hardware
+  *             $pcaParams                      Defines the PCA parameters
+  *             $svmParams                      Defines the SVM parameters
+  *             $configurationMemoryParams      Defines configuration memory parameters
+  * @Notes        - Look at wellnessGenModuleIO for i/o description
+  *               - DatapathParamsArr and included block params are generated in WellnessParams.scala and passed to
+  *               wellnessGenModule at instantiation. Look to WellnessParams.scala for more information
+  *               - This class is designed to never be touched by users of wellness gen, if you want to add features/blocks
+  *               then you need to add appropriate module instantations and connections in the match-case statements
+  *
+  */
 class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
 (val genParams: wellnessGenParams[T],
  val datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
@@ -309,156 +298,6 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
     genParams: wellnessGenParams[T],
     svmParams: SVMParams[T],
     configurationMemoryParams: ConfigurationMemoryParams[T]))
-
-  // SInt
-//  var windowLength = 4
-//
-//  var coefficients1 = Seq(2.0, 2.0)
-//
-//  val filter1Params = new FIRFilterParams[SInt] {
-//    val protoData = SInt(64.W)
-//    val taps = coefficients1.map(ConvertableTo[SInt].fromDouble(_))
-//  }
-//
-//  val fftBufferParams = new FFTBufferParams[SInt] {
-//    val protoData = SInt(64.W)
-//    val lanes = windowLength
-//  }
-//
-//  val fftConfig = FFTConfig(
-//    genIn = DspComplex(SInt(64.W), SInt(64.W)),
-//    genOut = DspComplex(SInt(64.W), SInt(64.W)),
-//    n = windowLength,
-//    lanes = windowLength,
-//    pipelineDepth = 0,
-//    quadrature = false,
-//  )
-//
-//  val lineLength1Params = new lineLengthParams[SInt] {
-//    val protoData = SInt(64.W)
-//    val windowSize = windowLength
-//  }
-//
-//  val bandpower1Params = new BandpowerParams[SInt] {
-//    val idxStartBin = 0
-//    val idxEndBin = 2
-//    val nBins = windowLength
-//    val genIn = DspComplex(SInt(64.W), SInt(64.W))
-//    val genOut = SInt(64.W)
-//  }
-//  val bandpower2Params = new BandpowerParams[SInt] {
-//    val idxStartBin = 0
-//    val idxEndBin = 2
-//    val nBins = windowLength
-//    val genIn = DspComplex(SInt(64.W), SInt(64.W))
-//    val genOut = SInt(64.W)
-//  }
-  // End SInt
-
-  // FixedPoint
-//  var windowLength = 32
-//
-//  var dataWidth = 32
-//  var dataBP = 8
-//
-//  var coefficients1 = Seq(3.0, 4.0, -5.0, 2.0, -1.0, -2.2, 3.3, -3.4)
-//
-//  val filter1Params = new FIRFilterParams[FixedPoint] {
-//    val protoData = FixedPoint(dataWidth.W, dataBP.BP)
-//    val taps = coefficients1.map(ConvertableTo[FixedPoint].fromDouble(_))
-//  }
-//
-//  val fftBufferParams = new FFTBufferParams[FixedPoint] {
-//    val protoData = FixedPoint(dataWidth.W, dataBP.BP)
-//    val lanes = windowLength
-//  }
-//
-//  val fftConfig = FFTConfig(
-//    genIn = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP)),
-//    genOut = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP)),
-//    n = windowLength,
-//    lanes = windowLength,
-//    pipelineDepth = 0,
-//    quadrature = false,
-//  )
-//
-//  val lineLength1Params = new lineLengthParams[FixedPoint] {
-//    val protoData = FixedPoint(dataWidth.W, dataBP.BP)
-//    val windowSize = windowLength
-//  }
-//
-//  val bandpower1Params = new BandpowerParams[FixedPoint] {
-//    val idxStartBin = 0
-//    val idxEndBin = 2
-//    val nBins = windowLength
-//    val genIn = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP))
-//    val genOut = FixedPoint(dataWidth.W, dataBP.BP)
-//  }
-//  val bandpower2Params = new BandpowerParams[FixedPoint] {
-//    val idxStartBin = 0
-//    val idxEndBin = 2
-//    val nBins = windowLength
-//    val genIn = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP))
-//    val genOut = FixedPoint(dataWidth.W, dataBP.BP)
-//  }
-  // End FixedPoint
-
-  // C test
-//  var windowLength = 4
-//
-//  var dataWidth = 32
-//  var dataBP = 8
-//
-//  var coefficients1 = Seq(1, 2, 3, 4, 5, 0).map(ConvertableTo[FixedPoint].fromDouble(_))
-//
-//  val filter1Params = new FIRFilterParams[FixedPoint] {
-//    val protoData = FixedPoint(dataWidth.W, dataBP.BP)
-//    val taps = coefficients1
-//  }
-//
-//  val fftBufferParams = new FFTBufferParams[FixedPoint] {
-//    val protoData = FixedPoint(dataWidth.W, dataBP.BP)
-//    val lanes = windowLength
-//  }
-//
-//  val fftConfig = FFTConfig(
-//    genIn = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP)),
-//    genOut = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP)),
-//    n = windowLength,
-//    lanes = windowLength,
-//    pipelineDepth = 0,
-//    quadrature = false,
-//  )
-//
-//  val lineLength1Params = new lineLengthParams[FixedPoint] {
-//    val protoData = FixedPoint(dataWidth.W, dataBP.BP)
-//    val windowSize = windowLength
-//  }
-//
-//  val bandpower1Params = new BandpowerParams[FixedPoint] {
-//    val idxStartBin = 0
-//    val idxEndBin = 2
-//    val nBins = windowLength
-//    val genIn = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP))
-//    val genOut = FixedPoint(dataWidth.W, dataBP.BP)
-//  }
-//  val bandpower2Params = new BandpowerParams[FixedPoint] {
-//    val idxStartBin = 0
-//    val idxEndBin = 2
-//    val nBins = windowLength
-//    val genIn = DspComplex(FixedPoint(dataWidth.W, dataBP.BP), FixedPoint(dataWidth.W, dataBP.BP))
-//    val genOut = FixedPoint(dataWidth.W, dataBP.BP)
-//  }
-  // End C test
-
-  // Ch x (params): seq of param datapaths
-  // Each param datapath: seq of (block type, block params)
-  // val datapathParamsSeqs = Seq(Seq(("FIR",filter1Params), ("lineLength",lineLength1Params)),
-  //   Seq(("FIR",filter1Params), ("lineLength",lineLength1Params)),
-  //   Seq(("FIR",filter1Params), ("lineLength",lineLength1Params)))
-  //  val datapathParamsSeqs = Seq(Seq(("FIR",filter1Params), ("lineLength",lineLength1Params)),
-  //    Seq(("FIR",filter1Params),("FFTBuffer",fftBufferParams), ("FFT",fftConfig),("bandpower",bandpower1Params)),
-  //    Seq(("FIR",filter1Params),("FFTBuffer",fftBufferParams), ("FFT",fftConfig),("bandpower",bandpower2Params)))
 
   // create mux between external input (streamIn) and Rocket's memory mapped input (in)
   // tie output of mux to inStream
@@ -555,7 +394,7 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
         }
 
         // Other than first module, connect module to previous module
-        // The nested match is neccessary because not only do we have to cast the current block (j) but we also have to
+        // The nested match is necessary because not only do we have to cast the current block (j) but we also have to
         // cast the previous block (j-1)
         else
         {
@@ -717,24 +556,22 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   io.in.ready := true.B
 }
 
-/*
-abstract class wellnessGenDataPathBlock:
-
-abstract class used to define wellnessGenModule, connect module to i/o on wellnessGenModule's side (Rocket side is
-connected in wellnessGenThing) and also define how it should be connected to Rocket. Takes in same params as
-wellnessGenModule in order to pass said parameters to the actual wellnessGenModule definition
-
-@Parameters   $genParams                      Defines general wellnessGen I/O dataType
-              $datapathParamsArr              Array of datapath params that describes the requested wellness monitor hardware
-              $pcaParams                      Defines the PCA parameters
-              $svmParams                      Defines the SVM parameters
-              $configurationMemoryParams      Defines configuration memory parameters
-
-
-@Notes        - wellnessGenDataPathBlock will also build streamNodes to actually connect wellnessModule to Rocket using
-                the read and write queues described earlier
-              - It's important to note that this only does half the work. We still need to connect Rocket to the queues
-*/
+/**
+  * abstract class wellnessGenDataPathBlock:
+  *
+  * abstract class used to define wellnessGenModule, connect module to i/o on wellnessGenModule's side (Rocket side is
+  * connected in wellnessGenThing) and also define how it should be connected to Rocket. Takes in same params as
+  * wellnessGenModule in order to pass said parameters to the actual wellnessGenModule definition
+  *
+  * @Parameters $genParams                      Defines general wellnessGen I/O dataType
+  *             $datapathParamsArr              Array of datapath params that describes the requested wellness monitor hardware
+  *             $pcaParams                      Defines the PCA parameters
+  *             $svmParams                      Defines the SVM parameters
+  *             $configurationMemoryParams      Defines configuration memory parameters
+  * @Notes        - wellnessGenDataPathBlock will also build streamNodes to actually connect wellnessModule to Rocket using
+  *               the read and write queues described earlier
+  *               - It's important to note that this only does half the work. We still need to connect Rocket to the queues
+  */
 abstract class wellnessGenDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real : Order : BinaryRepresentation]
 (
   val genParams: wellnessGenParams[T],
@@ -813,20 +650,18 @@ class TLWellnessGenDataPathBlock[T <: Data : Real : Order : BinaryRepresentation
     configurationMemoryParams)
   with TLDspBlock
 
-/*
-class wellnessGenThing:
-
-Class that actually connects wellness block to rocket (from rocket's end)
-
-@Parameters   $genParams                      Defines general wellnessGen I/O dataType
-              $datapathParamsArr              Array of datapath params that describes the requested wellness monitor hardware
-              $pcaParams                      Defines the PCA parameters
-              $svmParams                      Defines the SVM parameters
-              $configurationMemoryParams      Defines configuration memory parameters
-
-
-@Notes        - TLWellnessGenDataPathBlock connect streamNodes to Rocket
-*/
+/**
+  * class wellnessGenThing:
+  *
+  * Class that actually connects wellness block to rocket (from rocket's end)
+  *
+  * @Parameters $genParams                      Defines general wellnessGen I/O dataType
+  *             $datapathParamsArr              Array of datapath params that describes the requested wellness monitor hardware
+  *             $pcaParams                      Defines the PCA parameters
+  *             $svmParams                      Defines the SVM parameters
+  *             $configurationMemoryParams      Defines configuration memory parameters
+  * @Notes - TLWellnessGenDataPathBlock connect streamNodes to Rocket
+  */
 class wellnessGenThing[T <: Data : Real : Order : BinaryRepresentation]
 (
   val genParams: wellnessGenParams[T],

@@ -40,11 +40,6 @@ class GoldenDoubleBandpower(nBins: Int, idxStartBin: Int, idxEndBin: Int, dataTy
     // Sum and divide by num of bins of interest squared
     val output = p1.slice(idxStartBin, idxEndBin).sum
 
-    //println(output.toString)
-    //println((idxEndBin - idxStartBin).toString)
-    //println(band_normalize.toString)
-    //println((((idxEndBin - idxStartBin).toDouble * (idxEndBin - idxStartBin).toDouble)*band_normalize).toString)
-    //println((output/(((idxEndBin - idxStartBin) * (idxEndBin - idxStartBin))*band_normalize)).toString)
     if ((dataType == "chisel3.core.SInt") || (dataType == "chisel3.core.UInt")) {
       floor(output/(((idxEndBin - idxStartBin) * (idxEndBin - idxStartBin))*band_normalize))
     } else {

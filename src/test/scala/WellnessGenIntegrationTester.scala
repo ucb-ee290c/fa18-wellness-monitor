@@ -23,28 +23,23 @@ import scala.collection.Seq
 import scala.collection.mutable.{ArrayBuffer, Buffer}
 import breeze.math.Complex
 
-/*
-wellnessGenTester:
-
-Generates a scala version of the given wellness datapath, builds a wellnessGen object, feeds random inputs to both
-in order to verify consistent operation, and checks both datapaths output and compares them with a given tolerance
-
-@params $wellnessGenParams1
-        $pcaParams
-        $svmParams
-        $configurationMemoryParams
-        $goldenModelParamas
-
-@inputs $dataBP
-        $testType
-
-@output Will print whether or not the random tests have passed or failed. If they failed then it will print out which
-        tests have failed and the datapaths' outputs in those cases
-
-@throws
- */
-
-
+/**
+  * wellnessGenTester:
+  *
+  * Generates a scala version of the given wellness datapath, builds a wellnessGen object, feeds random inputs to both
+  * in order to verify consistent operation, and checks both datapaths output and compares them with a given tolerance
+  *
+  * @params $wellnessGenParams1
+  *         $pcaParams
+  *         $svmParams
+  *         $configurationMemoryParams
+  *         $goldenModelParamas
+  * @inputs $dataBP
+  *         $testType
+  * @output Will print whether or not the random tests have passed or failed. If they failed then it will print out which
+  *         tests have failed and the datapaths' outputs in those cases
+  * @throws
+  */
 class wellnessGenTester[T <: chisel3.Data] (
     c: wellnessGenModule[T],
     wellnessGenParams1: wellnessGenParams[T],
