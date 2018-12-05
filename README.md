@@ -21,7 +21,7 @@ Adelson Chua, Justin Doong, Ryan Kaveh, Cem Yalcin, and Rachel Zoll
 2) FFT:
 [FFT Buffer](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/doc/fftbuffer.md), [FFT](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/doc/fft.md)
 3) Feature Extractors:
-[Line Length](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/doc/linelength.md)
+[Line Length](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/doc/linelength.md),
 [Bandpower](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/doc/bandpower.md),
 [DWT](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/doc/dwt.md)
 4) [PCA](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/doc/pca.md)
@@ -44,7 +44,7 @@ Setting up the generators is straightforward because everything is self-containe
 There are multiple ways to test each block and whole designs: unit-tests, SBT-based integration tests, and C code tests that integrate the blocks with a RISC-V Rocket core. An application-based test setup was also developed which goes through SVM training in Python, integrated testing in Scala, and a C-based integration test on a simulated RISC-V environment.
 
 ### Unit Tests
-Each type-generic generator comes equipped with unit tests which feed random numbers (either integers or fixed points) to the generators and compare their outputs against golden Scala-based models (all of which are in the [test](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/src/test/scala) directory). 
+Each type-generic generator comes equipped with unit tests which feed random numbers (either integers or fixed points) to the generators and compares their outputs against golden Scala-based models (all of which are in the [test](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/src/test/scala) directory). 
 
 To run a specific unit test, open SBT and use the 'testOnly' function:
 
@@ -79,9 +79,9 @@ A test framework was developed to enable application-specific testing given some
 #### SVM training in Python
 A [Python script](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/scripts/top.py) performs SVM training from the raw data while also calculating the expected accuracies after the model has been created. This is based on the SVM modelling script discussed [here](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/doc/svm_tutorial.md). All parameters, configuration matrices, and input vectors are then written to different [CSV files](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/scripts/generated_files).
 
-* You would need to extract the [dataset](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/data.zip) to replicate this project. The data folder should be in the main tree ``fa18-wellness-monitor/data/``.
+* You will need to extract the [dataset](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/data.zip) to replicate this project. The data folder should be in the main tree ``fa18-wellness-monitor/data/``.
 
-* Setup the configuration parameters in the top level Python script ``top.py``. There are comments in the code which explains what each parameter refers to. You can leave it as is to replicate the results of this project.
+* Set up the configuration parameters in the top level Python script ``top.py``. There are comments in the code which explain what each parameter refers to. You can leave it 'as is' to replicate the results of this project.
 
 * Run the ``top.py``, all configuration files will be saved as CSV in ``fa18-wellness-monitor/scripts/generated_files/``
 
