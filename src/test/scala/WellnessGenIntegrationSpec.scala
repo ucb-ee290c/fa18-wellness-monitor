@@ -540,8 +540,8 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
     datapathsArr += makeChiselBandpower(0, "FIR", filterTapsA, filterTapsA, bandpower2Index(0), bandpower2Index(1))
     goldenDatapathsArr += makeGoldenBandpower(0, "FIR", filterTapsA, filterTapsA, bandpower2Index(0), bandpower2Index(1))
     // Line Length 1
-    datapathsArr += makeChiselLineLength(0, 2, "FIR", filterTapsA, filterTapsA)
-    goldenDatapathsArr += makeGoldenLineLength(0, 2, "FIR", filterTapsA, filterTapsA)
+    datapathsArr += makeChiselLineLength(0, windowLength, "FIR", filterTapsA, filterTapsA)
+    goldenDatapathsArr += makeGoldenLineLength(0, windowLength, "FIR", filterTapsA, filterTapsA)
 
     // Rename to pass to tester
     // TODO: Change after more channels are added
