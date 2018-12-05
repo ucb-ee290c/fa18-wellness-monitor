@@ -3,10 +3,10 @@
 [![Build Status](https://travis-ci.org/ucberkeley-ee290c/fa18-wellness-monitor.svg?branch=master)](https://travis-ci.org/ucberkeley-ee290c/fa18-wellness-monitor)
 
 ## Brief Course Description
-The Fall 2018 offering of EE2 90C, taught by Prof. Borivoje Nikolic, covers digital signal-processing algorithms, architectures, and their rapid implementation in advanced technology nodes. The class uses Chisel as a hardware construction language to design a modular system and connect it to a RISC-V system-on-a-chip. For our final project, we chose to implement a wellness monitor as described below.
+The Fall 2018 offering of EE290C, taught by Prof. Borivoje Nikolic, covers digital signal-processing algorithms, architectures, and their rapid implementation in advanced technology nodes. The class uses Chisel as a hardware construction language to design a modular system and connect it to a RISC-V system-on-a-chip. For our final project, we chose to implement a wellness monitor as described below.
 
 ## Project Description
-The ExG generators describe a tool box of important digital blocks for any arbitrary wellness monitor. The goal of this project is to develop a flow such that any designer could describe a wellness monitor by high level features (e.g. arythmia detection, EEG alpha wave monitoring, siezure detection, etc.), and the generator would build and connect the neccessary filters, FFT blocks, feature extractors, and learning mechanisms required to achieve the high level specification.
+The ExG generators describe a tool box of important digital blocks for any arbitrary wellness monitor. The goal of this project is to develop a flow such that any designer could describe a wellness monitor by high level features (e.g. arrhythmia detection, EEG alpha wave monitoring, seizure detection, etc.), and the generator would build and connect the neccessary filters, FFT blocks, feature extractors, and learning mechanisms required to achieve the high level specification.
 
 An example datapath is shown below:
 ![blockDiagram](doc/images/exgBlockDiagram.png)
@@ -23,6 +23,7 @@ Adelson Chua, Justin Doong, Ryan Kaveh, Cem Yalcin, and Rachel Zoll
 3) Feature Extractors:
 [Line Length](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/doc/linelength.md)
 [Bandpower](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/doc/bandpower.md),
+[DWT](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/doc/dwt.md)
 4) [PCA](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/doc/pca.md)
 5) [SVM](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/blob/master/doc/svm.md)
 6) [Memory Buffer](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/doc)
@@ -38,12 +39,12 @@ Tape-in 2's primary goal was a more complete integration. Throughout the integra
 For tape-out, the top-level wellness monitor generator was written.
 
 ## How To Set Up and Test The Current Generators
-Setting up the generators is straight forward because everything is self-contained. Simply clone the repo and explore the different generators in the [src](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/src/main/scala) folder. Refer to the doc directory [doc](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/doc) for documentation on each generator.
+Setting up the generators is straightforward because everything is self-contained. Simply clone the repo and explore the different generators in the [src](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/src/main/scala) folder. Refer to the doc directory [doc](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/doc) for documentation on each generator.
 
 There are multiple ways to test each block and whole designs: unit-tests, SBT-based integration tests, and C code tests that integrate the blocks with a RISC-V Rocket core. An application-based test setup was also developed which goes through SVM training in Python, integrated testing in Scala, and a C-based integration test on a simulated RISC-V environment.
 
 ### Unit Tests
-Each type-generic generator comes equipped with unit tests which feeds random numbers (either integers or fixed points) to the generators and compare their outputs against golden Scala-based models (all of which are in the [test](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/src/test/scala) directory). 
+Each type-generic generator comes equipped with unit tests which feed random numbers (either integers or fixed points) to the generators and compare their outputs against golden Scala-based models (all of which are in the [test](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/src/test/scala) directory). 
 
 To run a specific unit test, open SBT and use the 'testOnly' function:
 
