@@ -36,7 +36,7 @@ For tape-in 1, generators and unit tests were written for FIR and IIR filters, F
 Tape-in 2's primary goal was a more complete integration. Throughout the integration process, several supporting generators were written (Memory Buffer and FFT Buffer) that will connect to the input vectors and matrices for the PCA, SVM, and FFT blocks. Additional feature generators were also constructed (Line Length and a WIP Arythmia Detection). The original blocks were updated to support various new tests and functions (FIR, IIR, FFT, SVM). Finally, a top-level module was written that connects different blocks together for functionality verification. More detail regarding this is presented in the next section.
 
 ## Tape-out
-For tape-out, the top-level wellness monitor generator was written.
+For tape-out, the top-level wellness monitor generator was written. The discrete wavelet transform block (DWT) was also written, but not integrated into the rest of the wellness monitor framework. The other feature extractors (line length, bandpower) help with classification of seizure (EEG) datasets, whereas the DWT provides analysis of cardiac (ECG) datasets, which we have not yet tested with SVM.
 
 ## How To Set Up and Test The Current Generators
 Setting up the generators is straightforward because everything is self-contained. Simply clone the repo and explore the different generators in the [src](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/src/main/scala) folder. Refer to the doc directory [doc](https://github.com/ucberkeley-ee290c/fa18-wellness-monitor/tree/master/doc) for documentation on each generator.
