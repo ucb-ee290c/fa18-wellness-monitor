@@ -7,18 +7,10 @@ import firFilter._
 import dsptools.numbers._
 import dspjunctions.ValidWithSync
 
-trait DWTParams[T <: Data] {
-  val protoData: T
-  val taps_LPF: Seq[T]
-  val taps_HPF: Seq[T]
-  // val num_levels // TODO: implement FSM for variable number of levels
-}
-
 class DWTSubblockIO[T <: Data](params: DWTParams[T]) extends Bundle {
   val in = Flipped(ValidWithSync(params.protoData.cloneType))
   val detail_coeff_out = ValidWithSync(params.protoData.cloneType) // output of the HPF
   val approx_coeff_out = ValidWithSync(params.protoData.cloneType) // output of the LPF
-
 
   //val DWTVector = Input(Vec(params.nFeatures, Vec(params.nDimensions, params.protoData)))
 
