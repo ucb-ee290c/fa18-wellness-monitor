@@ -8,7 +8,8 @@ class LogisticSpec extends FlatSpec with Matchers {
   behavior of "Logistic"
 
   it should "work with random Ints" in {
-    val debug = 1
+    val debug = 0
+    val onlineIterations = 10
 
     for (i <- 0 until 15) {
       val params = new LogisticParams[SInt] {
@@ -25,12 +26,13 @@ class LogisticSpec extends FlatSpec with Matchers {
 
         val learningRate = 0.01
       }
-      IntLogisticTester(params, 0, debug) should be(true)
+      IntLogisticTester(params, 0, onlineIterations, debug) should be(true)
     }
   }
 
   it should "work with random Floats" in {
-    val debug = 1
+    val debug = 0
+    val onlineIterations = 10
 
     val dataWidth = 32
     val dataBP = 8
@@ -50,7 +52,7 @@ class LogisticSpec extends FlatSpec with Matchers {
 
         val learningRate = 0.01
       }
-      FixedPointLogisticTester(params, dataBP, 0, debug) should be(true)
+      FixedPointLogisticTester(params, dataBP, 0, onlineIterations, debug) should be(true)
     }
   }
 }

@@ -1,7 +1,7 @@
 package logistic
 
 import chisel3._
-import chisel3.util.RegEnable
+import chisel3.util.{RegEnable, log2Ceil}
 import dsptools.numbers._
 import dspjunctions.ValidWithSync
 import breeze.numerics.logit
@@ -42,6 +42,7 @@ class LogisticIO[T <: Data](params: LogisticParams[T]) extends Bundle {
   // these are some probe points, to ensure computational accuracy
   val rawVotes = Output(params.protoData)
   val dotProduct = Output(params.protoData)
+  val weightProbe = Output(Vec(params.nFeatures,params.protoData))
 
   override def cloneType: this.type = LogisticIO(params).asInstanceOf[this.type]
 }
@@ -62,9 +63,20 @@ class Logistic[T <: chisel3.Data : Real](val params: LogisticParams[T]) extends 
 
   val io = IO(new LogisticIO[T](params))
 
-  // compute for the dot product of weights and the feature values, plus the intercept
+
   // if we are doing online learning, the weights are being dynamically updated
-  val reduced = io.in.bits.zip(io.weights).map{ case (a,b) => a * b}.reduce(_ + _) + io.intercept
+  // this is the register container for the weights
+  val weightsOnline = RegInit(Vec(params.nFeatures, params.protoData),
+    VecInit(List.fill(params.nFeatures)(ConvertableTo[T].fromInt(0))))
+
+  val initState = RegInit(0.U) // initial state identifier, for the preload
+  initState := 1.U
+
+  // choose between the config memory data or the dynamic weight being updated by online learning
+  val weightsMux = Mux((initState == 1.U).asBool(),weightsOnline,io.weights)
+
+  // compute for the dot product of weights and the feature values, plus the intercept
+  val reduced = io.in.bits.zip(weightsMux).map { case (a, b) => a * b }.reduce(_ + _) + io.intercept
 
   // now we want to output probabilities if we can, we create a pseudo lookup table for this
   // this contains the cutoff points for rounding off the probabilities
@@ -88,6 +100,7 @@ class Logistic[T <: chisel3.Data : Real](val params: LogisticParams[T]) extends 
   // put for output probing and checking for computation accuracy, pipelined at the output
   val rawVotesReg = RegEnable(actualVotes, io.in.valid)
   val dotProductReg = RegEnable(reduced, io.in.valid)
+  val weightProbeReg = RegEnable(weightsMux, io.in.valid)
   val outReg = RegEnable(finalPredict, io.in.valid)
   val valReg = RegNext(io.in.valid)
   val syncReg = RegNext(io.in.sync)
@@ -95,20 +108,21 @@ class Logistic[T <: chisel3.Data : Real](val params: LogisticParams[T]) extends 
   // final output assignment
   io.rawVotes := rawVotesReg
   io.dotProduct := dotProductReg
+  io.weightProbe := weightProbeReg
   io.out.bits := outReg
   io.out.valid := valReg
   io.out.sync := syncReg
 
   // ###################################################################################################################
   // the following stuff is for the online learning support
-  /*
+
   val learningRate = ConvertableTo[T].fromDouble(params.learningRate)
   val ictalThreshold = ConvertableTo[T].fromDouble(Constants.logitTable(params.ictalIndex.toDouble,params.nThresholds))
   val interThreshold = ConvertableTo[T].fromDouble(Constants.logitTable(params.interIndex.toDouble,params.nThresholds))
 
   val ictalWindow = RegInit(Vec(params.nWindow, UInt(1.W)), VecInit(List.fill(params.nWindow)(0.U)))
   val interWindow = RegInit(Vec(params.nWindow, UInt(1.W)), VecInit(List.fill(params.nWindow)(0.U)))
-  val featureWindow = RegInit(Vec(params.nWindow, Vec(params.nFeatures, params.protoData)))
+  val featureWindow = Reg(Vec(params.nWindow, Vec(params.nFeatures, params.protoData)))
 
   for(i <- ictalWindow.indices) {
     when(io.in.valid === true.B) {
@@ -129,5 +143,34 @@ class Logistic[T <: chisel3.Data : Real](val params: LogisticParams[T]) extends 
     }
   }
   val interSum = interWindow.reduce(_ +& _)
-  */
+
+  for(i <- ictalWindow.indices) {
+    when(io.in.valid === true.B) {
+      if (i == 0) featureWindow(i) := io.in.bits
+      else featureWindow(i) := featureWindow(i - 1)
+    } .otherwise {
+      featureWindow(i) := featureWindow(i)
+    }
+  }
+  //val featureSum = featureWindow.reduce(_ + _).map( _ >> log2Ceil(params.nWindow))
+  //val featureSum = featureWindow.reduce(_.zip(_))
+
+  val predict = Mux(reduced >= 0, ConvertableTo[T].fromInt(1), ConvertableTo[T].fromInt(0))
+  val deltaWeights = io.in.bits.map(_ * learningRate * (predict - actualVotes))
+
+  val newWeights = Wire(Vec(params.nFeatures,params.protoData))
+
+  when (ictalSum === params.nWindow.asUInt()) {
+    newWeights := weightsOnline.zip(deltaWeights).map{ case (a, b) => a + b }
+  } .otherwise {
+    newWeights := weightsOnline
+  }
+
+
+  when (initState === 0.U) { // only for the initial state, get the weights
+    weightsOnline := io.weights
+  } .otherwise {
+    weightsOnline := newWeights
+  }
+
 }
