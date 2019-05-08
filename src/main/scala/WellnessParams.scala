@@ -491,7 +491,7 @@ object SIntWellnessGenParams {
               {
                 newDp = newDp :+ ("Null",0)
                 newCoordDp = newCoordDp :+ (-9,-9)
-                print("\n Found another duplicate - keep nulling/looking")
+                print("\n" + currentBlock._1 + "is duplicate at" + (i,j) + "- keep nulling/looking")
               }
               else
               {// blocks are unique, add actual block, take appropriate coordinate and pass off to finish state
@@ -823,7 +823,7 @@ object FixedPointWellnessGenParams {
               {
                 newDp = newDp :+ ("Null",0)
                 newCoordDp = newCoordDp :+ (-9,-9)
-                print("\n Found another duplicate - keep nulling/looking")
+                print("\n" + currentBlock._1 + "is duplicate at" + (i,j) + "- keep nulling/looking")
               }
               else
               {// blocks are unique, add actual block, take appropriate coordinate and pass off to finish state

@@ -26,7 +26,7 @@ import freechips.rocketchip.subsystem._
 
 import scala.collection._
 import scala.collection.mutable.ArrayBuffer
-
+import scala.util.control.Breaks._
 
 trait wellnessGenParams[T <: Data] {
   val dataType: T

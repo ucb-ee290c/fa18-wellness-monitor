@@ -44,6 +44,7 @@ class wellnessGenTester[T <: chisel3.Data] (
     c: wellnessGenModule[T],
     wellnessGenParams1: wellnessGenParams[T],
     datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
+    heritageArray: ArrayBuffer[Seq[(Int, Int)]],
     pcaParams: PCAParams[T],
     svmParams: SVMParams[T],
     configurationMemoryParams: ConfigurationMemoryParams[T],
@@ -420,6 +421,7 @@ object wellnessGenIntegrationTesterSInt {
   implicit val p: Parameters = null
   def apply(wellnessGenParams1: wellnessGenParams[SInt],
             datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
+            heritageArray: ArrayBuffer[Seq[(Int, Int)]],
             pcaParams: PCAParams[SInt],
             svmParams: SVMParams[SInt],
             configurationMemoryParams: ConfigurationMemoryParams[SInt],
@@ -430,12 +432,14 @@ object wellnessGenIntegrationTesterSInt {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new wellnessGenModule(
         wellnessGenParams1,
         datapathParamsArr,
+        heritageArray,
         pcaParams,
         svmParams,
         configurationMemoryParams)) {
         c => new wellnessGenTester(c,
           wellnessGenParams1,
           datapathParamsArr,
+          heritageArray,
           pcaParams,
           svmParams,
           configurationMemoryParams,
@@ -447,6 +451,7 @@ object wellnessGenIntegrationTesterSInt {
       dsptools.Driver.execute(() => new wellnessGenModule(
         wellnessGenParams1,
         datapathParamsArr,
+        heritageArray,
         pcaParams,
         svmParams,
         configurationMemoryParams),
@@ -454,6 +459,7 @@ object wellnessGenIntegrationTesterSInt {
         c => new wellnessGenTester(c,
           wellnessGenParams1,
           datapathParamsArr,
+          heritageArray,
           pcaParams,
           svmParams,
           configurationMemoryParams,
@@ -469,6 +475,7 @@ object wellnessGenIntegrationTesterFP {
   implicit val p: Parameters = null
   def apply(wellnessGenParams1: wellnessGenParams[FixedPoint],
             datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
+            heritageArray: ArrayBuffer[Seq[(Int, Int)]],
             pcaParams: PCAParams[FixedPoint],
             svmParams: SVMParams[FixedPoint],
             configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
@@ -480,12 +487,14 @@ object wellnessGenIntegrationTesterFP {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new wellnessGenModule(
         wellnessGenParams1,
         datapathParamsArr,
+        heritageArray,
         pcaParams,
         svmParams,
         configurationMemoryParams)) {
         c => new wellnessGenTester(c,
           wellnessGenParams1,
           datapathParamsArr,
+          heritageArray,
           pcaParams,
           svmParams,
           configurationMemoryParams,
@@ -497,6 +506,7 @@ object wellnessGenIntegrationTesterFP {
       dsptools.Driver.execute(() => new wellnessGenModule(
         wellnessGenParams1,
         datapathParamsArr,
+        heritageArray,
         pcaParams,
         svmParams,
         configurationMemoryParams),
@@ -504,6 +514,7 @@ object wellnessGenIntegrationTesterFP {
         c => new wellnessGenTester(c,
           wellnessGenParams1,
           datapathParamsArr,
+          heritageArray,
           pcaParams,
           svmParams,
           configurationMemoryParams,
