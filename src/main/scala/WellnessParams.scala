@@ -12,7 +12,7 @@ import svm._
 import chisel3._
 import chisel3.core.FixedPoint
 import dsptools.numbers._
-import wellness.FixedPointWellnessGenParams.{datapathParamsArr, trimTree}
+import wellness.FixedPointWellnessGenParams.{datapathParamsArr, datapathsArr, trimTree}
 
 import scala.collection.Seq
 import scala.collection.mutable.ArrayBuffer
@@ -352,8 +352,9 @@ object SIntWellnessGenParams {
   datapathsArr += makeLineLength(0, 2, "FIR", ll1FilterTapsA, ll1FilterTapsA)
   // Rename to pass to tester
   // TODO: Change after more channels are added
-  val datapathParamsArr = datapathsArr
-  val (trimmedTree,heritageArr) = trimTree(datapathParamsArr)
+  // val datapathParamsArr = datapathsArr
+  val (trimmedTree,heritageArray) = trimTree(datapathsArr)
+  val datapathParamsArr = trimmedTree // ADDED
 
   // Ryan's addition
   def compareBlocks(block1: (String, Any), block2: (String, Any)): Int = {
@@ -651,7 +652,7 @@ object FixedPointWellnessGenParams {
 
   // Instantiate arr to hold param datapaths
   val datapathsArr: ArrayBuffer[Seq[(String, Any)]] = ArrayBuffer()
-
+  //val heritageArray: ArrayBuffer[Seq[(Int, Int)]] = ArrayBuffer()
   // this is my preliminary attempt to generalize the identification of bandpower indices
   // looks cool :)
   val feature_list = utilities.readCSV("scripts/generated_files/feature_list.csv").flatten
@@ -684,8 +685,9 @@ object FixedPointWellnessGenParams {
 
   // Rename to pass to tester
   // TODO: Change after more channels are added
-  val datapathParamsArr = datapathsArr
-  val (trimmedTree,heritageArr) = trimTree(datapathParamsArr)
+  // val datapathParamsArr = datapathsArr
+  val (trimmedTree,heritageArray) = trimTree(datapathsArr)
+  val datapathParamsArr = trimmedTree // ADDED
 
   // Ryan's addition
   def compareBlocks(block1: (String, Any), block2: (String, Any)): Int = {
@@ -694,46 +696,46 @@ object FixedPointWellnessGenParams {
       block1._1 match
       {
         case "Bandpower" =>
-          if ((block1._2.asInstanceOf[BandpowerParams[SInt]].idxStartBin == block2._2.asInstanceOf[BandpowerParams[SInt]].idxStartBin) &&
-            (block1._2.asInstanceOf[BandpowerParams[SInt]].idxEndBin == block2._2.asInstanceOf[BandpowerParams[SInt]].idxEndBin) &&
-            (block1._2.asInstanceOf[BandpowerParams[SInt]].nBins == block2._2.asInstanceOf[BandpowerParams[SInt]].nBins))
+          if ((block1._2.asInstanceOf[BandpowerParams[FixedPoint]].idxStartBin == block2._2.asInstanceOf[BandpowerParams[FixedPoint]].idxStartBin) &&
+            (block1._2.asInstanceOf[BandpowerParams[FixedPoint]].idxEndBin == block2._2.asInstanceOf[BandpowerParams[FixedPoint]].idxEndBin) &&
+            (block1._2.asInstanceOf[BandpowerParams[FixedPoint]].nBins == block2._2.asInstanceOf[BandpowerParams[FixedPoint]].nBins))
           {
             return 1
           }
         case "FFTBuffer" =>
-          if (block1._2.asInstanceOf[FFTBufferParams[SInt]].lanes == block2._2.asInstanceOf[FFTBufferParams[SInt]].lanes)
+          if (block1._2.asInstanceOf[FFTBufferParams[FixedPoint]].lanes == block2._2.asInstanceOf[FFTBufferParams[FixedPoint]].lanes)
           {
             return 1
           }
         case "FFT" =>
-          if ((block1._2.asInstanceOf[FFTConfig[SInt]].lanes == block2._2.asInstanceOf[FFTConfig[SInt]].lanes) &&
-            (block1._2.asInstanceOf[FFTConfig[SInt]].n == block2._2.asInstanceOf[FFTConfig[SInt]].n) &&
-            (block1._2.asInstanceOf[FFTConfig[SInt]].pipelineDepth == block2._2.asInstanceOf[FFTConfig[SInt]].pipelineDepth))
+          if ((block1._2.asInstanceOf[FFTConfig[FixedPoint]].lanes == block2._2.asInstanceOf[FFTConfig[FixedPoint]].lanes) &&
+            (block1._2.asInstanceOf[FFTConfig[FixedPoint]].n == block2._2.asInstanceOf[FFTConfig[FixedPoint]].n) &&
+            (block1._2.asInstanceOf[FFTConfig[FixedPoint]].pipelineDepth == block2._2.asInstanceOf[FFTConfig[FixedPoint]].pipelineDepth))
           {
             return 1
           }
         case "FIR" =>
-          if ((block1._2.asInstanceOf[FIRFilterParams[SInt]].protoData == block2._2.asInstanceOf[FIRFilterParams[SInt]].protoData) &&
-            (block1._2.asInstanceOf[FIRFilterParams[SInt]].taps == block2._2.asInstanceOf[FIRFilterParams[SInt]].taps))
+          if ((block1._2.asInstanceOf[FIRFilterParams[FixedPoint]].protoData == block2._2.asInstanceOf[FIRFilterParams[FixedPoint]].protoData) &&
+            (block1._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps == block2._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps))
           {
             return 1
           }
         case "IIR" =>
-          if ((block1._2.asInstanceOf[IIRFilterParams[SInt]].consts_A == block2._2.asInstanceOf[IIRFilterParams[SInt]].consts_A) &&
-            (block1._2.asInstanceOf[IIRFilterParams[SInt]].consts_B == block2._2.asInstanceOf[IIRFilterParams[SInt]].consts_B) &&
-            (block1._2.asInstanceOf[IIRFilterParams[SInt]].protoData == block2._2.asInstanceOf[IIRFilterParams[SInt]].protoData))
+          if ((block1._2.asInstanceOf[IIRFilterParams[FixedPoint]].consts_A == block2._2.asInstanceOf[IIRFilterParams[FixedPoint]].consts_A) &&
+            (block1._2.asInstanceOf[IIRFilterParams[FixedPoint]].consts_B == block2._2.asInstanceOf[IIRFilterParams[FixedPoint]].consts_B) &&
+            (block1._2.asInstanceOf[IIRFilterParams[FixedPoint]].protoData == block2._2.asInstanceOf[IIRFilterParams[FixedPoint]].protoData))
           {
             return 1
           }
         case "LineLength" =>
-          if ((block1._2.asInstanceOf[lineLengthParams[SInt]].protoData == block2._2.asInstanceOf[lineLengthParams[SInt]].protoData) &&
-            (block1._2.asInstanceOf[lineLengthParams[SInt]].windowSize == block2._2.asInstanceOf[lineLengthParams[SInt]].windowSize))
+          if ((block1._2.asInstanceOf[lineLengthParams[FixedPoint]].protoData == block2._2.asInstanceOf[lineLengthParams[FixedPoint]].protoData) &&
+            (block1._2.asInstanceOf[lineLengthParams[FixedPoint]].windowSize == block2._2.asInstanceOf[lineLengthParams[FixedPoint]].windowSize))
           {
             return 1
           }
         case "Buffer" =>
-          if ((block1._2.asInstanceOf[FIRFilterParams[SInt]].protoData == block2._2.asInstanceOf[FIRFilterParams[SInt]].protoData) &&
-            (block1._2.asInstanceOf[FIRFilterParams[SInt]].taps == block2._2.asInstanceOf[FIRFilterParams[SInt]].taps))
+          if ((block1._2.asInstanceOf[FIRFilterParams[FixedPoint]].protoData == block2._2.asInstanceOf[FIRFilterParams[FixedPoint]].protoData) &&
+            (block1._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps == block2._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps))
           {
             return 1
           }
@@ -965,6 +967,4 @@ object FixedPointWellnessGenParams {
     val nClassifiers: Int = computeNClassifiers(svmParams)
   }
 
-
-  // Addition of treeTrimmingFunction and compareBlocks function
 }
