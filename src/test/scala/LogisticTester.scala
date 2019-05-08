@@ -12,12 +12,13 @@ import breeze.numerics.sigmoid
 import chisel3.util.log2Ceil
 
 class GoldenLogistic(nFeatures: Int, nThresholds: Int, learningRate: Double, ictalIndex: Int, interIndex: Int,
-                     nWindow: Int, dataType: String) {
+                     nWindow: Int, nInterCount: Int, onlineLearn: Int, dataType: String) {
 
   var ictalWindow = List.fill(nWindow)(0.toDouble)
   var interWindow = List.fill(nWindow)(0.toDouble)
   var weightsOnline = List.fill(nFeatures)(0.toDouble)
   var initState = 0D
+  var interCount = 0D
 
   def poke(input: Seq[Double], weights: Seq[Double], intercept: Double): Seq[Seq[Double]] = {
 
@@ -39,26 +40,36 @@ class GoldenLogistic(nFeatures: Int, nThresholds: Int, learningRate: Double, ict
     val probability = round(sigmoid(reduced)*(nThresholds+1)).toDouble/(nThresholds+1) // epic approximation
     val prediction = if (reduced >= 0) 1D else 0D
 
-    var deltaWeights = List.fill(nFeatures)(0.toDouble)
-    if (ictalWindow.sum == nWindow) {
-      deltaWeights = input.map(_ * learningRate * (prediction - probability)).toList
+    val deltaWeights = input.map(_ * learningRate * (prediction - probability)).toList
+
+    var newWeights = List.fill(nFeatures)(0.toDouble)
+
+    if ((ictalWindow.sum == nWindow) || (interCount == nInterCount)) {
+      newWeights = weightsOnline.zip(deltaWeights).map { case (a, b) => a + b }
+      interCount = 0D
+    } else if (interWindow.sum == nWindow) {
+      interCount = interCount + 1D
+      newWeights = weightsOnline
+    } else {
+      newWeights = weightsOnline
+      interCount = 0D
     }
 
     if (initState == 0D) weightsOnline = weights.toList
-    else weightsOnline = weightsOnline.zip(deltaWeights).map { case (a, b) => a + b }
+    else weightsOnline = newWeights
 
-    initState = 1D
+    if (onlineLearn == 1) initState = 1D
 
     Seq(Seq(probability, prediction, reduced), weightsMux) // interesting that this is OK, component vectors have diff length
   }
 }
 
 class LogisticTester[T <: Data](c: Logistic[T], nFeatures: Int, nThresholds: Int, learningRate: Double, ictalIndex: Int,
-                                interIndex: Int, nWindow: Int,
+                                interIndex: Int, nWindow: Int, nInterCount: Int, onlineLearn: Int,
                                 dataBP: Int, onlineIterations: Int, debug: Int)
   extends DspTester(c) {
   val dataType = c.params.protoData.getClass.getTypeName
-  val Logistic = new GoldenLogistic(nFeatures, nThresholds, learningRate, ictalIndex, interIndex, nWindow, dataType)
+  val Logistic = new GoldenLogistic(nFeatures, nThresholds, learningRate, ictalIndex, interIndex, nWindow, nInterCount, onlineLearn, dataType)
 
   // initialize test vectors/arrays
   var input = Seq.fill(onlineIterations,nFeatures)(0D)
@@ -129,13 +140,13 @@ object IntLogisticTester {
     if (debug == 1) {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new Logistic(params)) {
         c => new LogisticTester(c, params.nFeatures, params.nThresholds, params.learningRate, params.ictalIndex,
-          params.interIndex, params.nWindow,
+          params.interIndex, params.nWindow, params.nInterCount, params.onlineLearn,
           0, onlineIterations, debug)
       }
     } else {
       dsptools.Driver.execute(() => new Logistic(params), TestSetup.dspTesterOptions) {
         c => new LogisticTester(c, params.nFeatures, params.nThresholds, params.learningRate, params.ictalIndex,
-          params.interIndex, params.nWindow,
+          params.interIndex, params.nWindow, params.nInterCount, params.onlineLearn,
           0, onlineIterations, debug)
       }
     }
@@ -147,13 +158,13 @@ object FixedPointLogisticTester {
     if (debug == 1) {
       chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new Logistic(params)) {
         c => new LogisticTester(c, params.nFeatures, params.nThresholds, params.learningRate, params.ictalIndex,
-          params.interIndex, params.nWindow,
+          params.interIndex, params.nWindow, params.nInterCount, params.onlineLearn,
           dataBP, onlineIterations, debug)
       }
     } else {
       dsptools.Driver.execute(() => new Logistic(params), TestSetup.dspTesterOptions) {
         c => new LogisticTester(c, params.nFeatures, params.nThresholds, params.learningRate, params.ictalIndex,
-          params.interIndex, params.nWindow,
+          params.interIndex, params.nWindow, params.nInterCount, params.onlineLearn,
           dataBP, onlineIterations, debug)
       }
     }

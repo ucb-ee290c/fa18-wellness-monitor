@@ -70,7 +70,7 @@ class Logistic[T <: chisel3.Data : Real](val params: LogisticParams[T]) extends 
     VecInit(List.fill(params.nFeatures)(ConvertableTo[T].fromInt(0))))
 
   val initState = RegInit(0.U) // initial state identifier, for the preload
-  initState := 1.U
+  if (params.onlineLearn == 1) initState := 1.U // only trasition if we are doing online learning
 
   // choose between the config memory data or the dynamic weight being updated by online learning
   val weightsMux = Mux((initState == 1.U).asBool(),weightsOnline,io.weights)
@@ -124,6 +124,8 @@ class Logistic[T <: chisel3.Data : Real](val params: LogisticParams[T]) extends 
   val interWindow = RegInit(Vec(params.nWindow, UInt(1.W)), VecInit(List.fill(params.nWindow)(0.U)))
   val featureWindow = Reg(Vec(params.nWindow, Vec(params.nFeatures, params.protoData)))
 
+  val interCount = RegInit(0.U(6.W))
+
   for(i <- ictalWindow.indices) {
     when(io.in.valid === true.B) {
       if (i == 0) ictalWindow(i) := Mux(reduced >= ictalThreshold, 1.U, 0.U)
@@ -160,12 +162,16 @@ class Logistic[T <: chisel3.Data : Real](val params: LogisticParams[T]) extends 
 
   val newWeights = Wire(Vec(params.nFeatures,params.protoData))
 
-  when (ictalSum === params.nWindow.asUInt()) {
-    newWeights := weightsOnline.zip(deltaWeights).map{ case (a, b) => a + b }
+  when ((ictalSum === params.nWindow.asUInt()) || (interCount === params.nInterCount.asUInt())) {
+    newWeights := weightsOnline.zip(deltaWeights).map { case (a, b) => a + b }
+    interCount := 0.U
+  } .elsewhen (interSum === params.nWindow.asUInt()) {
+    interCount := interCount + 1
+    newWeights := weightsOnline
   } .otherwise {
     newWeights := weightsOnline
+    interCount := 0.U
   }
-
 
   when (initState === 0.U) { // only for the initial state, get the weights
     weightsOnline := io.weights
