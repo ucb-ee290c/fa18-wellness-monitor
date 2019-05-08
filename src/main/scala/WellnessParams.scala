@@ -16,6 +16,7 @@ import dsptools.numbers._
 
 import scala.collection.Seq
 import scala.collection.mutable.ArrayBuffer
+import scala.util.control.Breaks._
 
 object SIntWellnessParams {
   val nPts = 4
@@ -353,6 +354,180 @@ object SIntWellnessGenParams {
   // TODO: Change after more channels are added
   val datapathParamsArr = datapathsArr
 
+  // Ryan's addition
+  def compareBlocks(block1: (String, Any), block2: (String, Any)): Int = {
+    if (block1._1 == block2._1)
+    {
+      block1._1 match
+      {
+        case "bandpower" =>
+          if ((block1._2.asInstanceOf[BandpowerParams[SInt]].idxStartBin == block2._2.asInstanceOf[BandpowerParams[SInt]].idxStartBin) &&
+            (block1._2.asInstanceOf[BandpowerParams[SInt]].idxEndBin == block2._2.asInstanceOf[BandpowerParams[SInt]].idxEndBin) &&
+            (block1._2.asInstanceOf[BandpowerParams[SInt]].nBins == block2._2.asInstanceOf[BandpowerParams[SInt]].nBins) &&
+            (block1._2.asInstanceOf[BandpowerParams[SInt]].genIn == block2._2.asInstanceOf[BandpowerParams[SInt]].genIn) &&
+            (block1._2.asInstanceOf[BandpowerParams[SInt]].genOut == block2._2.asInstanceOf[BandpowerParams[SInt]].genOut))
+          {
+            return 1
+          }
+        case "FFTBuffer" =>
+          if (block1._2.asInstanceOf[FFTBufferParams[SInt]].lanes == block2._2.asInstanceOf[FFTBufferParams[SInt]].lanes &&
+            (block1._2.asInstanceOf[FFTBufferParams[SInt]].protoData == block2._2.asInstanceOf[FFTBufferParams[SInt]].protoData))
+          {
+            return 1
+          }
+        case "FFT" =>
+          if ((block1._2.asInstanceOf[FFTConfig[SInt]].bindices == block2._2.asInstanceOf[FFTConfig[SInt]].bindices) &&
+            (block1._2.asInstanceOf[FFTConfig[SInt]].dindices == block2._2.asInstanceOf[FFTConfig[SInt]].dindices) &&
+            (block1._2.asInstanceOf[FFTConfig[SInt]].lanes == block2._2.asInstanceOf[FFTConfig[SInt]].lanes) &&
+            (block1._2.asInstanceOf[FFTConfig[SInt]].n == block2._2.asInstanceOf[FFTConfig[SInt]].n) &&
+            (block1._2.asInstanceOf[FFTConfig[SInt]].num == block2._2.asInstanceOf[FFTConfig[SInt]].num) &&
+            (block1._2.asInstanceOf[FFTConfig[SInt]].pipelineDepth == block2._2.asInstanceOf[FFTConfig[SInt]].pipelineDepth) &&
+            (block1._2.asInstanceOf[FFTConfig[SInt]].twiddle == block2._2.asInstanceOf[FFTConfig[SInt]].twiddle))
+          {
+            return 1
+          }
+        case "FIR" =>
+          if ((block1._2.asInstanceOf[FIRFilterParams[SInt]].protoData == block2._2.asInstanceOf[FIRFilterParams[SInt]].protoData) &&
+            (block1._2.asInstanceOf[FIRFilterParams[SInt]].taps == block2._2.asInstanceOf[FIRFilterParams[SInt]].taps))
+          {
+            return 1
+          }
+        case "IIR" =>
+          if ((block1._2.asInstanceOf[IIRFilterParams[SInt]].consts_A == block2._2.asInstanceOf[IIRFilterParams[SInt]].consts_A) &&
+            (block1._2.asInstanceOf[IIRFilterParams[SInt]].consts_B == block2._2.asInstanceOf[IIRFilterParams[SInt]].consts_B) &&
+            (block1._2.asInstanceOf[IIRFilterParams[SInt]].protoData == block2._2.asInstanceOf[IIRFilterParams[SInt]].protoData))
+          {
+            return 1
+          }
+        case "LineLength" =>
+          if ((block1._2.asInstanceOf[lineLengthParams[SInt]].protoData == block2._2.asInstanceOf[lineLengthParams[SInt]].protoData) &&
+            (block1._2.asInstanceOf[lineLengthParams[SInt]].windowSize == block2._2.asInstanceOf[lineLengthParams[SInt]].windowSize))
+          {
+            return 1
+          }
+        case "Buffer" =>
+          if ((block1._2.asInstanceOf[FIRFilterParams[SInt]].protoData == block2._2.asInstanceOf[FIRFilterParams[SInt]].protoData) &&
+            (block1._2.asInstanceOf[FIRFilterParams[SInt]].taps == block2._2.asInstanceOf[FIRFilterParams[SInt]].taps))
+          {
+            return 1
+          }
+      }
+    }
+    return -1
+  }
+
+
+  def trimTree(arr: ArrayBuffer[Seq[(String, Any)]]): (ArrayBuffer[Seq[(String, Any)]],ArrayBuffer[Seq[(Int, Int)]]) = {
+    print("starting trimTree")
+    var newArray: ArrayBuffer[Seq[(String, Any)]] = ArrayBuffer()
+
+    // Generate graph of coordinates
+    var coordArr: ArrayBuffer[Seq[(Int, Int)]] = ArrayBuffer()
+
+    // Add first datapath by hand because you have to start somewhere
+    // Pull out first dp sequence
+    var firstDp = arr(0)
+    var firstParentSeq: Seq[(Int,Int)] = Seq((0,0))
+    for (i <- 1 until firstDp.length)
+    {
+      firstParentSeq = firstParentSeq :+ (0,i-1)
+    }
+    newArray += firstDp
+    coordArr = coordArr :+ firstParentSeq
+    print("\nAdded first datapath and edge ")
+
+    var state = "search"
+    var isDone = 0
+
+    var compareDp_num = 0
+    var compareBlock_idx = 0
+
+    for (i <- 1 until (arr.length))
+    {
+      val currentDp = arr(i)
+      var currentBlock = currentDp(0)
+      var currentBlock_idx = 0
+
+      var newDp: Seq[(String,Any)] = Seq()
+      var newCoordDp: Seq[(Int,Int)] = Seq()
+      isDone = 0
+
+      while (isDone == 0)
+      {
+        state match
+        {
+          case "search" =>
+            breakable
+            { for(j <- 0 until newArray.length){
+              var isBlockSame = 0
+              val compareDp = newArray(j)
+              val compareBlock = compareDp(0)
+              isBlockSame = compareBlocks(currentBlock,compareBlock)
+              if (isBlockSame == 1)
+              {
+                print("\n Found duplicate block! move to populate")
+                compareDp_num = j
+                compareBlock_idx = 1 // add one so you start at new block
+                newDp = newDp :+ ("Null",0)
+                newCoordDp = newCoordDp :+ (-9,-9)
+                state = "populate"
+                break
+              }
+            }}
+            if (state == "search")
+            {
+              print("\n No duplicate block, move to finish")
+              // There were no matches so currentDP is unique and can be added as a whole
+              // Jump to finish
+              state = "finish"
+            }
+
+          case "populate" =>
+            // first find shortest dp
+            var compareDp = newArray(compareDp_num)
+            var loopLength = Seq(compareDp.length,currentDp.length).min
+            breakable
+            { for (j <- compareBlock_idx until loopLength) {
+              var currentBlock = currentDp(j)
+              var compareBlock = compareDp(j)
+              var isBlockSame = compareBlocks(currentBlock,compareBlock)
+              if (isBlockSame == 1)
+              {
+                newDp = newDp :+ ("Null",0)
+                newCoordDp = newCoordDp :+ (-9,-9)
+                print("\n Found another duplicate - keep nulling/looking")
+              }
+              else
+              {// blocks are unique, add actual block, take appropriate coordinate and pass off to finish state
+                currentBlock_idx = j+1
+                newDp = newDp :+ currentBlock
+                newCoordDp = newCoordDp :+ coordArr(compareDp_num)(j)
+                state = "finish"
+                break
+                print("\n Found first unique block, move to finish")
+              }
+            }}
+
+          case "finish" =>
+            print("\n Made it to finish")
+            for (m <- currentBlock_idx until currentDp.length)
+            {
+              print("\n populate remaining blocks, index = " + currentBlock_idx)
+              newDp = newDp :+ currentDp(m)
+              if (m == 0) { newCoordDp = newCoordDp :+ (newArray.length,0)}
+              else { newCoordDp = newCoordDp :+ (newArray.length,m-1)}
+            }
+            newArray = newArray :+ newDp
+            coordArr = coordArr :+ newCoordDp
+            state = "search"
+            isDone = 1
+        }
+      }
+    }
+
+    return (newArray,coordArr)
+  }
+
   def makeBandpower(channel: Int, idxLowBin: Int, idxUpBin: Int): Seq[(String, Any)] = {
     val fftBufferParams = new FFTBufferParams[SInt] {
       val protoData = dataPrototype
@@ -516,6 +691,179 @@ object FixedPointWellnessGenParams {
   // TODO: Change after more channels are added
   val datapathParamsArr = datapathsArr
 
+  // Ryan's addition
+  def compareBlocks(block1: (String, Any), block2: (String, Any)): Int = {
+    if (block1._1 == block2._1)
+    {
+      block1._1 match
+      {
+        case "bandpower" =>
+          if ((block1._2.asInstanceOf[BandpowerParams[FixedPoint]].idxStartBin == block2._2.asInstanceOf[BandpowerParams[FixedPoint]].idxStartBin) &&
+            (block1._2.asInstanceOf[BandpowerParams[FixedPoint]].idxEndBin == block2._2.asInstanceOf[BandpowerParams[FixedPoint]].idxEndBin) &&
+            (block1._2.asInstanceOf[BandpowerParams[FixedPoint]].nBins == block2._2.asInstanceOf[BandpowerParams[FixedPoint]].nBins) &&
+            (block1._2.asInstanceOf[BandpowerParams[FixedPoint]].genIn == block2._2.asInstanceOf[BandpowerParams[FixedPoint]].genIn) &&
+            (block1._2.asInstanceOf[BandpowerParams[FixedPoint]].genOut == block2._2.asInstanceOf[BandpowerParams[FixedPoint]].genOut))
+          {
+            return 1
+          }
+        case "FFTBuffer" =>
+          if (block1._2.asInstanceOf[FFTBufferParams[FixedPoint]].lanes == block2._2.asInstanceOf[FFTBufferParams[FixedPoint]].lanes &&
+            (block1._2.asInstanceOf[FFTBufferParams[FixedPoint]].protoData == block2._2.asInstanceOf[FFTBufferParams[FixedPoint]].protoData))
+          {
+            return 1
+          }
+        case "FFT" =>
+          if ((block1._2.asInstanceOf[FFTConfig[FixedPoint]].bindices == block2._2.asInstanceOf[FFTConfig[FixedPoint]].bindices) &&
+            (block1._2.asInstanceOf[FFTConfig[FixedPoint]].dindices == block2._2.asInstanceOf[FFTConfig[FixedPoint]].dindices) &&
+            (block1._2.asInstanceOf[FFTConfig[FixedPoint]].lanes == block2._2.asInstanceOf[FFTConfig[FixedPoint]].lanes) &&
+            (block1._2.asInstanceOf[FFTConfig[FixedPoint]].n == block2._2.asInstanceOf[FFTConfig[FixedPoint]].n) &&
+            (block1._2.asInstanceOf[FFTConfig[FixedPoint]].num == block2._2.asInstanceOf[FFTConfig[FixedPoint]].num) &&
+            (block1._2.asInstanceOf[FFTConfig[FixedPoint]].pipelineDepth == block2._2.asInstanceOf[FFTConfig[FixedPoint]].pipelineDepth) &&
+            (block1._2.asInstanceOf[FFTConfig[FixedPoint]].twiddle == block2._2.asInstanceOf[FFTConfig[FixedPoint]].twiddle))
+          {
+            return 1
+          }
+        case "FIR" =>
+          if ((block1._2.asInstanceOf[FIRFilterParams[FixedPoint]].protoData == block2._2.asInstanceOf[FIRFilterParams[FixedPoint]].protoData) &&
+            (block1._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps == block2._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps))
+          {
+            return 1
+          }
+        case "IIR" =>
+          if ((block1._2.asInstanceOf[IIRFilterParams[FixedPoint]].consts_A == block2._2.asInstanceOf[IIRFilterParams[FixedPoint]].consts_A) &&
+            (block1._2.asInstanceOf[IIRFilterParams[FixedPoint]].consts_B == block2._2.asInstanceOf[IIRFilterParams[FixedPoint]].consts_B) &&
+            (block1._2.asInstanceOf[IIRFilterParams[FixedPoint]].protoData == block2._2.asInstanceOf[IIRFilterParams[FixedPoint]].protoData))
+          {
+            return 1
+          }
+        case "LineLength" =>
+          if ((block1._2.asInstanceOf[lineLengthParams[FixedPoint]].protoData == block2._2.asInstanceOf[lineLengthParams[FixedPoint]].protoData) &&
+            (block1._2.asInstanceOf[lineLengthParams[FixedPoint]].windowSize == block2._2.asInstanceOf[lineLengthParams[FixedPoint]].windowSize))
+          {
+            return 1
+          }
+        case "Buffer" =>
+          if ((block1._2.asInstanceOf[FIRFilterParams[FixedPoint]].protoData == block2._2.asInstanceOf[FIRFilterParams[FixedPoint]].protoData) &&
+            (block1._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps == block2._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps))
+          {
+            return 1
+          }
+      }
+    }
+    return -1
+  }
+
+  def trimTree(arr: ArrayBuffer[Seq[(String, Any)]]): (ArrayBuffer[Seq[(String, Any)]],ArrayBuffer[Seq[(Int, Int)]]) = {
+    print("starting trimTree")
+    var newArray: ArrayBuffer[Seq[(String, Any)]] = ArrayBuffer()
+
+    // Generate graph of coordinates
+    var coordArr: ArrayBuffer[Seq[(Int, Int)]] = ArrayBuffer()
+
+    // Add first datapath by hand because you have to start somewhere
+    // Pull out first dp sequence
+    var firstDp = arr(0)
+    var firstParentSeq: Seq[(Int,Int)] = Seq((0,0))
+    for (i <- 1 until firstDp.length)
+    {
+      firstParentSeq = firstParentSeq :+ (0,i-1)
+    }
+    newArray += firstDp
+    coordArr = coordArr :+ firstParentSeq
+    print("\nAdded first datapath and edge ")
+
+    var state = "search"
+    var isDone = 0
+
+    var compareDp_num = 0
+    var compareBlock_idx = 0
+
+    for (i <- 1 until (arr.length))
+    {
+      val currentDp = arr(i)
+      var currentBlock = currentDp(0)
+      var currentBlock_idx = 0
+
+      var newDp: Seq[(String,Any)] = Seq()
+      var newCoordDp: Seq[(Int,Int)] = Seq()
+      isDone = 0
+
+      while (isDone == 0)
+      {
+        state match
+        {
+          case "search" =>
+            breakable
+            { for(j <- 0 until newArray.length){
+              var isBlockSame = 0
+              val compareDp = newArray(j)
+              val compareBlock = compareDp(0)
+              isBlockSame = compareBlocks(currentBlock,compareBlock)
+              if (isBlockSame == 1)
+              {
+                print("\n Found duplicate block! move to populate")
+                compareDp_num = j
+                compareBlock_idx = 1 // add one so you start at new block
+                newDp = newDp :+ ("Null",0)
+                newCoordDp = newCoordDp :+ (-9,-9)
+                state = "populate"
+                break
+              }
+            }}
+            if (state == "search")
+            {
+              print("\n No duplicate block, move to finish")
+              // There were no matches so currentDP is unique and can be added as a whole
+              // Jump to finish
+              state = "finish"
+            }
+
+          case "populate" =>
+            // first find shortest dp
+            var compareDp = newArray(compareDp_num)
+            var loopLength = Seq(compareDp.length,currentDp.length).min
+            breakable
+            { for (j <- compareBlock_idx until loopLength) {
+              var currentBlock = currentDp(j)
+              var compareBlock = compareDp(j)
+              var isBlockSame = compareBlocks(currentBlock,compareBlock)
+              if (isBlockSame == 1)
+              {
+                newDp = newDp :+ ("Null",0)
+                newCoordDp = newCoordDp :+ (-9,-9)
+                print("\n Found another duplicate - keep nulling/looking")
+              }
+              else
+              {// blocks are unique, add actual block, take appropriate coordinate and pass off to finish state
+                currentBlock_idx = j+1
+                newDp = newDp :+ currentBlock
+                newCoordDp = newCoordDp :+ coordArr(compareDp_num)(j)
+                state = "finish"
+                break
+                print("\n Found first unique block, move to finish")
+              }
+            }}
+
+          case "finish" =>
+            print("\n Made it to finish")
+            for (m <- currentBlock_idx until currentDp.length)
+            {
+              print("\n populate remaining blocks, index = " + currentBlock_idx)
+              newDp = newDp :+ currentDp(m)
+              if (m == 0) { newCoordDp = newCoordDp :+ (newArray.length,0)}
+              else { newCoordDp = newCoordDp :+ (newArray.length,m-1)}
+            }
+            newArray = newArray :+ newDp
+            coordArr = coordArr :+ newCoordDp
+            state = "search"
+            isDone = 1
+        }
+      }
+    }
+
+    return (newArray,coordArr)
+  }
+
   def makeBandpower(channel: Int, filterType: String, filterTapsA: Seq[Double], filterTapsB: Seq[Double], idxLowBin: Int, idxUpBin: Int): Seq[(String, Any)] = {
     val filterParams =
       if (filterType == "FIR")
@@ -626,4 +974,7 @@ object FixedPointWellnessGenParams {
     val nSupports: Int = svmParams.nSupports
     val nClassifiers: Int = computeNClassifiers(svmParams)
   }
+
+
+  // Addition of treeTrimmingFunction and compareBlocks function
 }
