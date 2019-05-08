@@ -26,7 +26,7 @@ import freechips.rocketchip.subsystem._
 
 import scala.collection._
 import scala.collection.mutable.ArrayBuffer
-
+import scala.util.control.Breaks._
 
 trait wellnessGenParams[T <: Data] {
   val dataType: T
@@ -277,6 +277,7 @@ object wellnessGenModuleIO {
   *
   * @Parameters $genParams                      Defines general wellnessGen I/O dataType
   *             $datapathParamsArr              Array of datapath params that describes the requested wellness monitor hardware
+  *             $heritageArray                  Array that describes i/o between all blocks
   *             $pcaParams                      Defines the PCA parameters
   *             $svmParams                      Defines the SVM parameters
   *             $configurationMemoryParams      Defines configuration memory parameters
@@ -290,6 +291,7 @@ object wellnessGenModuleIO {
 class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
 (val genParams: wellnessGenParams[T],
  val datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
+ val heritageArray: ArrayBuffer[Seq[(Int, Int)]],
  val pcaParams: PCAParams[T],
  val svmParams: SVMParams[T],
  val configurationMemoryParams: ConfigurationMemoryParams[T]) (implicit val p: Parameters) extends Module {
@@ -346,6 +348,8 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
           generatedSinglePath += (("Bandpower",Module(new Bandpower(singlePathParamsSeq(j)._2.asInstanceOf[BandpowerParams[T]]))))
         case "Buffer" =>
           generatedSinglePath += (("Buffer", Module(new ShiftReg(singlePathParamsSeq(j)._2.asInstanceOf[ShiftRegParams[T]]))))
+        case "Null" =>
+          print("\nNull detected, generate nothing")
       }
     }
     // Add (jth) module datapath to ch x (modules)
@@ -389,6 +393,8 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
               genDatapath(j)._2.asInstanceOf[FFTBuffer[T]].io.in.valid := inStream.valid
               genDatapath(j)._2.asInstanceOf[FFTBuffer[T]].io.in.bits  := inStream.bits
               genDatapath(j)._2.asInstanceOf[FFTBuffer[T]].io.in.sync  := inStream.sync
+            case "Null" =>
+              print("\nNull detected, don't connect any wires")
           }
         }
 
@@ -399,10 +405,36 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
         {
           genDatapath(j)._1 match
           {
+            case "Null" =>
+              {
+                print("\nNull detected, don't connect anything")
+              }
             case "FIR" =>
             {
               genDatapath(j-1)._1 match
               {
+                case "Null" =>
+                  {
+                    // need to connect it to appropriate parent
+                    // look to parentArray to see what node we should connect to this
+                    val heritageDp = heritageArray(i)
+                    val hrBIdx = heritageDp(j)
+                    generatedDatapaths(hrBIdx._1)(hrBIdx._2)._1 match
+                    {
+                      case "FIR" =>
+                      {
+                        genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.valid :=  generatedDatapaths(hrBIdx._1)(hrBIdx._2)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.valid
+                        genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.bits  :=  generatedDatapaths(hrBIdx._1)(hrBIdx._2)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.bits
+                        genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.sync  :=  false.B
+                      }
+                      case "IIR" =>
+                      {
+                        genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.valid := generatedDatapaths(hrBIdx._1)(hrBIdx._2)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.out.valid
+                        genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.bits  := generatedDatapaths(hrBIdx._1)(hrBIdx._2)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.out.bits
+                        genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.sync  := false.B
+                      }
+                    }
+                  }
                 case "FIR" =>
                 {
                   genDatapath(j)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.in.valid :=  genDatapath(j-1)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.valid
@@ -421,6 +453,24 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
             {
               genDatapath(j-1)._1 match
               {
+                case "Null" =>
+                {
+                  // need to connect it to appropriate parent
+                  // look to parentArray to see what node we should connect to this
+                  val heritageDp = heritageArray(i)
+                  val hrBIdx = heritageDp(j)
+                  generatedDatapaths(hrBIdx._1)(hrBIdx._2)._1 match
+                  {
+                    case "FIR" =>
+                      genDatapath(j)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.in.valid :=  generatedDatapaths(hrBIdx._1)(hrBIdx._2)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.valid
+                      genDatapath(j)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.in.bits  :=  generatedDatapaths(hrBIdx._1)(hrBIdx._2)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.bits
+                      genDatapath(j)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.in.sync  :=  false.B
+                    case "IIR" =>
+                      genDatapath(j)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.in.valid := generatedDatapaths(hrBIdx._1)(hrBIdx._2)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.out.valid
+                      genDatapath(j)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.in.bits  := generatedDatapaths(hrBIdx._1)(hrBIdx._2)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.out.bits
+                      genDatapath(j)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.in.sync  := false.B
+                  }
+                }
                 case "FIR" =>
                   genDatapath(j)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.in.valid :=  genDatapath(j-1)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.valid
                   genDatapath(j)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.in.bits  :=  genDatapath(j-1)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.bits
@@ -435,6 +485,24 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
             {
               genDatapath(j-1)._1 match
               {
+                case "Null" =>
+                {
+                  // need to connect it to appropriate parent
+                  // look to parentArray to see what node we should connect to this
+                  val heritageDp = heritageArray(i)
+                  val hrBIdx = heritageDp(j)
+                  generatedDatapaths(hrBIdx._1)(hrBIdx._2)._1 match
+                  {
+                    case "FIR" =>
+                      genDatapath(j)._2.asInstanceOf[FFTBuffer[T]].io.in.valid :=  generatedDatapaths(hrBIdx._1)(hrBIdx._2)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.valid
+                      genDatapath(j)._2.asInstanceOf[FFTBuffer[T]].io.in.bits  :=  generatedDatapaths(hrBIdx._1)(hrBIdx._2)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.bits
+                      genDatapath(j)._2.asInstanceOf[FFTBuffer[T]].io.in.sync  :=  false.B
+                    case "IIR" =>
+                      genDatapath(j)._2.asInstanceOf[FFTBuffer[T]].io.in.valid :=  generatedDatapaths(hrBIdx._1)(hrBIdx._2)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.out.valid
+                      genDatapath(j)._2.asInstanceOf[FFTBuffer[T]].io.in.bits  :=  generatedDatapaths(hrBIdx._1)(hrBIdx._2)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.out.bits
+                      genDatapath(j)._2.asInstanceOf[FFTBuffer[T]].io.in.sync  :=  false.B
+                  }
+                }
                 case "FIR" =>
                   genDatapath(j)._2.asInstanceOf[FFTBuffer[T]].io.in.valid :=  genDatapath(j-1)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.valid
                   genDatapath(j)._2.asInstanceOf[FFTBuffer[T]].io.in.bits  :=  genDatapath(j-1)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.bits
@@ -461,6 +529,28 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
             {
               genDatapath(j-1)._1 match
               {
+                case "Null" =>
+                {
+                  // need to connect it to appropriate parent
+                  // look to parentArray to see what node we should connect to this
+                  val heritageDp = heritageArray(i)
+                  val hrBIdx = heritageDp(j)
+                  generatedDatapaths(hrBIdx._1)(hrBIdx._2)._1 match
+                  {
+                    case "FIR" =>
+                    {
+                      genDatapath(j)._2.asInstanceOf[lineLength[T]].io.in.valid :=  generatedDatapaths(hrBIdx._1)(hrBIdx._2)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.valid
+                      genDatapath(j)._2.asInstanceOf[lineLength[T]].io.in.bits  :=  generatedDatapaths(hrBIdx._1)(hrBIdx._2)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.bits
+                      genDatapath(j)._2.asInstanceOf[lineLength[T]].io.in.sync  :=  false.B
+                    }
+                    case "IIR" =>
+                    {
+                      genDatapath(j)._2.asInstanceOf[lineLength[T]].io.in.valid :=  generatedDatapaths(hrBIdx._1)(hrBIdx._2)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.out.valid
+                      genDatapath(j)._2.asInstanceOf[lineLength[T]].io.in.bits  :=  generatedDatapaths(hrBIdx._1)(hrBIdx._2)._2.asInstanceOf[ConstantCoefficientIIRFilter[T]].io.out.bits
+                      genDatapath(j)._2.asInstanceOf[lineLength[T]].io.in.sync  :=  false.B
+                    }
+                  }
+                }
                 case "FIR" =>
                 {
                   genDatapath(j)._2.asInstanceOf[lineLength[T]].io.in.valid :=  genDatapath(j-1)._2.asInstanceOf[ConstantCoefficientFIRFilter[T]].io.out.valid
@@ -476,11 +566,50 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
               }
             }
             case "Bandpower" =>
-              genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.in.valid := genDatapath(j-1)._2.asInstanceOf[FFT[T]].io.out.valid
-              genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.in.bits  := genDatapath(j-1)._2.asInstanceOf[FFT[T]].io.out.bits
-              genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.in.sync  := false.B
+              {
+                genDatapath(j - 1)._1 match {
+                  case "Null" =>
+                  {
+                    // need to connect it to appropriate parent
+                    // look to parentArray to see what node we should connect to this
+                    val heritageDp = heritageArray(i)
+                    val hrBIdx = heritageDp(j)
+                    generatedDatapaths(hrBIdx._1)(hrBIdx._2)._1 match
+                    {
+                      case "FFT" =>
+                        genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.in.valid := generatedDatapaths(hrBIdx._1)(hrBIdx._2)._2.asInstanceOf[FFT[T]].io.out.valid
+                        genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.in.bits  := generatedDatapaths(hrBIdx._1)(hrBIdx._2)._2.asInstanceOf[FFT[T]].io.out.bits
+                        genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.in.sync  := false.B
+                    }
+                  }
+                  case "FFT" =>
+                    genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.in.valid := genDatapath(j-1)._2.asInstanceOf[FFT[T]].io.out.valid
+                    genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.in.bits  := genDatapath(j-1)._2.asInstanceOf[FFT[T]].io.out.bits
+                    genDatapath(j)._2.asInstanceOf[Bandpower[T]].io.in.sync  := false.B
+                }
+              }
             case "Buffer" => {
               genDatapath(j - 1)._1 match {
+                case "Null" =>
+                {
+                  // need to connect it to appropriate parent
+                  // look to parentArray to see what node we should connect to this
+                  val heritageDp = heritageArray(i)
+                  val hrBIdx = heritageDp(j)
+                  generatedDatapaths(hrBIdx._1)(hrBIdx._2)._1 match
+                  {
+                    case "LineLength" => {
+                      genDatapath(j)._2.asInstanceOf[ShiftReg[T]].io.in.valid := generatedDatapaths(hrBIdx._1)(hrBIdx._2)._2.asInstanceOf[lineLength[T]].io.out.valid
+                      genDatapath(j)._2.asInstanceOf[ShiftReg[T]].io.in.bits := generatedDatapaths(hrBIdx._1)(hrBIdx._2)._2.asInstanceOf[lineLength[T]].io.out.bits
+                      genDatapath(j)._2.asInstanceOf[ShiftReg[T]].io.in.sync := false.B
+                    }
+                    case "Buffer" => {
+                      genDatapath(j)._2.asInstanceOf[ShiftReg[T]].io.in.valid := generatedDatapaths(hrBIdx._1)(hrBIdx._2)._2.asInstanceOf[ShiftReg[T]].io.out.valid
+                      genDatapath(j)._2.asInstanceOf[ShiftReg[T]].io.in.bits := generatedDatapaths(hrBIdx._1)(hrBIdx._2)._2.asInstanceOf[ShiftReg[T]].io.out.bits
+                      genDatapath(j)._2.asInstanceOf[ShiftReg[T]].io.in.sync := false.B
+                    }
+                  }
+                }
                 case "Buffer" => {
                   genDatapath(j)._2.asInstanceOf[ShiftReg[T]].io.in.valid := genDatapath(j - 1)._2.asInstanceOf[ShiftReg[T]].io.out.valid
                   genDatapath(j)._2.asInstanceOf[ShiftReg[T]].io.in.bits := genDatapath(j - 1)._2.asInstanceOf[ShiftReg[T]].io.out.bits
@@ -515,6 +644,8 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
             case "Buffer" =>
               pcaInValVec(i) := genDatapath(j)._2.asInstanceOf[ShiftReg[T]].io.out.valid
               pcaInVector(i) := genDatapath(j)._2.asInstanceOf[ShiftReg[T]].io.out.bits
+            case "Null" =>
+              print("\nNull detected, don't connect anything to PCA")
           }
         }
       }
@@ -575,6 +706,7 @@ abstract class wellnessGenDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Rea
 (
   val genParams: wellnessGenParams[T],
   val datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
+  val heritageArray: ArrayBuffer[Seq[(Int, Int)]],
   val pcaParams: PCAParams[T],
   val svmParams: SVMParams[T],
   val configurationMemoryParams: ConfigurationMemoryParams[T]
@@ -598,6 +730,7 @@ abstract class wellnessGenDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Rea
     val wellnessGen = Module(new wellnessGenModule(
       genParams: wellnessGenParams[T],
       datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
+      heritageArray: ArrayBuffer[Seq[(Int, Int)]],
       pcaParams: PCAParams[T],
       svmParams: SVMParams[T],
       configurationMemoryParams: ConfigurationMemoryParams[T]))
@@ -638,6 +771,7 @@ class TLWellnessGenDataPathBlock[T <: Data : Real : Order : BinaryRepresentation
 (
   genParams: wellnessGenParams[T],
   datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
+  heritageArray: ArrayBuffer[Seq[(Int, Int)]],
   pcaParams: PCAParams[T],
   svmParams: SVMParams[T],
   configurationMemoryParams: ConfigurationMemoryParams[T]
@@ -645,6 +779,7 @@ class TLWellnessGenDataPathBlock[T <: Data : Real : Order : BinaryRepresentation
   wellnessGenDataPathBlock[TLClientPortParameters, TLManagerPortParameters, TLEdgeOut, TLEdgeIn, TLBundle, T](
     genParams,
     datapathParamsArr,
+    heritageArray,
     pcaParams, svmParams,
     configurationMemoryParams)
   with TLDspBlock
@@ -665,6 +800,7 @@ class wellnessGenThing[T <: Data : Real : Order : BinaryRepresentation]
 (
   val genParams: wellnessGenParams[T],
   val datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
+  val heritageArray: ArrayBuffer[Seq[(Int, Int)]],
   val pcaParams: PCAParams[T],
   val svmParams: SVMParams[T],
   val configurationMemoryParams: ConfigurationMemoryParams[T],
@@ -677,6 +813,7 @@ class wellnessGenThing[T <: Data : Real : Order : BinaryRepresentation]
   val wellness = LazyModule(new TLWellnessGenDataPathBlock(
     genParams,
     datapathParamsArr,
+    heritageArray,
     pcaParams,
     svmParams,
     configurationMemoryParams))
@@ -706,6 +843,7 @@ trait HasPeripheryWellness extends BaseSubsystem {
   val wellness = LazyModule(new wellnessGenThing(
     wellnessParams.wellnessGenParams1,
     wellnessParams.datapathParamsArr,
+    wellnessParams.heritageArray,
     wellnessParams.pcaParams,
     wellnessParams.svmParams,
     wellnessParams.configurationMemoryParams))
