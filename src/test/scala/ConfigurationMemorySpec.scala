@@ -7,7 +7,7 @@ class ConfigurationMemorySpec extends FlatSpec with Matchers {
   behavior of "Memory Buffer"
 
   it should "work" in {
-    val debug = 1
+    val debug = 0
 
     for(i <- 0 until 5) {
       val params = new ConfigurationMemoryParams[SInt] {

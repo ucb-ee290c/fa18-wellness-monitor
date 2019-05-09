@@ -14,16 +14,16 @@ class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt],
   for(i <- 0 until ( (c.pcaVectorMemoryParams.nRows*c.pcaVectorMemoryParams.nColumns)*10 + 1)) {
     val input = scala.util.Random.nextInt(20)
     val addr = 0
-
+println("address 0")
     val goldenModelResultPCAVector = PCAVectorMemoryBuffer.poke(input)
     val goldenModelResultLogisticWeightsVector = logisticWeightsVectorMemoryBuffer.idlePoke(input)
-    val goldenModelResultLogisticInterceptVector = logisticInterceptMemoryBuffer.idlePoke(input)
+    val goldenModelResultLogisticIntercept = logisticInterceptMemoryBuffer.idlePoke(input)
     val goldenModelResultInputMuxSel = InputMuxSelMemoryBuffer.idlePoke(input)
     val goldenModelResultPCANormalization = PCANormalizationMemoryBuffer.idlePoke(input)
 
     val inputBundle = new ConfigurationMemoryBundle[SInt](params) {
       override val wrdata: SInt = input.asSInt()
-      override val wraddr = addr.asUInt()
+      override val wraddr = addr.asUInt(3.W)
     }
     poke(c.io.in.bits.wrdata, inputBundle.wrdata)
     poke(c.io.in.bits.wraddr, inputBundle.wraddr)
@@ -41,9 +41,10 @@ class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt],
         expect(c.io.out.bits.confLogisticWeightsVector(x)(y), goldenModelResultLogisticWeightsVector.regs(x)(y))
       }
     }
+
     for(x <- 0 until c.logisticInterceptMemoryParams.nColumns) {
       for (y <- 0 until c.logisticInterceptMemoryParams.nRows) {
-        expect(c.io.out.bits.confLogisticIntercept(x)(y), goldenModelResultLogisticInterceptVector.regs(x)(y))
+        expect(c.io.out.bits.confLogisticIntercept(x)(y), goldenModelResultLogisticIntercept.regs(x)(y))
       }
     }
     expect(c.io.out.bits.confInputMuxSel, goldenModelResultInputMuxSel.regs(0)(0))
@@ -57,7 +58,7 @@ class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt],
   for(i <- 0 until ( (c.logisticWeightsVectorMemoryParams.nRows*c.logisticWeightsVectorMemoryParams.nColumns)*10 + 1)) {
     val input = scala.util.Random.nextInt(20) - 10
     val addr = 1
-
+    println("address 1")
     val goldenModelResultPCAVector = PCAVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultLogisticWeightsVector = logisticWeightsVectorMemoryBuffer.poke(input)
     val goldenModelResultLogisticIntercept = logisticInterceptMemoryBuffer.idlePoke(input)
@@ -66,7 +67,7 @@ class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt],
 
     val inputBundle = new ConfigurationMemoryBundle[SInt](params) {
       override val wrdata: SInt = input.asSInt()
-      override val wraddr = addr.asUInt()
+      override val wraddr = addr.asUInt(3.W)
     }
     poke(c.io.in.bits.wrdata, inputBundle.wrdata)
     poke(c.io.in.bits.wraddr, inputBundle.wraddr)
@@ -84,6 +85,7 @@ class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt],
         expect(c.io.out.bits.confLogisticWeightsVector(x)(y), goldenModelResultLogisticWeightsVector.regs(x)(y))
       }
     }
+
     for(x <- 0 until c.logisticInterceptMemoryParams.nColumns) {
       for (y <- 0 until c.logisticInterceptMemoryParams.nRows) {
         expect(c.io.out.bits.confLogisticIntercept(x)(y), goldenModelResultLogisticIntercept.regs(x)(y))
@@ -100,16 +102,16 @@ class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt],
   for(i <- 0 until ( (c.logisticInterceptMemoryParams.nRows*c.logisticInterceptMemoryParams.nColumns)*10 + 1)) {
     val input = scala.util.Random.nextInt(20) - 10
     val addr = 2
-
+    println("address 2")
     val goldenModelResultPCAVector = PCAVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultLogisticWeightsVector = logisticWeightsVectorMemoryBuffer.idlePoke(input)
-    val goldenModelResultLogisticIntercept = logisticInterceptMemoryBuffer.idlePoke(input)
+    val goldenModelResultLogisticIntercept = logisticInterceptMemoryBuffer.poke(input)
     val goldenModelResultInputMuxSel = InputMuxSelMemoryBuffer.idlePoke(input)
     val goldenModelResultPCANormalization = PCANormalizationMemoryBuffer.idlePoke(input)
 
     val inputBundle = new ConfigurationMemoryBundle[SInt](params) {
       override val wrdata: SInt = input.asSInt()
-      override val wraddr = addr.asUInt()
+      override val wraddr = addr.asUInt(3.W)
     }
     poke(c.io.in.bits.wrdata, inputBundle.wrdata)
     poke(c.io.in.bits.wraddr, inputBundle.wraddr)
@@ -143,7 +145,7 @@ class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt],
   for(i <- 0 until 11 ) {
     val input = scala.util.Random.nextInt(2)
     val addr = 3
-
+    println("address 3")
     val goldenModelResultPCAVector = PCAVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultLogisticWeightsVector = logisticWeightsVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultLogisticIntercept = logisticInterceptMemoryBuffer.idlePoke(input)
@@ -152,7 +154,7 @@ class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt],
 
     val inputBundle = new ConfigurationMemoryBundle[SInt](params) {
       override val wrdata: SInt = input.asSInt()
-      override val wraddr = addr.asUInt()
+      override val wraddr = addr.asUInt(3.W)
     }
     poke(c.io.in.bits.wrdata, inputBundle.wrdata)
     poke(c.io.in.bits.wraddr, inputBundle.wraddr)
@@ -186,7 +188,7 @@ class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt],
   for(i <- 0 until 11 ) {
     val input = scala.util.Random.nextInt(2)
     val addr = 4
-
+    println("address 4")
     val goldenModelResultPCAVector = PCAVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultLogisticWeightsVector = logisticWeightsVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultLogisticIntercept = logisticInterceptMemoryBuffer.idlePoke(input)
@@ -195,7 +197,7 @@ class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt],
 
     val inputBundle = new ConfigurationMemoryBundle[SInt](params) {
       override val wrdata: SInt = input.asSInt()
-      override val wraddr = addr.asUInt()
+      override val wraddr = addr.asUInt(3.W)
     }
     poke(c.io.in.bits.wrdata, inputBundle.wrdata)
     poke(c.io.in.bits.wraddr, inputBundle.wraddr)

@@ -95,6 +95,7 @@ class ConfigurationMemory[T <: chisel3.Data : Real : Order : BinaryRepresentatio
   io.out.bits.confLogisticWeightsVector := logisticWeightsVectorMemory.io.out.bits
 
   //MemoryBuffer definition for SVM Alpha Vector
+
   val logisticInterceptMemoryParams = new MemoryBufferParams[T] {
     override val protoData: T = params.protoData.cloneType
     override val nRows: Int = 1
