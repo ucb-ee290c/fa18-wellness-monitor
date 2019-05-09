@@ -9,6 +9,7 @@ import fft._
 import features._
 import pca._
 import svm._
+import logistic._
 import chisel3._
 import chisel3.core.FixedPoint
 import dsptools.numbers._
@@ -66,44 +67,28 @@ object SIntWellnessParams {
     val nFeatures = 2 // output dimension to SVM, minimum 1
   }
 
-  val svmParams = new SVMParams[SInt] {
-    val protoData = pcaParams.protoData.cloneType
-    val nSupports = 2
-    val nFeatures = pcaParams.nFeatures
-    val nClasses = 2
-    val nDegree = 1
-    val kernelType = "poly"
-    val classifierType = "ovo"
-    val codeBook = Seq.fill(nClasses, nClasses * 2)((scala.util.Random.nextInt(2) * 2) - 1) // ignored for this test case
+  val logisticParams = new LogisticParams[SInt] {
+    val protoData = SInt(32.W)
+    val nFeatures = pcaParams.nFeatures           // the number of reduced dimensions, coming from PCA if ever
+    val nThresholds = 10          // the number of threshold points for logit estimation
+
+    val onlineLearn = 0          // online learning activation switch
+    val nWindow = 5              // the training window for ictal segments
+    val nInterCount = 60         // the training window for interictal segments
+
+    val ictalIndex = nThresholds       // the index wrt threshold, for the online learning scheme
+    val interIndex = 1       // same as above, but for interictal training
+
+    val learningRate = 0.01
   }
 
-  val configurationMemoryParams = new ConfigurationMemoryParams[SInt] {
-
-    object computeNClassifiers {
-      def apply(params: SVMParams[chisel3.SInt] with Object {
-        val nClasses: Int
-        val codeBook: Seq[Seq[Int]]
-        val classifierType: String
-      }): Int =
-        if (params.classifierType == "ovr") {
-          if (params.nClasses == 2) params.nClasses - 1
-          else 1
-        }
-        else if (params.classifierType == "ovo") {
-          (params.nClasses * (params.nClasses - 1)) / 2
-        }
-        else if (params.classifierType == "ecoc") {
-          params.codeBook.head.length
-        }
-        else 1
-    }
+  val logisticConfigurationMemoryParams = new ConfigurationMemoryParams[SInt] {
 
     val protoData = pcaParams.protoData.cloneType
-    val nDimensions: Int = pcaParams.nDimensions
+    val nDimensions: Int = 1
     val nFeatures: Int = pcaParams.nFeatures
-    val nSupports: Int = svmParams.nSupports
-    val nClassifiers: Int = computeNClassifiers(svmParams)
   }
+
 }
 
 object utilities {
@@ -171,41 +156,26 @@ object FixedPointWellnessParams {
     val nFeatures = 2   // output dimension to SVM, minimum 1
   }
 
-  val svmParams = new SVMParams[FixedPoint] {
+  val logisticParams = new LogisticParams[FixedPoint] {
     val protoData = FixedPoint(dataWidth.W,dataBP.BP)
-    val nSupports = 2
-    val nFeatures = pcaParams.nFeatures
-    val nClasses = 2
-    val nDegree = 1
-    val kernelType = "poly"
-    val classifierType = "ovo"
-    val codeBook = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
+    val nFeatures = pcaParams.nFeatures           // the number of reduced dimensions, coming from PCA if ever
+    val nThresholds = 10          // the number of threshold points for logit estimation
+
+    val onlineLearn = 0          // online learning activation switch
+    val nWindow = 5              // the training window for ictal segments
+    val nInterCount = 60         // the training window for interictal segments
+
+    val ictalIndex = nThresholds       // the index wrt threshold, for the online learning scheme
+    val interIndex = 1       // same as above, but for interictal training
+
+    val learningRate = 0.01
   }
 
   val configurationMemoryParams = new ConfigurationMemoryParams[FixedPoint] {
-    object computeNClassifiers {
-      def apply(params: SVMParams[FixedPoint] with Object {
-        val nClasses: Int
-        val codeBook: Seq[Seq[Int]]
-        val classifierType: String
-      }): Int =
-        if (params.classifierType == "ovr") {
-          if (params.nClasses == 2) params.nClasses - 1
-          else 1
-        }
-        else if (params.classifierType == "ovo") {
-          (params.nClasses*(params.nClasses - 1))/2
-        }
-        else if (params.classifierType == "ecoc") {
-          params.codeBook.head.length
-        }
-        else 1
-    }
+
     val protoData = pcaParams.protoData.cloneType
-    val nDimensions: Int = pcaParams.nDimensions
+    val nDimensions: Int = 1
     val nFeatures: Int = pcaParams.nFeatures
-    val nSupports: Int = svmParams.nSupports
-    val nClassifiers: Int = computeNClassifiers(svmParams)
   }
 }
 
@@ -290,41 +260,26 @@ object FixedPointModelWellnessParams {
     val nFeatures = features
   }
 
-  val svmParams = new SVMParams[FixedPoint] {
+  val logisticParams = new LogisticParams[FixedPoint] {
     val protoData = FixedPoint(dataWidth.W,dataBP.BP)
-    val nSupports = supports
-    val nFeatures = pcaParams.nFeatures
-    val nClasses = classes
-    val nDegree = degree
-    val kernelType = "poly"
-    val classifierType = "ovo"
-    val codeBook = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
+    val nFeatures = pcaParams.nFeatures           // the number of reduced dimensions, coming from PCA if ever
+    val nThresholds = 10          // the number of threshold points for logit estimation
+
+    val onlineLearn = 0          // online learning activation switch
+    val nWindow = 5              // the training window for ictal segments
+    val nInterCount = 60         // the training window for interictal segments
+
+    val ictalIndex = nThresholds       // the index wrt threshold, for the online learning scheme
+    val interIndex = 1       // same as above, but for interictal training
+
+    val learningRate = 0.01
   }
 
   val configurationMemoryParams = new ConfigurationMemoryParams[FixedPoint] {
-    object computeNClassifiers {
-      def apply(params: SVMParams[FixedPoint] with Object {
-        val nClasses: Int
-        val codeBook: Seq[Seq[Int]]
-        val classifierType: String
-      }): Int =
-        if (params.classifierType == "ovr") {
-          if (params.nClasses == 2) params.nClasses - 1
-          else 1
-        }
-        else if (params.classifierType == "ovo") {
-          (params.nClasses*(params.nClasses - 1))/2
-        }
-        else if (params.classifierType == "ecoc") {
-          params.codeBook.head.length
-        }
-        else 1
-    }
+
     val protoData = pcaParams.protoData.cloneType
-    val nDimensions: Int = pcaParams.nDimensions
+    val nDimensions: Int = 1
     val nFeatures: Int = pcaParams.nFeatures
-    val nSupports: Int = svmParams.nSupports
-    val nClassifiers: Int = computeNClassifiers(svmParams)
   }
 }
 
@@ -588,41 +543,26 @@ object SIntWellnessGenParams {
     val nFeatures = 2 // output dimension to SVM, minimum 1
   }
 
-  val svmParams = new SVMParams[SInt] {
+  val logisticParams = new LogisticParams[SInt] {
     val protoData = dataPrototype
-    val nSupports = 2
-    val nFeatures = pcaParams.nFeatures
-    val nClasses = 2
-    val nDegree = 1
-    val kernelType = "poly"
-    val classifierType = "ovo"
-    val codeBook = Seq.fill(nClasses, nClasses * 2)((scala.util.Random.nextInt(2) * 2) - 1) // ignored for this test case
+    val nFeatures = pcaParams.nFeatures           // the number of reduced dimensions, coming from PCA if ever
+    val nThresholds = 10          // the number of threshold points for logit estimation
+
+    val onlineLearn = 0          // online learning activation switch
+    val nWindow = 5              // the training window for ictal segments
+    val nInterCount = 60         // the training window for interictal segments
+
+    val ictalIndex = nThresholds       // the index wrt threshold, for the online learning scheme
+    val interIndex = 1       // same as above, but for interictal training
+
+    val learningRate = 0.01
   }
 
   val configurationMemoryParams = new ConfigurationMemoryParams[SInt] {
-    object computeNClassifiers {
-      def apply(params: SVMParams[chisel3.SInt] with Object {
-        val nClasses: Int
-        val codeBook: Seq[Seq[Int]]
-        val classifierType: String
-      }): Int =
-        if (params.classifierType == "ovr") {
-          if (params.nClasses == 2) params.nClasses - 1
-          else 1
-        }
-        else if (params.classifierType == "ovo") {
-          (params.nClasses * (params.nClasses - 1)) / 2
-        }
-        else if (params.classifierType == "ecoc") {
-          params.codeBook.head.length
-        }
-        else 1
-    }
+
     val protoData = dataPrototype
-    val nDimensions: Int = pcaParams.nDimensions
+    val nDimensions: Int = 1
     val nFeatures: Int = pcaParams.nFeatures
-    val nSupports: Int = svmParams.nSupports
-    val nClassifiers: Int = computeNClassifiers(svmParams)
   }
 }
 
@@ -930,41 +870,29 @@ object FixedPointWellnessGenParams {
     val nFeatures = features   // output dimension to SVM, minimum 1
   }
 
-  val svmParams = new SVMParams[FixedPoint] {
+  val logisticParams = new LogisticParams[FixedPoint] {
     val protoData = dataPrototype
-    val nSupports = supports
-    val nFeatures = pcaParams.nFeatures
-    val nClasses = classes
-    val nDegree = degree
-    val kernelType = "poly"
-    val classifierType = "ovo"
-    val codeBook = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
+    val nFeatures = pcaParams.nFeatures           // the number of reduced dimensions, coming from PCA if ever
+    val nThresholds = 10          // the number of threshold points for logit estimation
+
+    val onlineLearn = 0          // online learning activation switch
+    val nWindow = 5              // the training window for ictal segments
+    val nInterCount = 60         // the training window for interictal segments
+
+    val ictalIndex = nThresholds       // the index wrt threshold, for the online learning scheme
+    val interIndex = 1       // same as above, but for interictal training
+
+    val learningRate = 0.01
   }
 
+
+
   val configurationMemoryParams = new ConfigurationMemoryParams[FixedPoint] {
-    object computeNClassifiers {
-      def apply(params: SVMParams[FixedPoint] with Object {
-        val nClasses: Int
-        val codeBook: Seq[Seq[Int]]
-        val classifierType: String
-      }): Int =
-        if (params.classifierType == "ovr") {
-          if (params.nClasses == 2) params.nClasses - 1
-          else 1
-        }
-        else if (params.classifierType == "ovo") {
-          (params.nClasses*(params.nClasses - 1))/2
-        }
-        else if (params.classifierType == "ecoc") {
-          params.codeBook.head.length
-        }
-        else 1
-    }
+
     val protoData = dataPrototype
-    val nDimensions: Int = pcaParams.nDimensions
+    val nDimensions: Int = 1
     val nFeatures: Int = pcaParams.nFeatures
-    val nSupports: Int = svmParams.nSupports
-    val nClassifiers: Int = computeNClassifiers(svmParams)
+
   }
 
 }

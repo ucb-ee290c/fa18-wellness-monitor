@@ -8,7 +8,7 @@ import iirFilter._
 import fft._
 import features._
 import pca._
-import svm._
+import logistic._
 import chisel3._
 import chisel3.core.FixedPoint
 import chisel3.util._
@@ -201,9 +201,8 @@ class TLReadQueue
   */
 class WellnessConfigurationBundle[T <: Data](params: ConfigurationMemoryParams[T]) extends Bundle {
   val confPCAVector = Vec(params.nFeatures,Vec(params.nDimensions,params.protoData))
-  val confSVMSupportVector = Vec(params.nSupports,Vec(params.nFeatures,params.protoData))
-  val confSVMAlphaVector = Vec(params.nClassifiers,Vec(params.nSupports,params.protoData))
-  val confSVMIntercept = Vec(params.nClassifiers,params.protoData)
+  val confLogisticWeightsVector = Vec(params.nDimensions,Vec(params.nFeatures,params.protoData))//logisticWeightsVector
+  val confLogisticIntercept = params.protoData//logisticIntercept
   val confInputMuxSel = Bool()
   val confPCANormalizationData = Vec(params.nDimensions,Vec(2,params.protoData))
 
@@ -233,37 +232,30 @@ object WellnessConfigurationBundle {
   */
 class wellnessGenModuleIO[T <: Data : Real : Order : BinaryRepresentation]
 (genParams: wellnessGenParams[T],
- svmParams: SVMParams[T],
+ logisticParams: LogisticParams[T],
  configurationMemoryParams: ConfigurationMemoryParams[T]) extends Bundle {
-  var nClassifiers = svmParams.nClasses  // one vs rest default
-  if (svmParams.classifierType == "ovr") {
-    if (svmParams.nClasses == 2) nClassifiers = svmParams.nClasses - 1
-  } else if (svmParams.classifierType == "ovo") {   // one vs one
-    nClassifiers = (svmParams.nClasses*(svmParams.nClasses - 1))/2
-  } else if (svmParams.classifierType == "ecoc") {  // error correcting output code
-    nClassifiers = svmParams.codeBook.head.length // # columns = # classifiers
-  }
 
   val streamIn = Flipped(ValidWithSync(genParams.dataType.cloneType))
   val in = Flipped(DecoupledIO(genParams.dataType.cloneType))
   val inConf = Flipped(ValidWithSync(WellnessConfigurationBundle(configurationMemoryParams)))
   val out = ValidWithSync(Bool())
-  val rawVotes = Output(Vec(svmParams.nClasses, svmParams.protoData))
-  val classVotes = Output(Vec(svmParams.nClasses,UInt((log2Ceil(nClassifiers)+1).W)))
+  val rawVotes = Output(logisticParams.protoData)
+  val dotProduct = Output(logisticParams.protoData)
+  val weightProbe = Output(Vec(logisticParams.nFeatures,logisticParams.protoData))
 
   override def cloneType: this.type = wellnessGenModuleIO(
     genParams: wellnessGenParams[T],
-    svmParams: SVMParams[T],
+    logisticParams: LogisticParams[T],
     configurationMemoryParams: ConfigurationMemoryParams[T]).asInstanceOf[this.type]
 }
 object wellnessGenModuleIO {
   def apply[T <: chisel3.Data : Real : Order : BinaryRepresentation](
     genParams: wellnessGenParams[T],
-    svmParams: SVMParams[T],
+    logisticParams: LogisticParams[T],
     configurationMemoryParams: ConfigurationMemoryParams[T]):
   wellnessGenModuleIO[T] = new wellnessGenModuleIO(
     genParams: wellnessGenParams[T],
-    svmParams: SVMParams[T],
+    logisticParams: LogisticParams[T],
     configurationMemoryParams: ConfigurationMemoryParams[T])
 }
 
@@ -292,11 +284,11 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
  val datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
  val heritageArray: ArrayBuffer[Seq[(Int, Int)]],
  val pcaParams: PCAParams[T],
- val svmParams: SVMParams[T],
+ val logisticParams: LogisticParams[T],
  val configurationMemoryParams: ConfigurationMemoryParams[T]) (implicit val p: Parameters) extends Module {
   val io = IO(wellnessGenModuleIO[T](
     genParams: wellnessGenParams[T],
-    svmParams: SVMParams[T],
+    logisticParams: LogisticParams[T],
     configurationMemoryParams: ConfigurationMemoryParams[T]))
 
   // create mux between external input (streamIn) and Rocket's memory mapped input (in)
@@ -324,14 +316,6 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
     singlePathParamsSeq = datapathParamsArr(i)
     // Allocate empty datapath of modules (i) where we will store module instantiations
     val generatedSinglePath: mutable.ArrayBuffer[(String,Module)] = mutable.ArrayBuffer()
-
-    // dummy params for null block!
-    // TODO: should eventually make a dummy module
-    val dummyParams = new FIRFilterParams[FixedPoint]
-    {
-      val protoData = dataPrototype
-      val taps = Seq(1).map(ConvertableTo[FixedPoint].fromDouble(_))
-    }
 
     // For each (jth) param in param datapath i
     // meaning walk through every 'param' in the 'param datapath' and instatiate the appropriate module with the given
@@ -683,22 +667,22 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   pca.io.in.bits := pcaNorm.io.out.bits
   pca.io.in.sync := false.B
 
-  // SVM (PCA to SVM)
-  val svm = Module(new SVM(svmParams))
+  // Logistic (PCA to Logistic)
+  val logistic = Module(new Logistic(logisticParams))
   // Configure SVM
-  svm.io.supportVector := io.inConf.bits.confSVMSupportVector
-  svm.io.alphaVector := io.inConf.bits.confSVMAlphaVector
-  svm.io.intercept := io.inConf.bits.confSVMIntercept
+  logistic.io.weights := io.inConf.bits.confLogisticWeightsVector
+  logistic.io.intercept := io.inConf.bits.confLogisticIntercept
   // Connect PCA to SVM
-  svm.io.in.valid := pca.io.out.valid
-  svm.io.in.bits := pca.io.out.bits
-  svm.io.in.sync := false.B
+  logistic.io.in.valid := pca.io.out.valid
+  logistic.io.in.bits := pca.io.out.bits
+  logistic.io.in.sync := false.B
   // SVM to Output
-  io.out.valid := svm.io.out.valid
-  io.out.sync := svm.io.out.sync
-  io.out.bits := false.B
-  io.rawVotes := svm.io.rawVotes
-  io.classVotes := svm.io.classVotes
+  io.out.valid := logistic.io.out.valid
+  io.out.sync := logistic.io.out.sync
+  io.out.bits := logistic.io.out.bits
+  io.rawVotes := logistic.io.rawVotes
+  io.dotProduct := logistic.io.dotProduct
+  io.weightProbe := logistic.io.weightProbe
 
   io.in.ready := true.B
 }
@@ -725,7 +709,7 @@ abstract class wellnessGenDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Rea
   val datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
   val heritageArray: ArrayBuffer[Seq[(Int, Int)]],
   val pcaParams: PCAParams[T],
-  val svmParams: SVMParams[T],
+  val logisticParams: LogisticParams[T],
   val configurationMemoryParams: ConfigurationMemoryParams[T]
 )(implicit p: Parameters) extends DspBlock[D, U, EO, EI, B] {
   val streamNode = AXI4StreamNexusNode(
@@ -749,7 +733,7 @@ abstract class wellnessGenDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Rea
       datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
       heritageArray: ArrayBuffer[Seq[(Int, Int)]],
       pcaParams: PCAParams[T],
-      svmParams: SVMParams[T],
+      logisticParams: LogisticParams[T],
       configurationMemoryParams: ConfigurationMemoryParams[T]))
 
     // config memory instantation
@@ -771,7 +755,7 @@ abstract class wellnessGenDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Rea
 
     // Wellness to Output (Rocket)
     out.valid := wellnessGen.io.out.valid
-    out.bits.data := Cat(wellnessGen.io.rawVotes(1).asUInt(),wellnessGen.io.rawVotes(0).asUInt())
+    out.bits.data := Cat(wellnessGen.io.out.bits.asUInt(),wellnessGen.io.rawVotes.asUInt())
 
     // connecting config memory to appropriate wires in wellness gen
     inConf.ready := true.B
@@ -790,14 +774,14 @@ class TLWellnessGenDataPathBlock[T <: Data : Real : Order : BinaryRepresentation
   datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
   heritageArray: ArrayBuffer[Seq[(Int, Int)]],
   pcaParams: PCAParams[T],
-  svmParams: SVMParams[T],
+  logisticParams: LogisticParams[T],
   configurationMemoryParams: ConfigurationMemoryParams[T]
 )(implicit p: Parameters) extends
   wellnessGenDataPathBlock[TLClientPortParameters, TLManagerPortParameters, TLEdgeOut, TLEdgeIn, TLBundle, T](
     genParams,
     datapathParamsArr,
     heritageArray,
-    pcaParams, svmParams,
+    pcaParams, logisticParams,
     configurationMemoryParams)
   with TLDspBlock
 
@@ -819,7 +803,7 @@ class wellnessGenThing[T <: Data : Real : Order : BinaryRepresentation]
   val datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
   val heritageArray: ArrayBuffer[Seq[(Int, Int)]],
   val pcaParams: PCAParams[T],
-  val svmParams: SVMParams[T],
+  val logisticParams: LogisticParams[T],
   val configurationMemoryParams: ConfigurationMemoryParams[T],
   val depth: Int = 32
 )(implicit p: Parameters) extends LazyModule {
@@ -832,7 +816,7 @@ class wellnessGenThing[T <: Data : Real : Order : BinaryRepresentation]
     datapathParamsArr,
     heritageArray,
     pcaParams,
-    svmParams,
+    logisticParams,
     configurationMemoryParams))
   val readQueue = LazyModule(new TLReadQueue(depth))
 
@@ -862,7 +846,7 @@ trait HasPeripheryWellness extends BaseSubsystem {
     wellnessParams.datapathParamsArr,
     wellnessParams.heritageArray,
     wellnessParams.pcaParams,
-    wellnessParams.svmParams,
+    wellnessParams.logisticParams,
     wellnessParams.configurationMemoryParams))
   // Connect memory interfaces to pbus
   pbus.toVariableWidthSlave(Some("wellnessWrite")) { wellness.writeQueue.mem.get }

@@ -10,7 +10,7 @@ import iirFilter._
 import fft._
 import features._
 import pca._
-import svm._
+import logistic._
 import memorybuffer._
 import chisel3._
 import chisel3.core.FixedPoint
@@ -46,7 +46,7 @@ class wellnessGenTester[T <: chisel3.Data] (
     datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
     heritageArray: ArrayBuffer[Seq[(Int, Int)]],
     pcaParams: PCAParams[T],
-    svmParams: SVMParams[T],
+    logisticParams: LogisticParams[T],
     configurationMemoryParams: ConfigurationMemoryParams[T],
     goldenDatapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
     goldenModelParameters: wellnessGenIntegrationParameterBundle,
@@ -66,35 +66,36 @@ class wellnessGenTester[T <: chisel3.Data] (
   var generatedFFTBufferResults: ArrayBuffer[ArrayBuffer[Buffer[Double]]] = ArrayBuffer()
 
   // *********************************************
-  // Golden SVM and PCA
+  // Golden Logistic and PCA
   // *********************************************
-  val SVM = new GoldenSVM(
-    goldenModelParameters.goldenSVMParams.nSupports,
-    goldenModelParameters.goldenSVMParams.nFeatures,
-    goldenModelParameters.goldenSVMParams.nClasses,
-    goldenModelParameters.goldenSVMParams.nDegree,
-    goldenModelParameters.goldenSVMParams.kernelType,
-    goldenModelParameters.goldenSVMParams.classifierType,
-    goldenModelParameters.goldenSVMParams.codeBook,
-    flag = 0,
-    c.svmParams.protoData.getClass.getTypeName)
+
+  val logistic = new GoldenLogistic(
+    goldenModelParameters.goldenLogisticParams.nFeatures,
+    goldenModelParameters.goldenLogisticParams.nThresholds,
+    goldenModelParameters.goldenLogisticParams.learningRate,
+    goldenModelParameters.goldenLogisticParams.ictalIndex,
+    goldenModelParameters.goldenLogisticParams.interIndex,
+    goldenModelParameters.goldenLogisticParams.nWindow,
+    goldenModelParameters.goldenLogisticParams.nInterCount,
+    goldenModelParameters.goldenLogisticParams.onlineLearn,
+    c.logisticParams.protoData.getClass.getTypeName)
   val PCANormalizer = new GoldenIntPCANormalizer(goldenModelParameters.goldenPCAParams.nDimensions)
   val PCA = new GoldenIntPCA(goldenModelParameters.goldenPCAParams.nDimensions, goldenModelParameters.goldenPCAParams.nFeatures)
 
   var referencePCAVector = Seq(Seq(5.0, 0.0, -2.0), Seq(1.0, 2.0, 3.0))
-  var referenceSVMSupportVector = Seq(Seq(1.0, 2.0), Seq(3.0, 4.0))
-  var referenceSVMAlphaVector = Seq(Seq(7.0, 3.0))
-  var referenceSVMIntercept = Seq(4.0)
+  var referenceLogisticWeightsVector = Seq(1.0, 2.0)
+  var referenceLogisticIntercept = 1
   var referencePCANormalizationData = Seq(Seq(10.0,2.0),Seq(3.0,5.0),Seq(1.0,1.0))
 
   // If doing test with Python model
+  /*
   if (testType == 1) { // this is the file loading sequence for the configuration parameters
     referencePCAVector = utilities.readCSV("scripts/generated_files/pca_vectors.csv").map(_.map(_.toDouble))
-    referenceSVMSupportVector = utilities.readCSV("scripts/generated_files/support_vectors.csv").map(_.map(_.toDouble))
-    referenceSVMAlphaVector = utilities.readCSV("scripts/generated_files/alpha_vectors.csv").map(_.map(_.toDouble))
-    referenceSVMIntercept = utilities.readCSV("scripts/generated_files/intercepts.csv").flatMap(_.map(_.toDouble))
+    referenceLogisticWeightsVector = utilities.readCSV("scripts/generated_files/support_vectors.csv").map(_.map(_.toDouble))
+    referenceLogisticIntercept = utilities.readCSV("scripts/generated_files/alpha_vectors.csv").map(_.map(_.toDouble))
     referencePCANormalizationData = utilities.readCSV("scripts/generated_files/normalization.csv").map(_.map(_.toDouble))
   }
+  */
 
   poke(c.io.inConf.bits.confInputMuxSel, 0)
 
@@ -110,21 +111,15 @@ class wellnessGenTester[T <: chisel3.Data] (
     val nColumns: Int = c.configurationMemoryParams.nDimensions
   }
 
-  val svmSupportVectorMemoryParams = new MemoryBufferParams[T] {
+  val logisticWeightsVectorMemoryParams = new MemoryBufferParams[T] {
     val protoData: T = c.configurationMemoryParams.protoData.cloneType
     val nRows: Int = c.configurationMemoryParams.nFeatures
-    val nColumns: Int = c.configurationMemoryParams.nSupports
+    val nColumns: Int = 1
   }
 
-  val svmAlphaVectorMemoryParams = new MemoryBufferParams[T] {
+  val logisticInterceptMemoryParams = new MemoryBufferParams[T] {
     val protoData: T = c.configurationMemoryParams.protoData.cloneType
-    val nRows: Int = c.configurationMemoryParams.nSupports
-    val nColumns: Int = c.configurationMemoryParams.nClassifiers
-  }
-
-  val svmInterceptMemoryParams = new MemoryBufferParams[T] {
-    val protoData: T = c.configurationMemoryParams.protoData.cloneType
-    val nRows: Int = c.configurationMemoryParams.nClassifiers
+    val nRows: Int = 1
     val nColumns: Int = 1
   }
 
@@ -133,18 +128,15 @@ class wellnessGenTester[T <: chisel3.Data] (
       poke(c.io.inConf.bits.confPCAVector(x)(y), referencePCAVector(x)(y))
     }
   }
-  for(x <- 0 until svmSupportVectorMemoryParams.nColumns) {
-    for (y <- 0 until svmSupportVectorMemoryParams.nRows) {
-      poke(c.io.inConf.bits.confSVMSupportVector(x)(y), referenceSVMSupportVector(x)(y))
+  for(x <- 0 until logisticWeightsVectorMemoryParams.nColumns) {
+    for (y <- 0 until logisticWeightsVectorMemoryParams.nRows) {
+      poke(c.io.inConf.bits.confLogisticWeightsVector(y), referenceLogisticWeightsVector(y))
     }
   }
-  for(x <- 0 until svmAlphaVectorMemoryParams.nColumns) {
-    for (y <- 0 until svmAlphaVectorMemoryParams.nRows) {
-      poke(c.io.inConf.bits.confSVMAlphaVector(x)(y), referenceSVMAlphaVector(x)(y))
+  for(x <- 0 until logisticInterceptMemoryParams.nColumns) {
+    for (y <- 0 until logisticInterceptMemoryParams.nRows) {
+      poke(c.io.inConf.bits.confLogisticIntercept, referenceLogisticIntercept)
     }
-  }
-  for (y <- 0 until svmInterceptMemoryParams.nRows) {
-    poke(c.io.inConf.bits.confSVMIntercept(y), referenceSVMIntercept(y))
   }
   for(x <- 0 until pcaNormalizationMemoryParams.nColumns) {
     for (y <- 0 until pcaNormalizationMemoryParams.nRows) {
@@ -239,8 +231,7 @@ class wellnessGenTester[T <: chisel3.Data] (
   var PCA_inputs = Seq.fill(generatedDatapaths.length)(0.toDouble)
   var pcaNormalizerResult = PCANormalizer.poke(Seq(0,0,0),referencePCANormalizationData.map(_.map(_.toDouble)))
   var pcaResult = PCA.poke(PCA_inputs, referencePCAVector.map(_.map(_.toDouble)))
-  var svmResult = SVM.poke(pcaResult.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),
-    referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
+  var logisticResult = logistic.poke(pcaResult.map(_.toDouble), referenceLogisticWeightsVector.map(_.toDouble), referenceLogisticIntercept.toDouble)
 
   // *********************************************
   // Loop over inputs
@@ -250,6 +241,7 @@ class wellnessGenTester[T <: chisel3.Data] (
     referenceInput = utilities.readCSV("scripts/generated_files/input.csv").flatMap(_.map(_.toDouble))
   }
 
+  /*
   if (testType == 1) { // create the .h file to contain the reference arrays
     val Seq(windowLength, features, dimensions, supports, classes, degree) =
     /* This is the order of parameters, as written in the Python file, for reference
@@ -298,6 +290,7 @@ class wellnessGenTester[T <: chisel3.Data] (
 
     file.close()
   }
+  */
 
   val outputContainer = ArrayBuffer[Array[Double]]() // this will hold the rawVotes from SVM for printout
   for (i <- 0 until 100)
@@ -307,17 +300,17 @@ class wellnessGenTester[T <: chisel3.Data] (
       input = referenceInput(i)
     }
     else {
-      if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
+      if (c.logisticParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
         input = scala.util.Random.nextInt(16)
       }
-      else if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
+      else if (c.logisticParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
         input = scala.util.Random.nextInt(32) - 16
       }
     }
 
     // poke SVM with PCA output
-    svmResult = SVM.poke(pcaResult.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),
-      referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
+    logisticResult = logistic.poke(pcaResult.map(_.toDouble), referenceLogisticWeightsVector.map(_.toDouble),
+      referenceLogisticIntercept.toDouble)
 
     // make a sequence of results to poke into PCA
     for (x <- 0 until generatedDoubleResults.length)
@@ -387,22 +380,24 @@ class wellnessGenTester[T <: chisel3.Data] (
 
     if (peek(c.io.out.valid) == true)
     {
-      val tolerance = 0.1 // tolerate 10% error
-      for (i <- 0 until goldenModelParameters.goldenSVMParams.nClasses) {
-        if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.SInt" || c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
-          fixTolLSBs.withValue(204){
-            expect(c.io.rawVotes(i), svmResult(0)(i))
-          }
-        } else {
-          // Due to the series of multiply and accumulates, error actually blows up, let's be lenient
-          // +-16, 4 extra bits after the binary point
-          fixTolLSBs.withValue(log2Ceil((svmResult(0)(i).abs * tolerance).toInt + 1) + dataBP + 1) {
-            expect(c.io.rawVotes(i), svmResult(0)(i))
-          }
+      if (c.logisticParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
+        expect(c.io.rawVotes, logisticResult(0)(0))
+        expect(c.io.out.bits, logisticResult(0)(1))
+        expect(c.io.dotProduct, logisticResult(0)(2))
+        expect(c.io.weightProbe(0), logisticResult(1)(0))
+      } else {
+        val tolerance = 0.1
+        fixTolLSBs.withValue(log2Ceil((logisticResult(0)(0).abs * tolerance).toInt + 1) + dataBP - 1) {
+          expect(c.io.rawVotes, logisticResult(0)(0))
+          expect(c.io.dotProduct, logisticResult(0)(2))
+          expect(c.io.weightProbe(0), logisticResult(1)(0))
         }
+        // strict check for the class votes
+        expect(c.io.out.bits, logisticResult(0)(1))
       }
-      outputContainer += svmResult(0).toArray // inside the valid checks, only the valid outputs are recorded
+      outputContainer += logisticResult(0).toArray // inside the valid checks, only the valid outputs are recorded
     }
+
   }
 
   if (testType == 1) { // write out the expected rawVotes to the file
@@ -423,7 +418,7 @@ object wellnessGenIntegrationTesterSInt {
             datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
             heritageArray: ArrayBuffer[Seq[(Int, Int)]],
             pcaParams: PCAParams[SInt],
-            svmParams: SVMParams[SInt],
+            logisticParams: LogisticParams[SInt],
             configurationMemoryParams: ConfigurationMemoryParams[SInt],
             goldenDatapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
             goldenModelParameters: wellnessGenIntegrationParameterBundle,
@@ -434,14 +429,14 @@ object wellnessGenIntegrationTesterSInt {
         datapathParamsArr,
         heritageArray,
         pcaParams,
-        svmParams,
+        logisticParams,
         configurationMemoryParams)) {
         c => new wellnessGenTester(c,
           wellnessGenParams1,
           datapathParamsArr,
           heritageArray,
           pcaParams,
-          svmParams,
+          logisticParams,
           configurationMemoryParams,
           goldenDatapathParamsArr,
           goldenModelParameters,
@@ -453,7 +448,7 @@ object wellnessGenIntegrationTesterSInt {
         datapathParamsArr,
         heritageArray,
         pcaParams,
-        svmParams,
+        logisticParams,
         configurationMemoryParams),
         TestSetup.dspTesterOptions) {
         c => new wellnessGenTester(c,
@@ -461,7 +456,7 @@ object wellnessGenIntegrationTesterSInt {
           datapathParamsArr,
           heritageArray,
           pcaParams,
-          svmParams,
+          logisticParams,
           configurationMemoryParams,
           goldenDatapathParamsArr,
           goldenModelParameters,
@@ -477,7 +472,7 @@ object wellnessGenIntegrationTesterFP {
             datapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
             heritageArray: ArrayBuffer[Seq[(Int, Int)]],
             pcaParams: PCAParams[FixedPoint],
-            svmParams: SVMParams[FixedPoint],
+            logisticParams: LogisticParams[FixedPoint],
             configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
             goldenDatapathParamsArr: ArrayBuffer[Seq[(String, Any)]],
             goldenModelParameters: wellnessGenIntegrationParameterBundle,
@@ -489,14 +484,14 @@ object wellnessGenIntegrationTesterFP {
         datapathParamsArr,
         heritageArray,
         pcaParams,
-        svmParams,
+        logisticParams,
         configurationMemoryParams)) {
         c => new wellnessGenTester(c,
           wellnessGenParams1,
           datapathParamsArr,
           heritageArray,
           pcaParams,
-          svmParams,
+          logisticParams,
           configurationMemoryParams,
           goldenDatapathParamsArr,
           goldenModelParameters,
@@ -508,7 +503,7 @@ object wellnessGenIntegrationTesterFP {
         datapathParamsArr,
         heritageArray,
         pcaParams,
-        svmParams,
+        logisticParams,
         configurationMemoryParams),
         TestSetup.dspTesterOptions) {
         c => new wellnessGenTester(c,
@@ -516,7 +511,7 @@ object wellnessGenIntegrationTesterFP {
           datapathParamsArr,
           heritageArray,
           pcaParams,
-          svmParams,
+          logisticParams,
           configurationMemoryParams,
           goldenDatapathParamsArr,
           goldenModelParameters,

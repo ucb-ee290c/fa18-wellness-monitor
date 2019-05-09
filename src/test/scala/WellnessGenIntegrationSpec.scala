@@ -10,7 +10,7 @@ import iirFilter._
 import fft._
 import features._
 import pca._
-import svm._
+import logistic._
 import chisel3._
 import chisel3.core.FixedPoint
 import dsptools.numbers._
@@ -58,21 +58,20 @@ abstract class pcaParamsGenTemplate {
   val nFeatures: Int
 }
 
-abstract class svmParamsGenTemplate {
-  val nSupports: Int
+abstract class logisticParamsGenTemplate {
   val nFeatures: Int
-  val nClasses: Int
-  val nDegree: Int
-  val kernelType: String
-  val classifierType: String
-  val codeBook: Seq[Seq[Int]]
+  val nThresholds: Int
+  val onlineLearn: Int
+  val nWindow: Int
+  val nInterCount: Int
+  val ictalIndex: Int
+  val interIndex: Int
+  val learningRate: Double
 }
 
 abstract class configurationMemoryParamsGenTemplate {
   val nDimensions: Int
   val nFeatures: Int
-  val nSupports: Int
-  val nClassifiers: Int
 }
 
 // *********************************************
@@ -84,15 +83,19 @@ class wellnessGenIntegrationParameterBundle {
     val nDimensions: Int = 0
     val nFeatures: Int = 0
   }
-  val goldenSVMParams: svmParamsGenTemplate = new svmParamsGenTemplate {
-    val nSupports: Int = 0
-    val nFeatures:Int = 0
-    val nClasses: Int = 0
-    val nDegree: Int = 0
-    val kernelType: String = "adel"
-    val classifierType: String = "adel"
-    val codeBook: Seq[Seq[Int]] = Seq.fill(1,1)(0)
+
+  val goldenLogisticParams: logisticParamsGenTemplate = new logisticParamsGenTemplate {
+    val nFeatures: Int = 0
+    val nThresholds: Int = 0
+    val onlineLearn: Int = 0
+    val nWindow: Int = 0
+    val nInterCount: Int = 0
+    val ictalIndex: Int = 0
+    val interIndex: Int = 0
+    val learningRate: Double = 0D
   }
+
+
   val goldenConfigurationMemoryParams: configurationMemoryParamsGenTemplate = new configurationMemoryParamsGenTemplate {
     val nDimensions: Int = 0
     val nFeatures: Int = 0
@@ -433,41 +436,22 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
       val nFeatures = 2 // output dimension to SVM, minimum 1
     }
 
-    val svmParams = new SVMParams[FixedPoint] {
+    val logisticParams = new LogisticParams[FixedPoint] {
       val protoData = dataPrototype
-      val nSupports = 2
       val nFeatures = pcaParams.nFeatures
-      val nClasses = 2
-      val nDegree = 1
-      val kernelType = "poly"
-      val classifierType = "ovo"
-      val codeBook = Seq.fill(nClasses, nClasses * 2)((scala.util.Random.nextInt(2) * 2) - 1) // ignored for this test case
+      val nThresholds = 10
+      val onlineLearn = 0
+      val nWindow = 5
+      val ictalIndex = nThresholds
+      val interIndex = 1
+      val learningRate = 0.01
+      val nInterCount = 60
     }
 
     val configurationMemoryParams = new ConfigurationMemoryParams[FixedPoint] {
-      object computeNClassifiers {
-        def apply(params: SVMParams[FixedPoint] with Object {
-          val nClasses: Int
-          val codeBook: Seq[Seq[Int]]
-          val classifierType: String
-        }): Int =
-          if (params.classifierType == "ovr") {
-            if (params.nClasses == 2) params.nClasses - 1
-            else 1
-          }
-          else if (params.classifierType == "ovo") {
-            (params.nClasses * (params.nClasses - 1)) / 2
-          }
-          else if (params.classifierType == "ecoc") {
-            params.codeBook.head.length
-          }
-          else 1
-      }
       val protoData = dataPrototype
-      val nDimensions: Int = pcaParams.nDimensions
+      val nDimensions: Int = 1
       val nFeatures: Int = pcaParams.nFeatures
-      val nSupports: Int = svmParams.nSupports
-      val nClassifiers: Int = computeNClassifiers(svmParams)
     }
 
     // *********************************************
@@ -479,38 +463,20 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
         val nDimensions: Int = pcaParams.nDimensions
         val nFeatures: Int = pcaParams.nFeatures
       }
-      override val goldenSVMParams: svmParamsGenTemplate = new svmParamsGenTemplate {
-        val nSupports: Int = svmParams.nSupports
-        val nFeatures: Int = svmParams.nFeatures
-        val nClasses: Int = svmParams.nClasses
-        val nDegree: Int = svmParams.nDegree
-        val kernelType: String = svmParams.kernelType
-        val classifierType: String = svmParams.classifierType
-        val codeBook: Seq[Seq[Int]] = svmParams.codeBook
+      override val goldenLogisticParams: logisticParamsGenTemplate = new logisticParamsGenTemplate {
+       val nFeatures:     Int = logisticParams.nFeatures
+       val nThresholds:   Int = logisticParams.nThresholds
+       val onlineLearn:   Int = logisticParams.onlineLearn
+       val nWindow:       Int = logisticParams.nWindow
+       val nInterCount:   Int = logisticParams.nInterCount
+       val ictalIndex:    Int = logisticParams.ictalIndex
+       val interIndex:    Int = logisticParams.interIndex
+       val learningRate: Double = logisticParams.learningRate
       }
       override val goldenConfigurationMemoryParams: configurationMemoryParamsGenTemplate = new configurationMemoryParamsGenTemplate {
-        object computeNClassifiers {
-          def apply(params: svmParamsGenTemplate with Object {
-            val nClasses: Int
-            val codeBook: Seq[Seq[Int]]
-            val classifierType: String
-          }): Int =
-            if (params.classifierType == "ovr") {
-              if (params.nClasses == 2) params.nClasses - 1
-              else 1
-            }
-            else if (params.classifierType == "ovo") {
-              (params.nClasses*(params.nClasses - 1))/2
-            }
-            else if (params.classifierType == "ecoc") {
-              params.codeBook.head.length
-            }
-            else 1
-        }
-        val nDimensions: Int = goldenPCAParams.nDimensions
+        val nDimensions: Int = 1
         val nFeatures: Int = goldenPCAParams.nFeatures
-        val nSupports: Int = goldenSVMParams.nSupports
-        val nClassifiers: Int = computeNClassifiers(goldenSVMParams)
+
       }
     }
 
@@ -520,7 +486,7 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
       datapathParamsArr,
       heritageArray,
       pcaParams,
-      svmParams,
+      logisticParams,
       configurationMemoryParams,
       goldenDatapathParamsArr,
       goldenParams,
@@ -899,41 +865,23 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
       val nFeatures = features // output dimension to SVM, minimum 1
     }
 
-    val svmParams = new SVMParams[FixedPoint] {
+    val logisticParams = new LogisticParams[FixedPoint] {
       val protoData = dataPrototype
-      val nSupports = supports
       val nFeatures = pcaParams.nFeatures
-      val nClasses = classes
-      val nDegree = degree
-      val kernelType = "poly"
-      val classifierType = "ovo"
-      val codeBook = Seq.fill(nClasses, nClasses * 2)((scala.util.Random.nextInt(2) * 2) - 1) // ignored for this test case
+      val nThresholds = 10
+      val onlineLearn = 0
+      val nWindow = 5
+      val ictalIndex = nThresholds
+      val interIndex = 1
+      val learningRate = 0.01
+      val nInterCount = 60
     }
 
     val configurationMemoryParams = new ConfigurationMemoryParams[FixedPoint] {
-      object computeNClassifiers {
-        def apply(params: SVMParams[FixedPoint] with Object {
-          val nClasses: Int
-          val codeBook: Seq[Seq[Int]]
-          val classifierType: String
-        }): Int =
-          if (params.classifierType == "ovr") {
-            if (params.nClasses == 2) params.nClasses - 1
-            else 1
-          }
-          else if (params.classifierType == "ovo") {
-            (params.nClasses * (params.nClasses - 1)) / 2
-          }
-          else if (params.classifierType == "ecoc") {
-            params.codeBook.head.length
-          }
-          else 1
-      }
       val protoData = dataPrototype
-      val nDimensions: Int = pcaParams.nDimensions
+      val nDimensions: Int = 1
       val nFeatures: Int = pcaParams.nFeatures
-      val nSupports: Int = svmParams.nSupports
-      val nClassifiers: Int = computeNClassifiers(svmParams)
+
     }
 
     // *********************************************
@@ -945,38 +893,19 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
         val nDimensions: Int = pcaParams.nDimensions
         val nFeatures: Int = pcaParams.nFeatures
       }
-      override val goldenSVMParams: svmParamsGenTemplate = new svmParamsGenTemplate {
-        val nSupports: Int = svmParams.nSupports
-        val nFeatures: Int = svmParams.nFeatures
-        val nClasses: Int = svmParams.nClasses
-        val nDegree: Int = svmParams.nDegree
-        val kernelType: String = svmParams.kernelType
-        val classifierType: String = svmParams.classifierType
-        val codeBook: Seq[Seq[Int]] = svmParams.codeBook
+      override val goldenLogisticParams: logisticParamsGenTemplate = new logisticParamsGenTemplate {
+        val nFeatures:     Int = logisticParams.nFeatures
+        val nThresholds:   Int = logisticParams.nThresholds
+        val onlineLearn:   Int = logisticParams.onlineLearn
+        val nWindow:       Int = logisticParams.nWindow
+        val nInterCount:   Int = logisticParams.nInterCount
+        val ictalIndex:    Int = logisticParams.ictalIndex
+        val interIndex:    Int = logisticParams.interIndex
+        val learningRate: Double = logisticParams.learningRate
       }
       override val goldenConfigurationMemoryParams: configurationMemoryParamsGenTemplate = new configurationMemoryParamsGenTemplate {
-        object computeNClassifiers {
-          def apply(params: svmParamsGenTemplate with Object {
-            val nClasses: Int
-            val codeBook: Seq[Seq[Int]]
-            val classifierType: String
-          }): Int =
-            if (params.classifierType == "ovr") {
-              if (params.nClasses == 2) params.nClasses - 1
-              else 1
-            }
-            else if (params.classifierType == "ovo") {
-              (params.nClasses*(params.nClasses - 1))/2
-            }
-            else if (params.classifierType == "ecoc") {
-              params.codeBook.head.length
-            }
-            else 1
-        }
-        val nDimensions: Int = goldenPCAParams.nDimensions
+        val nDimensions: Int = 1
         val nFeatures: Int = goldenPCAParams.nFeatures
-        val nSupports: Int = goldenSVMParams.nSupports
-        val nClassifiers: Int = computeNClassifiers(goldenSVMParams)
       }
     }
 
@@ -986,12 +915,12 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
       datapathParamsArr,
       heritageArray,
       pcaParams,
-      svmParams,
+      logisticParams,
       configurationMemoryParams,
       goldenDatapathParamsArr,
       goldenParams,
       debug,
-      1
+      0
     ) should be (true)
   }
 }
