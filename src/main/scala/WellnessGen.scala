@@ -201,8 +201,8 @@ class TLReadQueue
   */
 class WellnessConfigurationBundle[T <: Data](params: ConfigurationMemoryParams[T]) extends Bundle {
   val confPCAVector = Vec(params.nFeatures,Vec(params.nDimensions,params.protoData))
-  val confLogisticWeightsVector = Vec(params.nDimensions,Vec(params.nFeatures,params.protoData))//logisticWeightsVector
-  val confLogisticIntercept = params.protoData//logisticIntercept
+  val confLogisticWeightsVector = Vec(1,Vec(params.nFeatures,params.protoData))//logisticWeightsVector
+  val confLogisticIntercept = Vec(1,Vec(1,params.protoData))//logisticIntercept
   val confInputMuxSel = Bool()
   val confPCANormalizationData = Vec(params.nDimensions,Vec(2,params.protoData))
 

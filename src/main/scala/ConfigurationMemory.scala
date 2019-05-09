@@ -11,11 +11,6 @@ import memorybuffer._
   * @class ConfigurationMemoryBundle is the write input bundle for Configuration Memory
   * @class ConfigurationMemoryIO is the IO bundle for ConfigurationMemory
   * @class ConfigurationMemory is the generator definition
-  *       @param protoData is the prototype data used for PCA and SVM vector elements
-  *       @param nDimensions is the number of dimensions that are input to the PCA
-  *       @param nFeatures is the number of feature outputs from PCA, to the SVM
-  *       @param nSupports is the number of elements in the support vector of the SVM
-  *       @param nClassifiers is the number of classifiers in the SVM
   */
 
 trait ConfigurationMemoryParams[T <: Data] {
@@ -60,8 +55,8 @@ class ConfigurationMemory[T <: chisel3.Data : Real : Order : BinaryRepresentatio
   val pcaVectorMemoryAddr = 0.U
   val logisticWeightsVectorMemoryAddr = 1.U
   val logisticInterceptMemoryAddr = 2.U
-  val inputMuxSelAddr = 4.U
-  val pcaNormalizationMemoryAddr = 5.U
+  val inputMuxSelAddr = 3.U
+  val pcaNormalizationMemoryAddr = 4.U
 
   //MemoryBuffer definition for PCA
   val pcaVectorMemoryParams = new MemoryBufferParams[T] {

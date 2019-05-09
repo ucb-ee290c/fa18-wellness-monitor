@@ -142,7 +142,7 @@ class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt],
 
   for(i <- 0 until 11 ) {
     val input = scala.util.Random.nextInt(2)
-    val addr = 4
+    val addr = 3
 
     val goldenModelResultPCAVector = PCAVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultLogisticWeightsVector = logisticWeightsVectorMemoryBuffer.idlePoke(input)
@@ -185,7 +185,7 @@ class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt],
 
   for(i <- 0 until 11 ) {
     val input = scala.util.Random.nextInt(2)
-    val addr = 5
+    val addr = 4
 
     val goldenModelResultPCAVector = PCAVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultLogisticWeightsVector = logisticWeightsVectorMemoryBuffer.idlePoke(input)
