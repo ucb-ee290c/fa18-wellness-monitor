@@ -9,20 +9,19 @@ import fft._
 import features._
 import pca._
 import svm._
-
 import chisel3._
+import chisel3.core.FixedPoint
 import chisel3.util._
-
 import dspblocks._
 import dsptools.numbers._
 import dspjunctions.ValidWithSync
-
 import freechips.rocketchip.amba.axi4stream._
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.regmapper._
 import freechips.rocketchip.tilelink._
 import freechips.rocketchip.subsystem._
+import wellness.FixedPointWellnessGenParams.dataPrototype
 
 import scala.collection._
 import scala.collection.mutable.ArrayBuffer
@@ -315,6 +314,8 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   // Just a var instantiation that will get overwritten in the coming loops
   var singlePathParamsSeq = datapathParamsArr(0)
 
+
+
   // Gen ch x's seq of module datapaths from param datapaths (which is given as a LARGE param to this module)
   // For each (ith) param datapath in ch x (params) (meaning for each individual datapath for a channel)
   for (i <- 0 until datapathParamsArr.length)
@@ -323,6 +324,14 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
     singlePathParamsSeq = datapathParamsArr(i)
     // Allocate empty datapath of modules (i) where we will store module instantiations
     val generatedSinglePath: mutable.ArrayBuffer[(String,Module)] = mutable.ArrayBuffer()
+
+    // dummy params for null block!
+    // TODO: should eventually make a dummy module
+    val dummyParams = new FIRFilterParams[FixedPoint]
+    {
+      val protoData = dataPrototype
+      val taps = Seq(1).map(ConvertableTo[FixedPoint].fromDouble(_))
+    }
 
     // For each (jth) param in param datapath i
     // meaning walk through every 'param' in the 'param datapath' and instatiate the appropriate module with the given
@@ -349,7 +358,8 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
         case "Buffer" =>
           generatedSinglePath += (("Buffer", Module(new ShiftReg(singlePathParamsSeq(j)._2.asInstanceOf[ShiftRegParams[T]]))))
         case "Null" =>
-          print("\nNull detected, generate nothing")
+          generatedSinglePath += (("Null", Module(new dummy[T])))
+          print("\nNull detected, generate null block")
       }
     }
     // Add (jth) module datapath to ch x (modules)
@@ -379,6 +389,7 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
         // Connect first module to input
         if (j == 0)
         {
+          print("\n\n init module connection " + genDatapath(j)._1)
           genDatapath(j)._1 match
           {
             case "FIR" =>
@@ -394,7 +405,10 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
               genDatapath(j)._2.asInstanceOf[FFTBuffer[T]].io.in.bits  := inStream.bits
               genDatapath(j)._2.asInstanceOf[FFTBuffer[T]].io.in.sync  := inStream.sync
             case "Null" =>
-              print("\nNull detected, don't connect any wires")
+              genDatapath(j)._2.asInstanceOf[dummy[T]].io.in.valid := inStream.valid
+              genDatapath(j)._2.asInstanceOf[dummy[T]].io.in.bits  := inStream.bits
+              genDatapath(j)._2.asInstanceOf[dummy[T]].io.in.sync  := inStream.sync
+              print("\nNull detected, ground all wires")
           }
         }
 
@@ -407,7 +421,10 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
           {
             case "Null" =>
               {
-                print("\nNull detected, don't connect anything")
+                print("\nNull detected, do nothing")
+                genDatapath(j)._2.asInstanceOf[dummy[T]].io.in.valid := inStream.valid
+                genDatapath(j)._2.asInstanceOf[dummy[T]].io.in.bits  := inStream.bits
+                genDatapath(j)._2.asInstanceOf[dummy[T]].io.in.sync  := inStream.sync
               }
             case "FIR" =>
             {

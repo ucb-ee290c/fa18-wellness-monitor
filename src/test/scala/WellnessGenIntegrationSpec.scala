@@ -14,6 +14,7 @@ import svm._
 import chisel3._
 import chisel3.core.FixedPoint
 import dsptools.numbers._
+
 import org.scalatest.{FlatSpec, Matchers}
 import wellness.FixedPointWellnessGenParams.compareBlocks
 import wellness.SIntWellnessGenParams.{datapathsArr, trimTree}
@@ -264,27 +265,23 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
               return 1
             }
           case "FIR" =>
-            if ((block1._2.asInstanceOf[FIRFilterParams[FixedPoint]].protoData == block2._2.asInstanceOf[FIRFilterParams[FixedPoint]].protoData) &&
-              (block1._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps == block2._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps))
+            if (block1._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps.map(_.litToDouble) == block2._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps.map(_.litToDouble))
             {
               return 1
             }
           case "IIR" =>
-            if ((block1._2.asInstanceOf[IIRFilterParams[FixedPoint]].consts_A == block2._2.asInstanceOf[IIRFilterParams[FixedPoint]].consts_A) &&
-              (block1._2.asInstanceOf[IIRFilterParams[FixedPoint]].consts_B == block2._2.asInstanceOf[IIRFilterParams[FixedPoint]].consts_B) &&
-              (block1._2.asInstanceOf[IIRFilterParams[FixedPoint]].protoData == block2._2.asInstanceOf[IIRFilterParams[FixedPoint]].protoData))
+            if ((block1._2.asInstanceOf[IIRFilterParams[FixedPoint]].consts_A.map(_.litToDouble) == block2._2.asInstanceOf[IIRFilterParams[FixedPoint]].consts_A.map(_.litToDouble)) &&
+              (block1._2.asInstanceOf[IIRFilterParams[FixedPoint]].consts_B.map(_.litToDouble) == block2._2.asInstanceOf[IIRFilterParams[FixedPoint]].consts_B.map(_.litToDouble)))
             {
               return 1
             }
           case "LineLength" =>
-            if ((block1._2.asInstanceOf[lineLengthParams[FixedPoint]].protoData == block2._2.asInstanceOf[lineLengthParams[FixedPoint]].protoData) &&
-              (block1._2.asInstanceOf[lineLengthParams[FixedPoint]].windowSize == block2._2.asInstanceOf[lineLengthParams[FixedPoint]].windowSize))
+            if (block1._2.asInstanceOf[lineLengthParams[FixedPoint]].windowSize == block2._2.asInstanceOf[lineLengthParams[FixedPoint]].windowSize)
             {
               return 1
             }
           case "Buffer" =>
-            if ((block1._2.asInstanceOf[FIRFilterParams[FixedPoint]].protoData == block2._2.asInstanceOf[FIRFilterParams[FixedPoint]].protoData) &&
-              (block1._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps == block2._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps))
+            if (block1._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps.map(_.litToDouble) == block2._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps.map(_.litToDouble))
             {
               return 1
             }
@@ -411,8 +408,8 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
     datapathsArr += makeChiselBandpower(0, "FIR", filterTapsA, filterTapsA, 0, 2)
     goldenDatapathsArr += makeGoldenBandpower(0, "FIR", filterTapsA, filterTapsA, 0, 2)
     // Bandpower 2
-    datapathsArr += makeChiselBandpower(0, "FIR", filterTapsA, filterTapsA, 0, 2)
-    goldenDatapathsArr += makeGoldenBandpower(0, "FIR", filterTapsA, filterTapsA, 0, 2)
+    datapathsArr += makeChiselBandpower(0, "FIR", filterTapsA, filterTapsA, 0, 4)
+    goldenDatapathsArr += makeGoldenBandpower(0, "FIR", filterTapsA, filterTapsA, 0, 4)
     // Line Length 1
     datapathsArr += makeChiselLineLength(0, 2, "FIR", filterTapsA, filterTapsA)
     goldenDatapathsArr += makeGoldenLineLength(0, 2, "FIR", filterTapsA, filterTapsA)
@@ -731,27 +728,23 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
               return 1
             }
           case "FIR" =>
-            if ((block1._2.asInstanceOf[FIRFilterParams[FixedPoint]].protoData == block2._2.asInstanceOf[FIRFilterParams[FixedPoint]].protoData) &&
-              (block1._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps == block2._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps))
+            if (block1._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps.map(_.litToDouble) == block2._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps.map(_.litToDouble))
             {
               return 1
             }
           case "IIR" =>
-            if ((block1._2.asInstanceOf[IIRFilterParams[FixedPoint]].consts_A == block2._2.asInstanceOf[IIRFilterParams[FixedPoint]].consts_A) &&
-              (block1._2.asInstanceOf[IIRFilterParams[FixedPoint]].consts_B == block2._2.asInstanceOf[IIRFilterParams[FixedPoint]].consts_B) &&
-              (block1._2.asInstanceOf[IIRFilterParams[FixedPoint]].protoData == block2._2.asInstanceOf[IIRFilterParams[FixedPoint]].protoData))
+            if ((block1._2.asInstanceOf[IIRFilterParams[FixedPoint]].consts_A.map(_.litToDouble) == block2._2.asInstanceOf[IIRFilterParams[FixedPoint]].consts_A.map(_.litToDouble)) &&
+              (block1._2.asInstanceOf[IIRFilterParams[FixedPoint]].consts_B.map(_.litToDouble) == block2._2.asInstanceOf[IIRFilterParams[FixedPoint]].consts_B.map(_.litToDouble)))
             {
               return 1
             }
           case "LineLength" =>
-            if ((block1._2.asInstanceOf[lineLengthParams[FixedPoint]].protoData == block2._2.asInstanceOf[lineLengthParams[FixedPoint]].protoData) &&
-              (block1._2.asInstanceOf[lineLengthParams[FixedPoint]].windowSize == block2._2.asInstanceOf[lineLengthParams[FixedPoint]].windowSize))
+            if (block1._2.asInstanceOf[lineLengthParams[FixedPoint]].windowSize == block2._2.asInstanceOf[lineLengthParams[FixedPoint]].windowSize)
             {
               return 1
             }
           case "Buffer" =>
-            if ((block1._2.asInstanceOf[FIRFilterParams[FixedPoint]].protoData == block2._2.asInstanceOf[FIRFilterParams[FixedPoint]].protoData) &&
-              (block1._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps == block2._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps))
+            if (block1._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps.map(_.litToDouble) == block2._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps.map(_.litToDouble))
             {
               return 1
             }
@@ -839,7 +832,7 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
                 {
                   newDp = newDp :+ ("Null",0)
                   newCoordDp = newCoordDp :+ (-9,-9)
-                  print("\n" + currentBlock._1 + "is duplicate at" + (i,j) + "- keep nulling/looking")
+                  print("\n Found another duplicate - keep nulling/looking")
                 }
                 else
                 {// blocks are unique, add actual block, take appropriate coordinate and pass off to finish state

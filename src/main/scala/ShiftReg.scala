@@ -1,8 +1,10 @@
 package wellness
 
 import chisel3._
+import chisel3.core.FixedPoint
 import dspjunctions.ValidWithSync
 import dsptools.numbers._
+import wellness.FixedPointWellnessGenParams.{dataBP, dataWidth}
 
 trait ShiftRegParams[T <: Data] {
   val protoData: T
@@ -43,3 +45,4 @@ class ShiftReg[T <: chisel3.Data : Ring](val params: ShiftRegParams[T]) extends 
   io.out.valid := valRegs.last
   io.out.sync := io.in.sync
 }
+
