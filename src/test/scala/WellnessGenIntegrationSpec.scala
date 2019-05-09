@@ -450,7 +450,7 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
 
     val configurationMemoryParams = new ConfigurationMemoryParams[FixedPoint] {
       val protoData = dataPrototype
-      val nDimensions: Int = 1
+      val nDimensions: Int = pcaParams.nDimensions
       val nFeatures: Int = pcaParams.nFeatures
     }
 
@@ -474,7 +474,7 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
        val learningRate: Double = logisticParams.learningRate
       }
       override val goldenConfigurationMemoryParams: configurationMemoryParamsGenTemplate = new configurationMemoryParamsGenTemplate {
-        val nDimensions: Int = 1
+        val nDimensions: Int = goldenPCAParams.nDimensions
         val nFeatures: Int = goldenPCAParams.nFeatures
 
       }
@@ -879,7 +879,7 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
 
     val configurationMemoryParams = new ConfigurationMemoryParams[FixedPoint] {
       val protoData = dataPrototype
-      val nDimensions: Int = 1
+      val nDimensions: Int = pcaParams.nDimensions
       val nFeatures: Int = pcaParams.nFeatures
 
     }
@@ -904,7 +904,7 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
         val learningRate: Double = logisticParams.learningRate
       }
       override val goldenConfigurationMemoryParams: configurationMemoryParamsGenTemplate = new configurationMemoryParamsGenTemplate {
-        val nDimensions: Int = 1
+        val nDimensions: Int = goldenPCAParams.nDimensions
         val nFeatures: Int = goldenPCAParams.nFeatures
       }
     }

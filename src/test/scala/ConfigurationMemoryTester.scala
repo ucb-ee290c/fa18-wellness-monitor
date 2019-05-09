@@ -14,7 +14,7 @@ class ConfigurationMemoryTester[T <: chisel3.Data](c: ConfigurationMemory[SInt],
   for(i <- 0 until ( (c.pcaVectorMemoryParams.nRows*c.pcaVectorMemoryParams.nColumns)*10 + 1)) {
     val input = scala.util.Random.nextInt(20)
     val addr = 0
-println("address 0")
+
     val goldenModelResultPCAVector = PCAVectorMemoryBuffer.poke(input)
     val goldenModelResultLogisticWeightsVector = logisticWeightsVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultLogisticIntercept = logisticInterceptMemoryBuffer.idlePoke(input)
@@ -58,7 +58,7 @@ println("address 0")
   for(i <- 0 until ( (c.logisticWeightsVectorMemoryParams.nRows*c.logisticWeightsVectorMemoryParams.nColumns)*10 + 1)) {
     val input = scala.util.Random.nextInt(20) - 10
     val addr = 1
-    println("address 1")
+
     val goldenModelResultPCAVector = PCAVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultLogisticWeightsVector = logisticWeightsVectorMemoryBuffer.poke(input)
     val goldenModelResultLogisticIntercept = logisticInterceptMemoryBuffer.idlePoke(input)
@@ -102,7 +102,7 @@ println("address 0")
   for(i <- 0 until ( (c.logisticInterceptMemoryParams.nRows*c.logisticInterceptMemoryParams.nColumns)*10 + 1)) {
     val input = scala.util.Random.nextInt(20) - 10
     val addr = 2
-    println("address 2")
+
     val goldenModelResultPCAVector = PCAVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultLogisticWeightsVector = logisticWeightsVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultLogisticIntercept = logisticInterceptMemoryBuffer.poke(input)
@@ -145,7 +145,7 @@ println("address 0")
   for(i <- 0 until 11 ) {
     val input = scala.util.Random.nextInt(2)
     val addr = 3
-    println("address 3")
+
     val goldenModelResultPCAVector = PCAVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultLogisticWeightsVector = logisticWeightsVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultLogisticIntercept = logisticInterceptMemoryBuffer.idlePoke(input)
@@ -188,7 +188,7 @@ println("address 0")
   for(i <- 0 until 11 ) {
     val input = scala.util.Random.nextInt(2)
     val addr = 4
-    println("address 4")
+
     val goldenModelResultPCAVector = PCAVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultLogisticWeightsVector = logisticWeightsVectorMemoryBuffer.idlePoke(input)
     val goldenModelResultLogisticIntercept = logisticInterceptMemoryBuffer.idlePoke(input)

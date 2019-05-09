@@ -670,8 +670,8 @@ class wellnessGenModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   // Logistic (PCA to Logistic)
   val logistic = Module(new Logistic(logisticParams))
   // Configure SVM
-  logistic.io.weights := io.inConf.bits.confLogisticWeightsVector
-  logistic.io.intercept := io.inConf.bits.confLogisticIntercept
+  logistic.io.weights := io.inConf.bits.confLogisticWeightsVector(0)
+  logistic.io.intercept := io.inConf.bits.confLogisticIntercept(0)(0)
   // Connect PCA to SVM
   logistic.io.in.valid := pca.io.out.valid
   logistic.io.in.bits := pca.io.out.bits

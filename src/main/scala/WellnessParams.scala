@@ -85,7 +85,7 @@ object SIntWellnessParams {
   val logisticConfigurationMemoryParams = new ConfigurationMemoryParams[SInt] {
 
     val protoData = pcaParams.protoData.cloneType
-    val nDimensions: Int = 1
+    val nDimensions: Int = 3
     val nFeatures: Int = pcaParams.nFeatures
   }
 
@@ -174,7 +174,7 @@ object FixedPointWellnessParams {
   val configurationMemoryParams = new ConfigurationMemoryParams[FixedPoint] {
 
     val protoData = pcaParams.protoData.cloneType
-    val nDimensions: Int = 1
+    val nDimensions: Int = pcaParams.nDimensions
     val nFeatures: Int = pcaParams.nFeatures
   }
 }
@@ -278,7 +278,7 @@ object FixedPointModelWellnessParams {
   val configurationMemoryParams = new ConfigurationMemoryParams[FixedPoint] {
 
     val protoData = pcaParams.protoData.cloneType
-    val nDimensions: Int = 1
+    val nDimensions: Int = pcaParams.nDimensions
     val nFeatures: Int = pcaParams.nFeatures
   }
 }
@@ -561,7 +561,7 @@ object SIntWellnessGenParams {
   val configurationMemoryParams = new ConfigurationMemoryParams[SInt] {
 
     val protoData = dataPrototype
-    val nDimensions: Int = 1
+    val nDimensions: Int = 3
     val nFeatures: Int = pcaParams.nFeatures
   }
 }
@@ -890,7 +890,7 @@ object FixedPointWellnessGenParams {
   val configurationMemoryParams = new ConfigurationMemoryParams[FixedPoint] {
 
     val protoData = dataPrototype
-    val nDimensions: Int = 1
+    val nDimensions: Int = 3
     val nFeatures: Int = pcaParams.nFeatures
 
   }

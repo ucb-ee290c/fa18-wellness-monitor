@@ -130,12 +130,12 @@ class wellnessGenTester[T <: chisel3.Data] (
   }
   for(x <- 0 until logisticWeightsVectorMemoryParams.nColumns) {
     for (y <- 0 until logisticWeightsVectorMemoryParams.nRows) {
-      poke(c.io.inConf.bits.confLogisticWeightsVector(y), referenceLogisticWeightsVector(y))
+      poke(c.io.inConf.bits.confLogisticWeightsVector(0)(y), referenceLogisticWeightsVector(y))
     }
   }
   for(x <- 0 until logisticInterceptMemoryParams.nColumns) {
     for (y <- 0 until logisticInterceptMemoryParams.nRows) {
-      poke(c.io.inConf.bits.confLogisticIntercept, referenceLogisticIntercept)
+      poke(c.io.inConf.bits.confLogisticIntercept(0)(0), referenceLogisticIntercept)
     }
   }
   for(x <- 0 until pcaNormalizationMemoryParams.nColumns) {
