@@ -656,7 +656,7 @@ object FixedPointWellnessGenParams {
           }
         case "FIR" =>
           if ((block1._2.asInstanceOf[FIRFilterParams[FixedPoint]].protoData == block2._2.asInstanceOf[FIRFilterParams[FixedPoint]].protoData) &&
-            (block1._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps == block2._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps))
+            (block1._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps.map(_.litToDouble) == block2._2.asInstanceOf[FIRFilterParams[FixedPoint]].taps.map(_.litToDouble)))
           {
             return 1
           }
