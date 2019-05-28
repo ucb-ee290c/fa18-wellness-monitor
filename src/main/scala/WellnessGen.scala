@@ -824,7 +824,7 @@ class wellnessGenThing[T <: Data : Real : Order : BinaryRepresentation]
   readQueue.streamNode := wellness.streamNode := writeQueue.streamNode
   wellness.streamNode := writeConfigurationQueue.streamNode
 
-  lazy val module = new LazyModuleImp(this) {
+  lazy val module = new LazyModuleImp(this) { 
     val streamIn = IO(Flipped(ValidWithSync(genParams.dataType.cloneType)))
 
     // properly connect streamIn wires to eachother
