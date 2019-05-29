@@ -14,19 +14,16 @@ scalacOptions ++= Seq(
 
 parallelExecution in Test := false
 
-/*
 libraryDependencies ++= Seq(
-  "edu.berkeley.cs" %% "rocket-dsptools" % "1.2-102318-SNAPSHOT"
+  "edu.berkeley.cs" %% "rocket-dsptools" % "1.2-031419-SNAPSHOT"
 )
-*/
 
 resolvers ++= Seq(
   Resolver.sonatypeRepo("snapshots"),
   Resolver.sonatypeRepo("releases")
 )
 
-
 name := "ee290c"
 organization := "edu.berkeley.cs"
 version := "0.1-SNAPSHOT"
-scalaVersion := "2.12.6"
+scalaVersion := "2.12.8"
