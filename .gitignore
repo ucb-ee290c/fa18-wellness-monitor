@@ -1,6 +1,7 @@
 target/
 .idea/
 *.fir
+*.json
 test_run_dir/
 generated-src/
 hammer-vlsi*
