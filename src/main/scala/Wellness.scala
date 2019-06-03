@@ -523,7 +523,7 @@ class WellnessThing[T <: Data : Real : Order : BinaryRepresentation]
 
 trait HasPeripheryWellness extends BaseSubsystem {
 
-  val wellnessParams = FixedPointModelWellnessParams
+  val wellnessParams = FixedPointWellnessParams
 
   // Instantiate wellness monitor
   val wellness = LazyModule(new WellnessThing(

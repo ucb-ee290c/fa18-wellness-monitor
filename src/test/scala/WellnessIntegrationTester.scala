@@ -69,15 +69,6 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   var referenceSVMIntercept = Seq(4.0)
   var referencePCANormalizationData = Seq(Seq(10.0,2.0),Seq(3.0,5.0),Seq(1.0,1.0))
 
-  // If the pre-generated test is being run, load the PCA and SVM data from files instead
-  if (testType == 1) {
-    referencePCAVector = utilities.readCSV("scripts/generated_files/pca_vectors.csv").map(_.map(_.toDouble))
-    referenceSVMSupportVector = utilities.readCSV("scripts/generated_files/support_vectors.csv").map(_.map(_.toDouble))
-    referenceSVMAlphaVector = utilities.readCSV("scripts/generated_files/alpha_vectors.csv").map(_.map(_.toDouble))
-    referenceSVMIntercept = utilities.readCSV("scripts/generated_files/intercepts.csv").flatMap(_.map(_.toDouble))
-	referencePCANormalizationData = utilities.readCSV("scripts/generated_files/normalization.csv").map(_.map(_.toDouble))
-  }
-
   // Configure the input mux selection to accept data from RISC-V core instead of external input
   poke(c.io.inConf.bits.confInputMuxSel, 0)
 
@@ -165,44 +156,6 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   }
 
   var referenceInput = Seq(0.0)
-  if (testType == 1) { // load the input matrix
-    referenceInput = utilities.readCSV("scripts/generated_files/input.csv").flatMap(_.map(_.toDouble))
-  }
-
-  if (testType == 1) { // create the .h file to contain the reference arrays
-    val file = new FileWriter(new File("tests/arrays.h"))
-    // write out the preambles and define statements
-    file.write( "#ifndef __ARRAY_H__\n" +
-                      "#define __ARRAY_H__\n\n" +
-                      f"#define DIMENSIONS ${c.configurationMemoryParams.nDimensions}         // number of channels going into the PCA\n" +
-                      f"#define FEATURES ${c.configurationMemoryParams.nFeatures}           // number of reduced dimensions going into the SVM\n" +
-                      f"#define SUPPORTS ${c.configurationMemoryParams.nSupports}           // number of support vectors for SVM\n" +
-                      f"#define CLASSIFIERS ${c.configurationMemoryParams.nClassifiers}        // number of classifiers created\n\n" +
-
-                      f"#define NUMTAPS ${goldenModelParameters.filter1Params.taps.length}         // number of filter taps, for output adjustment\n" +
-                      f"#define WINDOW ${goldenModelParameters.bandpower1Params.nBins}         // number of lanes/bins/window, for output adjustment\n\n" +
-
-                      f"#define DATA_WIDTH $dataWidth         // total bit size\n" +
-                      f"#define DATA_BP $dataBP         // number of fractional components\n\n")
-
-    // write out all the configuration matrices to the file
-    file.write("static double pcaVector[FEATURES][DIMENSIONS] = ")
-    file.write(referencePCAVector.map(_.mkString("{", ", ", "}")).mkString("{", ", ", "};\n\n"))
-
-    file.write("static double SVMSupportVector[SUPPORTS][FEATURES] = ")
-    file.write(referenceSVMSupportVector.map(_.mkString("{", ", ", "}")).mkString("{", ", ", "};\n\n"))
-
-    file.write("static double SVMAlphaVector[CLASSIFIERS][SUPPORTS] = ")
-    file.write(referenceSVMAlphaVector.map(_.mkString("{", ", ", "}")).mkString("{", ", ", "};\n\n"))
-
-    file.write("static double SVMIntercept[CLASSIFIERS] = ")
-    file.write(referenceSVMIntercept.mkString("{", ", ", "};\n\n"))
-
-    file.write("static double in[] = ")
-    file.write(referenceInput.mkString("{", ", ", "};\n\n"))
-
-    file.close()
-  }
 
   val tolerance = 0.15 // tolerate 10% error
   val outputContainer = ArrayBuffer[Array[Double]]() // this will hold the rawVotes from SVM for printout
@@ -313,82 +266,6 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     //outputContainer += svmResult(0).toArray // outside the valid checks, if you want to include the false outputs
   }
 
-  // Final output check vs Python output
-  if (testType == 1) {
-    val referenceOutput = utilities.readCSV("scripts/generated_files/expected.csv").flatMap(_.map(_.toDouble))
-    // there is an offset of 6, i'm guessing this is the accumulated pipelined delay
-    // from filter - fftbuffer - fft - bandpower - pca - svm?
-    for (i <- 0 until referenceOutput.length - 6) {
-      if (referenceOutput(i) > 0) {
-        if ((outputContainer(i+1)(1) < referenceOutput(i)*(1-tolerance)) ||
-            (outputContainer(i+1)(1) > referenceOutput(i)*(1+tolerance))) {
-          println("Mismatched values outside tolerance")
-          println(outputContainer(i+1)(1).toString)
-          println(referenceOutput(i).toString)
-        }
-      } else {
-        if ((outputContainer(i+1)(0) < referenceOutput(i).abs*(1-tolerance)) ||
-            (outputContainer(i+1)(0) > referenceOutput(i).abs*(1+tolerance))) {
-          println("Mismatched values outside tolerance")
-          println(outputContainer(i+1)(0).toString)
-          println(referenceOutput(i).abs.toString)
-        }
-      }
-    }
-  }
-
-  if (testType == 1) { // write out the expected rawVotes to the file
-    val file = new FileWriter("tests/arrays.h",true)
-    file.write("static double ex[][2] = ")
-    file.write(outputContainer.map(_.mkString("{", ", ", "}")).mkString("{", ", ", "};\n\n"))
-
-    file.write("#endif\n") // the end of the .h file
-
-    file.close()
-  }
-}
-
-object WellnessIntegrationTesterSInt {
-  implicit val p: Parameters = null
-  def apply(filter1Params: FIRFilterParams[SInt],
-            lineLength1Params: lineLengthParams[SInt],
-            fftBufferParams: FFTBufferParams[SInt],
-            fftConfig: FFTConfig[SInt],
-            bandpower1Params: BandpowerParams[SInt],
-            bandpower2Params: BandpowerParams[SInt],
-            pcaParams: PCAParams[SInt],
-            svmParams: SVMParams[SInt],
-            configurationMemoryParams: ConfigurationMemoryParams[SInt],
-            goldenModelParameters: wellnessIntegrationParameterBundle, debug: Int): Boolean = {
-    if (debug == 1) {
-      chisel3.iotesters.Driver.execute(Array("-tbn", "firrtl", "-fiwv"), () => new WellnessModule(
-        filter1Params: FIRFilterParams[SInt],
-        lineLength1Params: lineLengthParams[SInt],
-        fftBufferParams: FFTBufferParams[SInt],
-        fftConfig: FFTConfig[SInt],
-        bandpower1Params: BandpowerParams[SInt],
-        bandpower2Params: BandpowerParams[SInt],
-        pcaParams: PCAParams[SInt],
-        svmParams: SVMParams[SInt],
-        configurationMemoryParams: ConfigurationMemoryParams[SInt])) {
-        c => new wellnessTester(c, goldenModelParameters,0)
-      }
-    } else {
-      dsptools.Driver.execute(() => new WellnessModule(
-        filter1Params: FIRFilterParams[SInt],
-        lineLength1Params: lineLengthParams[SInt],
-        fftBufferParams: FFTBufferParams[SInt],
-        fftConfig: FFTConfig[SInt],
-        bandpower1Params: BandpowerParams[SInt],
-        bandpower2Params: BandpowerParams[SInt],
-        pcaParams: PCAParams[SInt],
-        svmParams: SVMParams[SInt],
-        configurationMemoryParams: ConfigurationMemoryParams[SInt]),
-        TestSetup.dspTesterOptions) {
-        c => new wellnessTester(c, goldenModelParameters, 0)
-      }
-    }
-  }
 }
 
 object WellnessIntegrationTesterFP {
