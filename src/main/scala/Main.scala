@@ -1,4 +1,4 @@
-/*
+
 package wellness
 
 import chisel3._
@@ -7,17 +7,19 @@ import freechips.rocketchip.amba.axi4stream._
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
 
-import scala.collection.mutable.ArrayBuffer
 
 object StandaloneWellness extends App {
   implicit val p: Parameters = Parameters.empty
 
-  chisel3.Driver.execute(args, () => LazyModule(new TLWellnessGenDataPathBlock(
-    genParams = FixedPointWellnessParams.wellnessGenParams1,
-    datapathParamsArr = FixedPointWellnessGenParams.datapathsArr,
-    heritageArray = ArrayBuffer(),
+  chisel3.Driver.execute(args, () => LazyModule(new TLWellnessDataPathBlock(
+    filter1Params = FixedPointWellnessParams.filter1Params,
+    lineLength1Params = FixedPointWellnessParams.lineLength1Params,
+    fftBufferParams = FixedPointWellnessParams.fftBufferParams,
+    fftConfig = FixedPointWellnessParams.fftConfig,
+    bandpower1Params = FixedPointWellnessParams.bandpower1Params,
+    bandpower2Params = FixedPointWellnessParams.bandpower2Params,
     pcaParams = FixedPointWellnessParams.pcaParams,
-    logisticParams = FixedPointWellnessParams.logisticParams,
+    svmParams = FixedPointWellnessParams.svmParams,
     configurationMemoryParams = FixedPointWellnessParams.configurationMemoryParams
   ) with dspblocks.TLStandaloneBlock {
     val ioInNode2 = BundleBridgeSource(() => new AXI4StreamBundle(AXI4StreamBundleParameters(n = 8)))
@@ -28,4 +30,3 @@ object StandaloneWellness extends App {
     val in2 = InModuleBody { ioInNode2.makeIO() }
   }).module)
 }
-*/

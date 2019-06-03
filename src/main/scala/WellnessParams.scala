@@ -31,7 +31,7 @@ object utilities {
 }
 
 object FixedPointWellnessParams {
-  val nPts = 4
+  val nPts = 8
 
   val Seq(dataWidth, dataBP) = utilities.readCSV("scripts/generated_files/datasize.csv").flatMap(_.map(_.toInt))
 
