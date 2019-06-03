@@ -1,4 +1,4 @@
-
+/*
 package wellness
 
 import chisel3._
@@ -508,3 +508,6 @@ trait HasPeripheryWellnessModuleImp extends LazyModuleImp {
   outer.wellness.module.streamIn.bits := streamIn.bits
 
 }
+
+
+ */

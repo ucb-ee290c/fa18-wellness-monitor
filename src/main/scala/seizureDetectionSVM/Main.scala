@@ -1,4 +1,4 @@
-
+/*
 package wellness
 
 import dsptools.numbers._
@@ -17,7 +17,7 @@ object StandaloneWellness extends App {
     filterBetaParams = FixedPointWellnessParams.filterBetaParams,
     filterGammaParams = FixedPointWellnessParams.filterGammaParams,
     bandpowerParams = FixedPointWellnessParams.bandpowerParams,
-    logisticParams = FixedPointWellnessParams.logisticParams,
+    svmParams = FixedPointWellnessParams.svmParams,
     configurationMemoryParams = FixedPointWellnessParams.configurationMemoryParams
   ) with dspblocks.TLStandaloneBlock {
     val ioInNode2 = BundleBridgeSource(() => new AXI4StreamBundle(AXI4StreamBundleParameters(n = 8)))
@@ -28,3 +28,5 @@ object StandaloneWellness extends App {
     val in2 = InModuleBody { ioInNode2.makeIO() }
   }).module)
 }
+
+ */

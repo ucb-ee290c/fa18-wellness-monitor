@@ -1,4 +1,4 @@
-
+/*
 package wellness
 
 // *********************************************
@@ -87,4 +87,6 @@ object FixedPointWellnessParams {
     val nFeatures: Int = logisticParams.nFeatures
   }
 }
+
+ */
 

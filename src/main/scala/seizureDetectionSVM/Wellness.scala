@@ -1,4 +1,4 @@
-
+/*
 package wellness
 
 import chisel3._
@@ -8,7 +8,7 @@ import dspjunctions.ValidWithSync
 import dsptools.numbers._
 import firFilter._
 import features._
-import logistic._
+import svm._
 import freechips.rocketchip.amba.axi4stream._
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
@@ -153,8 +153,9 @@ class TLReadQueue
   * @param params is explained at wellness.ConfigurationMemory
   */
 class WellnessConfigurationBundle[T <: Data](params: ConfigurationMemoryParams[T]) extends Bundle {
-  val conflogisticWeightsVector = Vec(1,Vec(params.nFeatures,params.protoData))
-  val conflogisticIntercept = Vec(1,params.protoData)
+  val confSVMSupportVector = Vec(params.nSupports,Vec(params.nFeatures,params.protoData))
+  val confSVMAlphaVector = Vec(params.nClassifiers,Vec(params.nSupports,params.protoData))
+  val confSVMIntercept = Vec(params.nClassifiers,params.protoData)
   val confInputMuxSel = Bool()
 
   override def cloneType: this.type = WellnessConfigurationBundle(params).asInstanceOf[this.type]
@@ -179,16 +180,22 @@ class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1P
                                                  filterBetaParams: FIRFilterParams[T],
                                                  filterGammaParams: FIRFilterParams[T],
                                                  bandpowerParams: sumSquaresParams[T],
-                                                 logisticParams: LogisticParams[T],
+                                                 svmParams: SVMParams[T],
                                                  configurationMemoryParams: ConfigurationMemoryParams[T]) extends Bundle {
-
+  var nClassifiers = svmParams.nClasses  // one vs rest default
+  if (svmParams.classifierType == "ovr") {
+    if (svmParams.nClasses == 2) nClassifiers = svmParams.nClasses - 1
+  } else if (svmParams.classifierType == "ovo") {   // one vs one
+    nClassifiers = (svmParams.nClasses*(svmParams.nClasses - 1))/2
+  } else if (svmParams.classifierType == "ecoc") {  // error correcting output code
+    nClassifiers = svmParams.codeBook.head.length // # columns = # classifiers
+  }
   val streamIn = Flipped(ValidWithSync(filter1Params.protoData.cloneType)) // Streaming Input from external source
   val in = Flipped(DecoupledIO(filter1Params.protoData.cloneType)) // Test Input from RISC-V core
   val inConf = Flipped(ValidWithSync(WellnessConfigurationBundle(configurationMemoryParams))) // Configuration input from Configuration Memory
   val out = ValidWithSync(Bool()) // Not used right now
-  val rawVotes = Output(logisticParams.protoData)
-  val dotProduct = Output(logisticParams.protoData)
-  val weightProbe = Output(Vec(logisticParams.nFeatures,logisticParams.protoData))
+  val rawVotes = Output(Vec(svmParams.nClasses, svmParams.protoData)) // Raw Votes from SVM
+  val classVotes = Output(Vec(svmParams.nClasses,UInt((log2Ceil(nClassifiers)+1).W))) // Class Votes from SVM
   val lineOut = Output(lineLength1Params.protoData) // Not used in actual implementation, only for debug purposes
   val bandpower1Out = Output(bandpowerParams.protoData) // Not used in actual implementation, only for debug purposes
   val bandpower2Out = Output(bandpowerParams.protoData) // Not used in actual implementation, only for debug purposes
@@ -201,7 +208,7 @@ class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1P
                                                         filterBetaParams: FIRFilterParams[T],
                                                         filterGammaParams: FIRFilterParams[T],
                                                         bandpowerParams: sumSquaresParams[T],
-                                                        logisticParams: LogisticParams[T],
+                                                        svmParams: SVMParams[T],
                                                         configurationMemoryParams: ConfigurationMemoryParams[T]).asInstanceOf[this.type]
 }
 object WellnessModuleIO {
@@ -211,7 +218,7 @@ object WellnessModuleIO {
                                       filterBetaParams: FIRFilterParams[T],
                                       filterGammaParams: FIRFilterParams[T],
                                       bandpowerParams: sumSquaresParams[T],
-                                      logisticParams: LogisticParams[T],
+                                      svmParams: SVMParams[T],
                                       configurationMemoryParams: ConfigurationMemoryParams[T]): WellnessModuleIO[T] =
     new WellnessModuleIO(filter1Params: FIRFilterParams[T],
       lineLength1Params: lineLengthParams[T],
@@ -219,7 +226,7 @@ object WellnessModuleIO {
       filterBetaParams: FIRFilterParams[T],
       filterGammaParams: FIRFilterParams[T],
       bandpowerParams: sumSquaresParams[T],
-      logisticParams: LogisticParams[T],
+      svmParams: SVMParams[T],
       configurationMemoryParams: ConfigurationMemoryParams[T])
 }
 
@@ -228,7 +235,7 @@ object WellnessModuleIO {
   * A prototype wellness module definition with 1 Line Length and 2 Band Power features.
   * @param filter1Params Parameters of the FIR filter before Line Length Extractor
   * @param lineLength1Params Parameters of the Line Length Extractor
-  * @param logisticParams Parameters of the SVM
+  * @param svmParams Parameters of the SVM
   * @param configurationMemoryParams Parameters of the Configuration Memory
   *                                  Note that configuration memory is not actually inside the Wellness Module,
   *                                  but Wellness Module requires this parameter bundle to properly connect to Conf Mem
@@ -240,7 +247,7 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   val filterBetaParams: FIRFilterParams[T],
   val filterGammaParams: FIRFilterParams[T],
   val bandpowerParams: sumSquaresParams[T],
-  val logisticParams: LogisticParams[T],
+  val svmParams: SVMParams[T],
   val configurationMemoryParams: ConfigurationMemoryParams[T])(implicit val p: Parameters) extends Module {
   val io = IO(WellnessModuleIO[T](  filter1Params: FIRFilterParams[T],
                                     lineLength1Params: lineLengthParams[T],
@@ -248,7 +255,7 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
                                     filterBetaParams: FIRFilterParams[T],
                                     filterGammaParams: FIRFilterParams[T],
                                     bandpowerParams: sumSquaresParams[T],
-                                    logisticParams: LogisticParams[T],
+                                    svmParams: SVMParams[T],
                                     configurationMemoryParams: ConfigurationMemoryParams[T]) )
 
   // Block instantiation
@@ -263,7 +270,7 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   val bandpowerBeta = Module(new sumSquares(bandpowerParams))
   val bandpowerGamma = Module(new sumSquares(bandpowerParams))
 
-  val logistic = Module(new Logistic(logisticParams))
+  val svm = Module(new SVM(svmParams))
 
   io.in.ready := true.B
 
@@ -311,10 +318,8 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
 
   // Extra pipeline registers for linelength to align with bandpower delay
   // we need one register since its Linelength vs Filter - Bandpower
-  val lineLength1Reg1 = RegNext(lineLength1.io.out.bits.asTypeOf(logisticParams.protoData))
-  //val lineLength1Reg2 = RegNext(lineLength1Reg1)
+  val lineLength1Reg1 = RegNext(lineLength1.io.out.bits.asTypeOf(svmParams.protoData))
   val lineLength1Valid1 = RegNext(lineLength1.io.out.valid)
-  //val lineLength1Valid2 = RegNext(lineLength1Valid1)
 
   // TODO: Delete this block once normalization has been integrated with C
   // do feature normalization before going to the PCA, (feature_val - mean)/ std
@@ -323,26 +328,25 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   // val norm_invstd = utilities.readCSV("scripts/generated_files/normalization_recipvar.csv").flatMap(_.map(_.toDouble))
 
   // Features to Classifier
-  val FeatureVector = Wire(Vec(4,logisticParams.protoData))
-  FeatureVector(0) := bandpowerAlpha.io.out.bits.asTypeOf(logisticParams.protoData)
-  FeatureVector(1) := bandpowerBeta.io.out.bits.asTypeOf(logisticParams.protoData)
-  FeatureVector(2) := bandpowerGamma.io.out.bits.asTypeOf(logisticParams.protoData)
-  FeatureVector(3) := lineLength1Reg1.asTypeOf(logisticParams.protoData)
+  val FeatureVector = Wire(Vec(4,svmParams.protoData))
+  FeatureVector(0) := bandpowerAlpha.io.out.bits.asTypeOf(svmParams.protoData)
+  FeatureVector(1) := bandpowerBeta.io.out.bits.asTypeOf(svmParams.protoData)
+  FeatureVector(2) := bandpowerGamma.io.out.bits.asTypeOf(svmParams.protoData)
+  FeatureVector(3) := lineLength1Reg1.asTypeOf(svmParams.protoData)
 
-  logistic.io.in.valid := (lineLength1Valid1 && bandpowerAlpha.io.out.valid && bandpowerBeta.io.out.valid && bandpowerGamma.io.out.valid)
-  logistic.io.in.bits := FeatureVector
-  logistic.io.in.sync := false.B
-
-  logistic.io.weights := io.inConf.bits.conflogisticWeightsVector(0)
-  logistic.io.intercept := io.inConf.bits.conflogisticIntercept(0)
+  svm.io.in.valid := (lineLength1Valid1 && bandpowerAlpha.io.out.valid && bandpowerBeta.io.out.valid && bandpowerGamma.io.out.valid)
+  svm.io.in.bits := FeatureVector
+  svm.io.in.sync := false.B
+  svm.io.supportVector := io.inConf.bits.confSVMSupportVector
+  svm.io.alphaVector := io.inConf.bits.confSVMAlphaVector
+  svm.io.intercept := io.inConf.bits.confSVMIntercept
 
   // SVM to Output
-  io.out.valid := logistic.io.out.valid
-  io.out.sync := logistic.io.out.sync
-  io.out.bits := logistic.io.out.bits
-  io.rawVotes := logistic.io.rawVotes
-  io.dotProduct := logistic.io.dotProduct
-  io.weightProbe := logistic.io.weightProbe
+  io.out.valid := svm.io.out.valid
+  io.out.sync := svm.io.out.sync
+  io.out.bits := false.B
+  io.rawVotes := svm.io.rawVotes
+  io.classVotes := svm.io.classVotes
 
   // pinned out outputs for debug purposes
   io.filterOut := filter1.io.out.bits
@@ -356,7 +360,7 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   * TLDspBlock specialization of WellnessModule
   * @param filter1Params Parameters of the FIR filter before Line Length Extractor
   * @param lineLength1Params Parameters of the Line Length Extractor
-  * @param logisticParams Parameters of the SVM
+  * @param svmParams Parameters of the SVM
   * @param configurationMemoryParams Parameters of the Configuration Memory
   */
 abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real : Order : BinaryRepresentation]
@@ -367,7 +371,7 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real :
   val filterBetaParams: FIRFilterParams[T],
   val filterGammaParams: FIRFilterParams[T],
   val bandpowerParams: sumSquaresParams[T],
-  val logisticParams: LogisticParams[T],
+  val svmParams: SVMParams[T],
   val configurationMemoryParams: ConfigurationMemoryParams[T]
 )(implicit p: Parameters) extends DspBlock[D, U, EO, EI, B] {
   val streamNode = AXI4StreamNexusNode(
@@ -392,7 +396,7 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real :
       filterBetaParams: FIRFilterParams[T],
       filterGammaParams: FIRFilterParams[T],
       bandpowerParams: sumSquaresParams[T],
-      logisticParams: LogisticParams[T],
+      svmParams: SVMParams[T],
       configurationMemoryParams: ConfigurationMemoryParams[T]))
 
     val configurationMemory = Module(new ConfigurationMemory(configurationMemoryParams))
@@ -408,7 +412,7 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real :
     wellness.io.in.bits := in.bits.data.asTypeOf(filter1Params.protoData)
     // Wellness to Output
     out.valid := wellness.io.out.valid
-    out.bits.data := Cat(wellness.io.out.bits.asUInt(),wellness.io.rawVotes.asUInt())
+    out.bits.data := Cat(wellness.io.rawVotes(1).asUInt(),wellness.io.rawVotes(0).asUInt())
 
     // Configuration memory connections.
     // Conf Mem uses the 3 MSB bits to decode the address of the data that is being written.
@@ -429,14 +433,14 @@ class TLWellnessDataPathBlock[T <: Data : Real : Order : BinaryRepresentation]
   filterBetaParams: FIRFilterParams[T],
   filterGammaParams: FIRFilterParams[T],
   bandpowerParams: sumSquaresParams[T],
-  logisticParams: LogisticParams[T],
+  svmParams: SVMParams[T],
   configurationMemoryParams: ConfigurationMemoryParams[T]
 )(implicit p: Parameters) extends
   WellnessDataPathBlock[TLClientPortParameters, TLManagerPortParameters, TLEdgeOut, TLEdgeIn, TLBundle, T](
     filter1Params,
     lineLength1Params,
     filterAlphaParams, filterBetaParams, filterGammaParams, bandpowerParams,
-    logisticParams,
+    svmParams,
     configurationMemoryParams)
   with TLDspBlock
 
@@ -449,7 +453,7 @@ class WellnessThing[T <: Data : Real : Order : BinaryRepresentation]
   val filterBetaParams: FIRFilterParams[T],
   val filterGammaParams: FIRFilterParams[T],
   val bandpowerParams: sumSquaresParams[T],
-  val logisticParams: LogisticParams[T],
+  val svmParams: SVMParams[T],
   val configurationMemoryParams: ConfigurationMemoryParams[T],
   val depth: Int = 32
 )(implicit p: Parameters) extends LazyModule {
@@ -461,7 +465,7 @@ class WellnessThing[T <: Data : Real : Order : BinaryRepresentation]
     filter1Params,
     lineLength1Params,
     filterAlphaParams, filterBetaParams, filterGammaParams, bandpowerParams,
-    logisticParams,
+    svmParams,
     configurationMemoryParams))
   val readQueue = LazyModule(new TLReadQueue(depth))
 
@@ -490,7 +494,7 @@ trait HasPeripheryWellness extends BaseSubsystem {
     wellnessParams.filterBetaParams,
     wellnessParams.filterGammaParams,
     wellnessParams.bandpowerParams,
-    wellnessParams.logisticParams,
+    wellnessParams.svmParams,
     wellnessParams.configurationMemoryParams))
   // Connect memory interfaces to pbus
   pbus.toVariableWidthSlave(Some("wellnessWrite")) { wellness.writeQueue.mem.get }
@@ -508,3 +512,5 @@ trait HasPeripheryWellnessModuleImp extends LazyModuleImp {
   outer.wellness.module.streamIn.bits := streamIn.bits
 
 }
+
+ */

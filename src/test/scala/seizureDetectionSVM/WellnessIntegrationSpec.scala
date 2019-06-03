@@ -1,4 +1,4 @@
-
+/*
 package wellness
 
 
@@ -10,7 +10,7 @@ import dsptools.numbers._
 import features._
 import firFilter._
 import org.scalatest.{FlatSpec, Matchers}
-import logistic._
+import svm._
 
 import scala.collection.{Seq, mutable}
 
@@ -42,19 +42,20 @@ abstract class sumSquaresParamsTemplate {
   val windowSize:Int
 }
 
-abstract class logisticParamsGenTemplate {
-  val nFeatures: Int
-  val nThresholds: Int
-  val onlineLearn: Int
-  val nWindow: Int
-  val nInterCount: Int
-  val ictalIndex: Int
-  val interIndex: Int
-  val learningRate: Double
+abstract class svmParamsTemplate {
+  val nSupports:Int
+  val nFeatures:Int
+  val nClasses:Int
+  val nDegree:Int
+  val kernelType:String
+  val classifierType:String
+  val codeBook:Seq[Seq[Int]]
 }
 
 abstract class configurationMemoryParamsTemplate {
   val nFeatures:Int
+  val nSupports:Int
+  val nClassifiers:Int
 }
 
 /**
@@ -87,18 +88,19 @@ class wellnessIntegrationParameterBundle {
   val bandpowerParams:sumSquaresParamsTemplate = new sumSquaresParamsTemplate {
     val windowSize = 0
   }
-  val goldenLogisticParams: logisticParamsGenTemplate = new logisticParamsGenTemplate {
-    val nFeatures: Int = 0
-    val nThresholds: Int = 0
-    val onlineLearn: Int = 0
-    val nWindow: Int = 0
-    val nInterCount: Int = 0
-    val ictalIndex: Int = 0
-    val interIndex: Int = 0
-    val learningRate: Double = 0D
+  val svmParams:svmParamsTemplate = new svmParamsTemplate {
+    val nSupports: Int = 0
+    val nFeatures:Int = 0
+    val nClasses: Int = 0
+    val nDegree: Int = 0
+    val kernelType: String = "adel"
+    val classifierType: String = "adel"
+    val codeBook:Seq[Seq[Int]] = Seq.fill(1,1)(0)
   }
   val configurationMemoryParams:configurationMemoryParamsTemplate = new configurationMemoryParamsTemplate {
     val nFeatures: Int = 0
+    val nSupports: Int = 0
+    val nClassifiers: Int = 0
   }
 }
 
@@ -169,31 +171,37 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       override val bandpowerParams: sumSquaresParamsTemplate = new sumSquaresParamsTemplate {
         val windowSize = windowLength
       }
-
-      val logisticParams = new LogisticParams[FixedPoint] {
-        val protoData = FixedPoint(dataWidth.W,dataBP.BP)
-        val nFeatures = 4
-        val nThresholds = 10
-        val onlineLearn = 0
-        val nWindow = 5
-        val ictalIndex = nThresholds
-        val interIndex = 1
-        val learningRate = 0.01
-        val nInterCount = 60
-      }
-
-      override val goldenLogisticParams: logisticParamsGenTemplate = new logisticParamsGenTemplate {
-        val nFeatures:     Int = logisticParams.nFeatures
-        val nThresholds:   Int = logisticParams.nThresholds
-        val onlineLearn:   Int = logisticParams.onlineLearn
-        val nWindow:       Int = logisticParams.nWindow
-        val nInterCount:   Int = logisticParams.nInterCount
-        val ictalIndex:    Int = logisticParams.ictalIndex
-        val interIndex:    Int = logisticParams.interIndex
-        val learningRate: Double = logisticParams.learningRate
+      override val svmParams:svmParamsTemplate = new svmParamsTemplate {
+        val nSupports: Int = 2
+        val nFeatures:Int = 4
+        val nClasses: Int = 2
+        val nDegree: Int = 1
+        val kernelType: String = "poly"
+        val classifierType: String = "ovo"
+        val codeBook:Seq[Seq[Int]] = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
       }
       override val configurationMemoryParams: configurationMemoryParamsTemplate = new configurationMemoryParamsTemplate {
-        val nFeatures: Int = logisticParams.nFeatures
+        object computeNClassifiers {
+          def apply(params: svmParamsTemplate with Object {
+            val nClasses: Int
+            val codeBook: Seq[Seq[Int]]
+            val classifierType: String
+          }): Int =
+            if (params.classifierType == "ovr") {
+              if (params.nClasses == 2) params.nClasses - 1
+              else 1
+            }
+            else if (params.classifierType == "ovo") {
+              (params.nClasses*(params.nClasses - 1))/2
+            }
+            else if (params.classifierType == "ecoc") {
+              params.codeBook.head.length
+            }
+            else 1
+        }
+        val nFeatures: Int = svmParams.nFeatures
+        val nSupports: Int = svmParams.nSupports
+        val nClassifiers: Int = computeNClassifiers(svmParams)
       }
     }
 
@@ -225,21 +233,40 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       val windowSize = windowLength
     }
 
-    val logisticParams = new LogisticParams[FixedPoint] {
+    val svmParams = new SVMParams[FixedPoint] {
       val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+      val nSupports = 2
       val nFeatures = 4
-      val nThresholds = 10
-      val onlineLearn = 0
-      val nWindow = 5
-      val ictalIndex = nThresholds
-      val interIndex = 1
-      val learningRate = 0.01
-      val nInterCount = 60
+      val nClasses = 2
+      val nDegree = 1
+      val kernelType = "poly"
+      val classifierType = "ovo"
+      val codeBook = Seq.fill(nClasses, nClasses*2)((scala.util.Random.nextInt(2)*2)-1) // ignored for this test case
     }
 
     val configurationMemoryParams = new ConfigurationMemoryParams[FixedPoint] {
-      val protoData = logisticParams.protoData.cloneType
-      val nFeatures: Int = logisticParams.nFeatures
+      object computeNClassifiers {
+        def apply(params: SVMParams[FixedPoint] with Object {
+          val nClasses: Int
+          val codeBook: Seq[Seq[Int]]
+          val classifierType: String
+        }): Int =
+          if (params.classifierType == "ovr") {
+            if (params.nClasses == 2) params.nClasses - 1
+            else 1
+          }
+          else if (params.classifierType == "ovo") {
+            (params.nClasses*(params.nClasses - 1))/2
+          }
+          else if (params.classifierType == "ecoc") {
+            params.codeBook.head.length
+          }
+          else 1
+      }
+      val protoData = svmParams.protoData.cloneType
+      val nFeatures: Int = svmParams.nFeatures
+      val nSupports: Int = svmParams.nSupports
+      val nClassifiers: Int = computeNClassifiers(svmParams)
     }
 
     WellnessIntegrationTesterFP(filter1Params: FIRFilterParams[FixedPoint],
@@ -248,9 +275,11 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       filterBetaParams: FIRFilterParams[FixedPoint],
       filterGammaParams: FIRFilterParams[FixedPoint],
       bandpowerParams: sumSquaresParams[FixedPoint],
-      logisticParams: LogisticParams[FixedPoint],
+      svmParams: SVMParams[FixedPoint],
       configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
       goldenModelParameters: wellnessIntegrationParameterBundle, debug, 0) should be (true)
   }
 
 }
+
+ */
