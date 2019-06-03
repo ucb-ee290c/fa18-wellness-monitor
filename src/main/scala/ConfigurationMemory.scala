@@ -6,22 +6,8 @@ import chisel3._
 import dspjunctions.ValidWithSync
 import dsptools.numbers._
 
-/**
-  * Configuration Memory
-  * @trait ConfigurationMemoryParams containts parameter definitions
-  * @class ConfigurationMemoryBundle is the write input bundle for Configuration Memory
-  * @class ConfigurationMemoryIO is the IO bundle for ConfigurationMemory
-  * @class ConfigurationMemory is the generator definition
-  *       @param protoData is the prototype data used for PCA and SVM vector elements
-  *       @param nDimensions is the number of dimensions that are input to the PCA
-  *       @param nFeatures is the number of feature outputs from PCA, to the SVM
-  *       @param nSupports is the number of elements in the support vector of the SVM
-  *       @param nClassifiers is the number of classifiers in the SVM
-  */
-
 trait ConfigurationMemoryParams[T <: Data] {
   val protoData: T
-  val nDimensions: Int
   val nFeatures: Int
   val nSupports: Int
   val nClassifiers: Int
@@ -49,7 +35,6 @@ object ConfigurationMemoryIO {
 }
 
 class ConfigurationMemory[T <: chisel3.Data : Real : Order : BinaryRepresentation](val params: ConfigurationMemoryParams[T]) extends Module {
-  require(params.nDimensions >= 1, "nDimensions must be at least 1")
   require(params.nFeatures >= 1, "nFeatures must be at least 1")
   require(params.nSupports >= 1, "nSupports must be at least 1")
   require(params.nClassifiers >= 1, "nClassifiers must be at least 1")
@@ -62,36 +47,10 @@ class ConfigurationMemory[T <: chisel3.Data : Real : Order : BinaryRepresentatio
   // MemoryBuffers inside ConfigurationMemory are address mapped. If the write address matches the address of a memory,
   // the data is shifted into that memory.
   val addr = io.in.bits.wraddr
-  val pcaVectorMemoryAddr = 0.U
-  val svmSupportVectorMemoryAddr = 1.U
-  val svmAlphaVectorMemoryAddr = 2.U
-  val svmInterceptMemoryAddr = 3.U
-  val inputMuxSelAddr = 4.U
-  val pcaNormalizationMemoryAddr = 5.U
-
-  //MemoryBuffer definition for PCA
-  val pcaVectorMemoryParams = new MemoryBufferParams[T] {
-    override val protoData: T = params.protoData.cloneType
-    override val nRows: Int = params.nDimensions
-    override val nColumns: Int = params.nFeatures
-  }
-  val pcaVectorMemory = Module(new MemoryBuffer[T](pcaVectorMemoryParams))
-  pcaVectorMemory.io.in.bits := io.in.bits.wrdata
-  pcaVectorMemory.io.in.sync := false.B
-  pcaVectorMemory.io.in.valid := io.in.valid && (addr === pcaVectorMemoryAddr)
-  io.out.bits.confPCAVector := pcaVectorMemory.io.out.bits
-
-  //MemoryBuffer definition for PCA Normalization
-  val pcaNormalizationMemoryParams = new MemoryBufferParams[T] {
-    override val protoData: T = params.protoData.cloneType
-    override val nRows: Int = 2
-    override val nColumns: Int = params.nDimensions
-  }
-  val pcaNormalizationMemory = Module(new MemoryBuffer[T](pcaNormalizationMemoryParams))
-  pcaNormalizationMemory.io.in.bits := io.in.bits.wrdata
-  pcaNormalizationMemory.io.in.sync := false.B
-  pcaNormalizationMemory.io.in.valid := io.in.valid && (addr === pcaNormalizationMemoryAddr)
-  io.out.bits.confPCANormalizationData := pcaNormalizationMemory.io.out.bits
+  val svmSupportVectorMemoryAddr = 0.U
+  val svmAlphaVectorMemoryAddr = 1.U
+  val svmInterceptMemoryAddr = 2.U
+  val inputMuxSelAddr = 3.U
 
   //MemoryBuffer definition for SVM Support Vector
   val svmSupportVectorMemoryParams = new MemoryBufferParams[T] {

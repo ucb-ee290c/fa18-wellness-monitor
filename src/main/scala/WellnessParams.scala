@@ -5,19 +5,15 @@ package wellness
 // Import packages
 // *********************************************
 import firFilter._
-import iirFilter._
 import fft._
 import features._
-import pca._
 import svm._
 import chisel3._
 import chisel3.core.FixedPoint
 import dsptools.numbers._
-//import wellness.FixedPointWellnessGenParams.{datapathParamsArr, datapathsArr, trimTree}
 
 import scala.collection.Seq
 import scala.collection.mutable.ArrayBuffer
-import scala.util.control.Breaks._
 
 object utilities {
   // function to read CSVs and return data in 2D format (in Strings, need to convert after calling if needed)
@@ -80,16 +76,10 @@ object FixedPointWellnessParams {
     val genOut = FixedPoint(dataWidth.W,dataBP.BP)
   }
 
-  val pcaParams = new PCAParams[FixedPoint] {
-    val protoData = FixedPoint(dataWidth.W,dataBP.BP)
-    val nDimensions = 3 // input dimension, minimum 1
-    val nFeatures = 2   // output dimension to SVM, minimum 1
-  }
-
   val svmParams = new SVMParams[FixedPoint] {
     val protoData = FixedPoint(dataWidth.W,dataBP.BP)
     val nSupports = 2
-    val nFeatures = pcaParams.nFeatures
+    val nFeatures = 3
     val nClasses = 2
     val nDegree = 1
     val kernelType = "poly"
@@ -116,9 +106,8 @@ object FixedPointWellnessParams {
         }
         else 1
     }
-    val protoData = pcaParams.protoData.cloneType
-    val nDimensions: Int = pcaParams.nDimensions
-    val nFeatures: Int = pcaParams.nFeatures
+    val protoData = svmParams.protoData.cloneType
+    val nFeatures: Int = svmParams.nFeatures
     val nSupports: Int = svmParams.nSupports
     val nClassifiers: Int = computeNClassifiers(svmParams)
   }

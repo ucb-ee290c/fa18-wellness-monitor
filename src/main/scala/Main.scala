@@ -1,7 +1,6 @@
 
 package wellness
 
-import chisel3._
 import dsptools.numbers._
 import freechips.rocketchip.amba.axi4stream._
 import freechips.rocketchip.config.Parameters
@@ -18,7 +17,6 @@ object StandaloneWellness extends App {
     fftConfig = FixedPointWellnessParams.fftConfig,
     bandpower1Params = FixedPointWellnessParams.bandpower1Params,
     bandpower2Params = FixedPointWellnessParams.bandpower2Params,
-    pcaParams = FixedPointWellnessParams.pcaParams,
     svmParams = FixedPointWellnessParams.svmParams,
     configurationMemoryParams = FixedPointWellnessParams.configurationMemoryParams
   ) with dspblocks.TLStandaloneBlock {

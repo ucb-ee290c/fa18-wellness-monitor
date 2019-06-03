@@ -11,7 +11,6 @@ import features._
 import fft._
 import firFilter._
 import org.scalatest.{FlatSpec, Matchers}
-import pca._
 import svm._
 
 import scala.collection.{Seq, mutable}
@@ -54,11 +53,6 @@ abstract class bandpowerParamsTemplate {
   val nBins: Int
 }
 
-abstract class pcaParamsTemplate {
-  val nDimensions:Int
-  val nFeatures:Int
-}
-
 abstract class svmParamsTemplate {
   val nSupports:Int
   val nFeatures:Int
@@ -70,7 +64,6 @@ abstract class svmParamsTemplate {
 }
 
 abstract class configurationMemoryParamsTemplate {
-  val nDimensions:Int
   val nFeatures:Int
   val nSupports:Int
   val nClassifiers:Int
@@ -110,10 +103,6 @@ class wellnessIntegrationParameterBundle {
     val idxEndBin: Int = 0
     val nBins: Int = 0
   }
-  val pcaParams:pcaParamsTemplate = new pcaParamsTemplate {
-    val nDimensions: Int = 0
-    val nFeatures: Int = 0
-  }
   val svmParams:svmParamsTemplate = new svmParamsTemplate {
     val nSupports: Int = 0
     val nFeatures:Int = 0
@@ -124,7 +113,6 @@ class wellnessIntegrationParameterBundle {
     val codeBook:Seq[Seq[Int]] = Seq.fill(1,1)(0)
   }
   val configurationMemoryParams:configurationMemoryParamsTemplate = new configurationMemoryParamsTemplate {
-    val nDimensions: Int = 0
     val nFeatures: Int = 0
     val nSupports: Int = 0
     val nClassifiers: Int = 0
@@ -190,13 +178,9 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
         val idxEndBin: Int = 2
         val nBins: Int = windowLength
       }
-      override val pcaParams:pcaParamsTemplate = new pcaParamsTemplate {
-        val nDimensions: Int = 3
-        val nFeatures: Int = 2
-      }
       override val svmParams:svmParamsTemplate = new svmParamsTemplate {
         val nSupports: Int = 2
-        val nFeatures:Int = pcaParams.nFeatures
+        val nFeatures:Int = 3
         val nClasses: Int = 2
         val nDegree: Int = 1
         val kernelType: String = "poly"
@@ -222,8 +206,7 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
             }
             else 1
         }
-        val nDimensions: Int = pcaParams.nDimensions
-        val nFeatures: Int = pcaParams.nFeatures
+        val nFeatures: Int = svmParams.nFeatures
         val nSupports: Int = svmParams.nSupports
         val nClassifiers: Int = computeNClassifiers(svmParams)
       }
@@ -271,16 +254,10 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       val genOut = FixedPoint(dataWidth.W,dataBP.BP)
     }
 
-    val pcaParams = new PCAParams[FixedPoint] {
-      val protoData = FixedPoint(dataWidth.W,dataBP.BP)
-      val nDimensions = 3 // input dimension, minimum 1
-      val nFeatures = 2   // output dimension to SVM, minimum 1
-    }
-
     val svmParams = new SVMParams[FixedPoint] {
       val protoData = FixedPoint(dataWidth.W,dataBP.BP)
       val nSupports = 2
-      val nFeatures = pcaParams.nFeatures
+      val nFeatures = 3
       val nClasses = 2
       val nDegree = 1
       val kernelType = "poly"
@@ -307,9 +284,8 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
           }
           else 1
       }
-      val protoData = pcaParams.protoData.cloneType
-      val nDimensions: Int = pcaParams.nDimensions
-      val nFeatures: Int = pcaParams.nFeatures
+      val protoData = svmParams.protoData.cloneType
+      val nFeatures: Int = svmParams.nFeatures
       val nSupports: Int = svmParams.nSupports
       val nClassifiers: Int = computeNClassifiers(svmParams)
     }
@@ -320,7 +296,6 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       fftConfig: FFTConfig[FixedPoint],
       bandpower1Params: BandpowerParams[FixedPoint],
       bandpower2Params: BandpowerParams[FixedPoint],
-      pcaParams: PCAParams[FixedPoint],
       svmParams: SVMParams[FixedPoint],
       configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
       goldenModelParameters: wellnessIntegrationParameterBundle, debug, 0) should be (true)

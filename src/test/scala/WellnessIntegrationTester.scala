@@ -14,7 +14,6 @@ import dsptools.numbers._
 import firFilter._
 import fft._
 import features._
-import pca._
 import memorybuffer._
 import svm._
 import freechips.rocketchip.config.Parameters
@@ -51,8 +50,6 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     goldenModelParameters.svmParams.codeBook,
     flag = 0,
     c.svmParams.protoData.getClass.getTypeName)
-  val PCANormalizer = new GoldenIntPCANormalizer(goldenModelParameters.pcaParams.nDimensions)
-  val PCA = new GoldenIntPCA(goldenModelParameters.pcaParams.nDimensions,goldenModelParameters.pcaParams.nFeatures)
 
   var input = scala.util.Random.nextFloat*16 - 8
   if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
@@ -63,26 +60,12 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   }
 
   // Define some arbitrary default values for PCA and SVM to be used in random input tests
-  var referencePCAVector = Seq(Seq(5.0, 0.0, -2.0), Seq(1.0, 2.0, 3.0))
-  var referenceSVMSupportVector = Seq(Seq(1.0, 2.0), Seq(3.0, 4.0))
+  var referenceSVMSupportVector = Seq(Seq(1.0, 2.0, 3.0), Seq(3.0, 4.0, 5.0))
   var referenceSVMAlphaVector = Seq(Seq(7.0, 3.0))
   var referenceSVMIntercept = Seq(4.0)
-  var referencePCANormalizationData = Seq(Seq(10.0,2.0),Seq(3.0,5.0),Seq(1.0,1.0))
 
   // Configure the input mux selection to accept data from RISC-V core instead of external input
   poke(c.io.inConf.bits.confInputMuxSel, 0)
-
-  val pcaVectorMemoryParams = new MemoryBufferParams[T] {
-    val protoData: T = c.configurationMemoryParams.protoData.cloneType
-    val nRows: Int = c.configurationMemoryParams.nDimensions
-    val nColumns: Int = c.configurationMemoryParams.nFeatures
-  }
-
-  val pcaNormalizationMemoryParams = new MemoryBufferParams[T] {
-    val protoData: T = c.configurationMemoryParams.protoData.cloneType
-    val nRows: Int = 2
-    val nColumns: Int = c.configurationMemoryParams.nDimensions
-  }
 
   val svmSupportVectorMemoryParams = new MemoryBufferParams[T] {
     val protoData: T = c.configurationMemoryParams.protoData.cloneType
@@ -104,11 +87,6 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
 
   // Fill the configuration inputs of the DUT
 
-  for(x <- 0 until pcaVectorMemoryParams.nColumns) {
-    for (y <- 0 until pcaVectorMemoryParams.nRows) {
-      poke(c.io.inConf.bits.confPCAVector(x)(y), referencePCAVector(x)(y))
-    }
-  }
   for(x <- 0 until svmSupportVectorMemoryParams.nColumns) {
     for (y <- 0 until svmSupportVectorMemoryParams.nRows) {
       poke(c.io.inConf.bits.confSVMSupportVector(x)(y), referenceSVMSupportVector(x)(y))
@@ -122,17 +100,10 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   for (y <- 0 until svmInterceptMemoryParams.nRows) {
     poke(c.io.inConf.bits.confSVMIntercept(y), referenceSVMIntercept(y))
   }
-  for(x <- 0 until pcaNormalizationMemoryParams.nColumns) {
-    for (y <- 0 until pcaNormalizationMemoryParams.nRows) {
-      poke(c.io.inConf.bits.confPCANormalizationData(x)(y), referencePCANormalizationData(x)(y))
-    }
-  }
 
   // poke initial values, as well as the declaration of the variables, set to 0 first
   var svmResult = SVM.poke(Seq.fill(goldenModelParameters.svmParams.nFeatures)(0.0), referenceSVMSupportVector.map(_.map(_.toDouble)),
     referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
-  var pcaNormalizerResult = PCANormalizer.poke(Seq(0,0,0),referencePCANormalizationData.map(_.map(_.toDouble)))
-  var pcaResult = PCA.poke(Seq(0,0,0),referencePCAVector.map(_.map(_.toDouble)))
 
   var bandpower1Result = bandpower1.poke(Seq.fill(goldenModelParameters.bandpower1Params.nBins)(Complex(0.0, 0.0)))
   var bandpower2Result = bandpower2.poke(Seq.fill(goldenModelParameters.bandpower2Params.nBins)(Complex(0.0, 0.0)))
@@ -145,7 +116,7 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   var lineLength1ResultReg2 = 0.0
   var filter1Result = filter1.poke(0)
 
-  var pcaInputBundle = Seq(bandpower1Result, bandpower2Result, lineLength1ResultReg2)
+  var FeatureBundle = Seq(bandpower1Result, bandpower2Result, lineLength1ResultReg2)
 
   var dataWidth = 0
   var dataBP = 0
@@ -178,11 +149,9 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     // Poke inputs to golden models
     // The order of poking matters. For sequential modules connected to eachother, poking should be from last-to-first.
     // For combinational modules between sequential modules, it should be from first-to-last.
-    svmResult = SVM.poke(pcaResult.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),
+    svmResult = SVM.poke(FeatureBundle.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),
       referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
-    pcaInputBundle = Seq(bandpower1Result, bandpower2Result, lineLength1ResultReg2)
-    pcaResult = PCA.poke(pcaNormalizerResult, referencePCAVector.map(_.map(_.toDouble)))
-    pcaNormalizerResult = PCANormalizer.poke(pcaInputBundle, referencePCANormalizationData.map(_.map(_.toDouble)))
+    FeatureBundle = Seq(bandpower1Result, bandpower2Result, lineLength1ResultReg2)
 
     bandpower1Result = bandpower1.poke(fftResult)
     bandpower2Result = bandpower2.poke(fftResult)
@@ -237,17 +206,6 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
         }
       }
 
-      for (i <- 0 until goldenModelParameters.pcaParams.nFeatures) {
-        if (c.pcaParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
-          expect(c.io.pcaOut(i), pcaResult(i))
-        } else {
-          // due to the series of multiply and accumulates, error actually blows up, let's be lenient
-          fixTolLSBs.withValue(log2Ceil((pcaResult(i).abs*tolerance).toInt+1)+dataBP+1) { // at least the integer part must match
-            expect(c.io.pcaOut(i), pcaResult(i))
-          }
-        }
-      }
-
       for (i <- 0 until goldenModelParameters.svmParams.nClasses) {
         if (c.svmParams.protoData.getClass.getTypeName == "chisel3.core.SInt" || c.svmParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
           expect(c.io.rawVotes(i), svmResult(0)(i))
@@ -276,7 +234,6 @@ object WellnessIntegrationTesterFP {
             fftConfig: FFTConfig[FixedPoint],
             bandpower1Params: BandpowerParams[FixedPoint],
             bandpower2Params: BandpowerParams[FixedPoint],
-            pcaParams: PCAParams[FixedPoint],
             svmParams: SVMParams[FixedPoint],
             configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
             goldenModelParameters: wellnessIntegrationParameterBundle, debug: Int, testType: Int): Boolean = {
@@ -288,7 +245,6 @@ object WellnessIntegrationTesterFP {
         fftConfig: FFTConfig[FixedPoint],
         bandpower1Params: BandpowerParams[FixedPoint],
         bandpower2Params: BandpowerParams[FixedPoint],
-        pcaParams: PCAParams[FixedPoint],
         svmParams: SVMParams[FixedPoint],
         configurationMemoryParams: ConfigurationMemoryParams[FixedPoint])) {
         c => new wellnessTester(c, goldenModelParameters, testType)
@@ -301,7 +257,6 @@ object WellnessIntegrationTesterFP {
         fftConfig: FFTConfig[FixedPoint],
         bandpower1Params: BandpowerParams[FixedPoint],
         bandpower2Params: BandpowerParams[FixedPoint],
-        pcaParams: PCAParams[FixedPoint],
         svmParams: SVMParams[FixedPoint],
         configurationMemoryParams: ConfigurationMemoryParams[FixedPoint]),
         TestSetup.dspTesterOptions) {
