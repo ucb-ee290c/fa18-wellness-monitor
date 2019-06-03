@@ -5,7 +5,6 @@ package wellness
 // Import packages
 // *********************************************
 import firFilter._
-import fft._
 import features._
 import svm._
 import chisel3._
@@ -47,39 +46,30 @@ object FixedPointWellnessParams {
     val windowSize = 2
   }
 
-  val fftBufferParams = new FFTBufferParams[FixedPoint] {
+  val filterAlphaParams = new FIRFilterParams[FixedPoint] {
     val protoData = FixedPoint(dataWidth.W,dataBP.BP)
-    val lanes = nPts
+    val taps = Seq(1, 2, 3, 4, 5, 0).map(ConvertableTo[FixedPoint].fromDouble(_))
   }
 
-  val fftConfig = FFTConfig(
-    genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP)),
-    genOut = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP)),
-    n = nPts,
-    lanes = nPts,
-    pipelineDepth = 0,
-    quadrature = false,
-  )
-
-  val bandpower1Params = new BandpowerParams[FixedPoint] {
-    val idxStartBin = 0
-    val idxEndBin = 4
-    val nBins = nPts
-    val genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP))
-    val genOut = FixedPoint(dataWidth.W,dataBP.BP)
+  val filterBetaParams = new FIRFilterParams[FixedPoint] {
+    val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    val taps = Seq(1, 2, 3, 4, 5, 0).map(ConvertableTo[FixedPoint].fromDouble(_))
   }
-  val bandpower2Params = new BandpowerParams[FixedPoint] {
-    val idxStartBin = 0
-    val idxEndBin = 2
-    val nBins = nPts
-    val genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP))
-    val genOut = FixedPoint(dataWidth.W,dataBP.BP)
+
+  val filterGammaParams = new FIRFilterParams[FixedPoint] {
+    val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    val taps = Seq(1, 2, 3, 4, 5, 0).map(ConvertableTo[FixedPoint].fromDouble(_))
+  }
+
+  val bandpowerParams = new sumSquaresParams[FixedPoint] {
+    val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+    val windowSize = lineLength1Params.windowSize
   }
 
   val svmParams = new SVMParams[FixedPoint] {
     val protoData = FixedPoint(dataWidth.W,dataBP.BP)
     val nSupports = 2
-    val nFeatures = 3
+    val nFeatures = 4
     val nClasses = 2
     val nDegree = 1
     val kernelType = "poly"

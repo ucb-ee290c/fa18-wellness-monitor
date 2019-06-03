@@ -13,10 +13,10 @@ object StandaloneWellness extends App {
   chisel3.Driver.execute(args, () => LazyModule(new TLWellnessDataPathBlock(
     filter1Params = FixedPointWellnessParams.filter1Params,
     lineLength1Params = FixedPointWellnessParams.lineLength1Params,
-    fftBufferParams = FixedPointWellnessParams.fftBufferParams,
-    fftConfig = FixedPointWellnessParams.fftConfig,
-    bandpower1Params = FixedPointWellnessParams.bandpower1Params,
-    bandpower2Params = FixedPointWellnessParams.bandpower2Params,
+    filterAlphaParams = FixedPointWellnessParams.filterAlphaParams,
+    filterBetaParams = FixedPointWellnessParams.filterBetaParams,
+    filterGammaParams = FixedPointWellnessParams.filterGammaParams,
+    bandpowerParams = FixedPointWellnessParams.bandpowerParams,
     svmParams = FixedPointWellnessParams.svmParams,
     configurationMemoryParams = FixedPointWellnessParams.configurationMemoryParams
   ) with dspblocks.TLStandaloneBlock {

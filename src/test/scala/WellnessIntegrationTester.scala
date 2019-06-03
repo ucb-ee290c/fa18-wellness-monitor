@@ -1,18 +1,11 @@
 
 package wellness
 
-
-import java.io._
-
-import breeze.math.Complex
-import breeze.numerics.floor
-import chisel3._
 import chisel3.experimental.FixedPoint
 import chisel3.util.log2Ceil
 import dsptools.DspTester
 import dsptools.numbers._
 import firFilter._
-import fft._
 import features._
 import memorybuffer._
 import svm._
@@ -26,20 +19,12 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   // Instantiate golden models
   val filter1 = new GoldenDoubleFIRFilter(goldenModelParameters.filter1Params.taps)
   val lineLength1 = new GoldenDoubleLineLength(goldenModelParameters.lineLength1Params.windowSize,c.lineLength1Params.protoData.getClass.getTypeName)
-  val fftBuffer = new GoldenFFTBuffer(goldenModelParameters.fftBufferParams.lanes)
-  val fft = new GoldenDoubleFFT(goldenModelParameters.fftConfig.nPts)
-  val bandpower1 = new GoldenDoubleBandpower(
-    goldenModelParameters.bandpower1Params.nBins,
-    goldenModelParameters.bandpower1Params.idxStartBin,
-    goldenModelParameters.bandpower1Params.idxEndBin,
-    c.bandpower1Params.genOut.getClass.getTypeName
-    )
-  val bandpower2 = new GoldenDoubleBandpower(
-    goldenModelParameters.bandpower2Params.nBins,
-    goldenModelParameters.bandpower2Params.idxStartBin,
-    goldenModelParameters.bandpower2Params.idxEndBin,
-    c.bandpower2Params.genOut.getClass.getTypeName
-  )
+  val filterAlpha = new GoldenDoubleFIRFilter(goldenModelParameters.filterAlphaParams.taps)
+  val filterBeta = new GoldenDoubleFIRFilter(goldenModelParameters.filterBetaParams.taps)
+  val filterGamma = new GoldenDoubleFIRFilter(goldenModelParameters.filterGammaParams.taps)
+  val bandpowerAlpha = new GoldenDoublesumSquares(goldenModelParameters.bandpowerParams.windowSize,c.bandpowerParams.protoData.getClass.getTypeName)
+  val bandpowerBeta = new GoldenDoublesumSquares(goldenModelParameters.bandpowerParams.windowSize,c.bandpowerParams.protoData.getClass.getTypeName)
+  val bandpowerGamma = new GoldenDoublesumSquares(goldenModelParameters.bandpowerParams.windowSize,c.bandpowerParams.protoData.getClass.getTypeName)
   val SVM = new GoldenSVM(
     goldenModelParameters.svmParams.nSupports,
     goldenModelParameters.svmParams.nFeatures,
@@ -60,7 +45,7 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   }
 
   // Define some arbitrary default values for PCA and SVM to be used in random input tests
-  var referenceSVMSupportVector = Seq(Seq(1.0, 2.0, 3.0), Seq(3.0, 4.0, 5.0))
+  var referenceSVMSupportVector = Seq(Seq(1.0, 2.0, 3.0, 4.0), Seq(3.0, 4.0, 5.0, 6.0))
   var referenceSVMAlphaVector = Seq(Seq(7.0, 3.0))
   var referenceSVMIntercept = Seq(4.0)
 
@@ -105,18 +90,20 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   var svmResult = SVM.poke(Seq.fill(goldenModelParameters.svmParams.nFeatures)(0.0), referenceSVMSupportVector.map(_.map(_.toDouble)),
     referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
 
-  var bandpower1Result = bandpower1.poke(Seq.fill(goldenModelParameters.bandpower1Params.nBins)(Complex(0.0, 0.0)))
-  var bandpower2Result = bandpower2.poke(Seq.fill(goldenModelParameters.bandpower2Params.nBins)(Complex(0.0, 0.0)))
-  var fftResult = fft.poke(Seq.fill(goldenModelParameters.fftConfig.nPts)(Complex(0.0, 0.0)))
-  var fftBufferResult = fftBuffer.poke(0.0)
+  var bandpowerAlphaResult = bandpowerAlpha.poke(value = 0)
+  var bandpowerBetaResult = bandpowerBeta.poke(value = 0)
+  var bandpowerGammaResult = bandpowerGamma.poke(value = 0)
+
+  var filterAlphaResult = filterAlpha.poke(0)
+  var filterBetaResult = filterBeta.poke(0)
+  var filterGammaResult = filterGamma.poke(0)
 
   var lineLength1Result = lineLength1.poke(value = 0)
   // pipeline 'registers' to delay line length result for bandpower alignment
   var lineLength1ResultReg1 = 0.0
-  var lineLength1ResultReg2 = 0.0
   var filter1Result = filter1.poke(0)
 
-  var FeatureBundle = Seq(bandpower1Result, bandpower2Result, lineLength1ResultReg2)
+  var FeatureBundle = Seq(bandpowerAlphaResult, bandpowerBetaResult, bandpowerGammaResult, lineLength1ResultReg1)
 
   var dataWidth = 0
   var dataBP = 0
@@ -151,15 +138,17 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     // For combinational modules between sequential modules, it should be from first-to-last.
     svmResult = SVM.poke(FeatureBundle.map(_.toDouble), referenceSVMSupportVector.map(_.map(_.toDouble)),
       referenceSVMAlphaVector.map(_.map(_.toDouble)), referenceSVMIntercept.map(_.toDouble), 0)
-    FeatureBundle = Seq(bandpower1Result, bandpower2Result, lineLength1ResultReg2)
+    FeatureBundle = Seq(bandpowerAlphaResult, bandpowerBetaResult, bandpowerGammaResult, lineLength1ResultReg1)
 
-    bandpower1Result = bandpower1.poke(fftResult)
-    bandpower2Result = bandpower2.poke(fftResult)
-    fftResult = fft.poke(fftBufferResult.regs.map(x => Complex(x.toDouble, 0.0)))
-    fftBufferResult = fftBuffer.poke(filter1Result)
+    bandpowerAlphaResult = bandpowerAlpha.poke(filterAlphaResult)
+    bandpowerBetaResult = bandpowerBeta.poke(filterBetaResult)
+    bandpowerGammaResult = bandpowerGamma.poke(filterGammaResult)
+
+    filterAlphaResult = filterAlpha.poke(filter1Result)
+    filterBetaResult = filterBeta.poke(filter1Result)
+    filterGammaResult = filterGamma.poke(filter1Result)
 
     // pipeline 'register' to delay line length result for bandpower alignment
-    lineLength1ResultReg2 = lineLength1ResultReg1
     lineLength1ResultReg1 = lineLength1Result
     lineLength1Result = lineLength1.poke(value = filter1Result)
     filter1Result = filter1.poke(input)
@@ -175,34 +164,16 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
       if (c.lineLength1Params.protoData.getClass.getTypeName == "chisel3.core.SInt") {
         expect(c.io.filterOut, filter1Result)
         expect(c.io.lineOut, lineLength1Result)
-        expect(c.io.bandpower1Out, bandpower1Result)
-        expect(c.io.bandpower2Out, bandpower2Result)
+        expect(c.io.bandpower1Out, bandpowerAlphaResult)
+        expect(c.io.bandpower2Out, bandpowerBetaResult)
+        expect(c.io.bandpower3Out, bandpowerGammaResult)
       } else {
-        fixTolLSBs.withValue(log2Ceil((bandpower1Result.abs*tolerance).toInt+1)+dataBP+1) {
+        fixTolLSBs.withValue(log2Ceil((bandpowerAlphaResult.abs*tolerance).toInt+1)+dataBP+1) {
           expect(c.io.filterOut, filter1Result)
           expect(c.io.lineOut, lineLength1Result)
-          expect(c.io.bandpower1Out, bandpower1Result)
-          expect(c.io.bandpower2Out, bandpower2Result)
-        }
-      }
-
-      for (i <- 0 until goldenModelParameters.fftBufferParams.lanes) {
-        if (c.fftBufferParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
-          expect(c.io.fftBufferOut(i), fftBufferResult.regs(i))
-        } else {
-          fixTolLSBs.withValue(log2Ceil((fftBufferResult.regs(i).abs*tolerance).toInt+1)+dataBP+1) { // at least the integer part must match
-            expect(c.io.fftBufferOut(i), fftBufferResult.regs(i))
-          }
-        }
-      }
-
-      for (i <- 0 until goldenModelParameters.fftConfig.nPts) {
-        if (c.fftConfig.genOut.real.getClass.getTypeName == "chisel3.core.SInt") {
-          expect(c.io.fftOut(i), fftResult(i))
-        } else {
-          fixTolLSBs.withValue(log2Ceil((fftResult(i).real.abs*tolerance).toInt+1)+dataBP+1) { // at least the integer part must match
-            expect(c.io.fftOut(i), fftResult(i))
-          }
+          expect(c.io.bandpower1Out, bandpowerAlphaResult)
+          expect(c.io.bandpower2Out, bandpowerBetaResult)
+          expect(c.io.bandpower3Out, bandpowerGammaResult)
         }
       }
 
@@ -230,10 +201,10 @@ object WellnessIntegrationTesterFP {
   implicit val p: Parameters = null
   def apply(filter1Params: FIRFilterParams[FixedPoint],
             lineLength1Params: lineLengthParams[FixedPoint],
-            fftBufferParams: FFTBufferParams[FixedPoint],
-            fftConfig: FFTConfig[FixedPoint],
-            bandpower1Params: BandpowerParams[FixedPoint],
-            bandpower2Params: BandpowerParams[FixedPoint],
+            filterAlphaParams: FIRFilterParams[FixedPoint],
+            filterBetaParams: FIRFilterParams[FixedPoint],
+            filterGammaParams: FIRFilterParams[FixedPoint],
+            bandpowerParams: sumSquaresParams[FixedPoint],
             svmParams: SVMParams[FixedPoint],
             configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
             goldenModelParameters: wellnessIntegrationParameterBundle, debug: Int, testType: Int): Boolean = {
@@ -241,10 +212,10 @@ object WellnessIntegrationTesterFP {
       chisel3.iotesters.Driver.execute(Array("-tbn", "verilator", "-fiwv"), () => new WellnessModule(
         filter1Params: FIRFilterParams[FixedPoint],
         lineLength1Params: lineLengthParams[FixedPoint],
-        fftBufferParams: FFTBufferParams[FixedPoint],
-        fftConfig: FFTConfig[FixedPoint],
-        bandpower1Params: BandpowerParams[FixedPoint],
-        bandpower2Params: BandpowerParams[FixedPoint],
+        filterAlphaParams: FIRFilterParams[FixedPoint],
+        filterBetaParams: FIRFilterParams[FixedPoint],
+        filterGammaParams: FIRFilterParams[FixedPoint],
+        bandpowerParams: sumSquaresParams[FixedPoint],
         svmParams: SVMParams[FixedPoint],
         configurationMemoryParams: ConfigurationMemoryParams[FixedPoint])) {
         c => new wellnessTester(c, goldenModelParameters, testType)
@@ -253,10 +224,10 @@ object WellnessIntegrationTesterFP {
       dsptools.Driver.execute(() => new WellnessModule(
         filter1Params: FIRFilterParams[FixedPoint],
         lineLength1Params: lineLengthParams[FixedPoint],
-        fftBufferParams: FFTBufferParams[FixedPoint],
-        fftConfig: FFTConfig[FixedPoint],
-        bandpower1Params: BandpowerParams[FixedPoint],
-        bandpower2Params: BandpowerParams[FixedPoint],
+        filterAlphaParams: FIRFilterParams[FixedPoint],
+        filterBetaParams: FIRFilterParams[FixedPoint],
+        filterGammaParams: FIRFilterParams[FixedPoint],
+        bandpowerParams: sumSquaresParams[FixedPoint],
         svmParams: SVMParams[FixedPoint],
         configurationMemoryParams: ConfigurationMemoryParams[FixedPoint]),
         TestSetup.dspTesterOptions) {

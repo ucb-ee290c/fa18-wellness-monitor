@@ -8,7 +8,6 @@ import chisel3._
 import chisel3.core.FixedPoint
 import dsptools.numbers._
 import features._
-import fft._
 import firFilter._
 import org.scalatest.{FlatSpec, Matchers}
 import svm._
@@ -39,18 +38,8 @@ abstract class lineLengthParamsTemplate {
   val windowSize:Int
 }
 
-abstract class fftBufferParamsTemplate {
-  val lanes:Int
-}
-
-abstract class fftConfigTemplate {
-  val nPts: Int
-}
-
-abstract class bandpowerParamsTemplate {
-  val idxStartBin: Int
-  val idxEndBin: Int
-  val nBins: Int
+abstract class sumSquaresParamsTemplate {
+  val windowSize:Int
 }
 
 abstract class svmParamsTemplate {
@@ -87,21 +76,17 @@ class wellnessIntegrationParameterBundle {
   val lineLength1Params:lineLengthParamsTemplate = new lineLengthParamsTemplate {
     val windowSize = 0
   }
-  val fftBufferParams:fftBufferParamsTemplate = new fftBufferParamsTemplate {
-    val lanes: Int = 0
+  val filterAlphaParams:filterParamsTemplate = new filterParamsTemplate {
+    val taps = Seq(0.toDouble)
   }
-  val fftConfig: fftConfigTemplate = new fftConfigTemplate {
-    val nPts: Int = 0
+  val filterBetaParams:filterParamsTemplate = new filterParamsTemplate {
+    val taps = Seq(0.toDouble)
   }
-  val bandpower1Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
-    val idxStartBin: Int = 0
-    val idxEndBin: Int = 0
-    val nBins: Int = 0
+  val filterGammaParams:filterParamsTemplate = new filterParamsTemplate {
+    val taps = Seq(0.toDouble)
   }
-  val bandpower2Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
-    val idxStartBin: Int = 0
-    val idxEndBin: Int = 0
-    val nBins: Int = 0
+  val bandpowerParams:sumSquaresParamsTemplate = new sumSquaresParamsTemplate {
+    val windowSize = 0
   }
   val svmParams:svmParamsTemplate = new svmParamsTemplate {
     val nSupports: Int = 0
@@ -154,6 +139,18 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
     for(j <- 0 until tap_count) {
       coefficients1 += (-5 + scala.util.Random.nextFloat * 10)
     }
+    val coefficients2 = mutable.ArrayBuffer[Double]()
+    for(j <- 0 until tap_count) {
+      coefficients2 += (-5 + scala.util.Random.nextFloat * 10)
+    }
+    val coefficients3 = mutable.ArrayBuffer[Double]()
+    for(j <- 0 until tap_count) {
+      coefficients3 += (-5 + scala.util.Random.nextFloat * 10)
+    }
+    val coefficients4 = mutable.ArrayBuffer[Double]()
+    for(j <- 0 until tap_count) {
+      coefficients4 += (-5 + scala.util.Random.nextFloat * 10)
+    }
 
     val goldenModelParameters = new wellnessIntegrationParameterBundle {
       override val filter1Params: filterParamsTemplate = new filterParamsTemplate {
@@ -162,25 +159,21 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       override val lineLength1Params: lineLengthParamsTemplate = new lineLengthParamsTemplate {
         val windowSize = windowLength
       }
-      override val fftBufferParams:fftBufferParamsTemplate = new fftBufferParamsTemplate {
-        val lanes: Int = windowLength
+      override val filterAlphaParams: filterParamsTemplate = new filterParamsTemplate {
+        val taps: Seq[Double] = coefficients2
       }
-      override val fftConfig: fftConfigTemplate = new fftConfigTemplate {
-        val nPts: Int = windowLength
+      override val filterBetaParams: filterParamsTemplate = new filterParamsTemplate {
+        val taps: Seq[Double] = coefficients3
       }
-      override val bandpower1Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
-        val idxStartBin: Int = 0
-        val idxEndBin: Int = 2
-        val nBins: Int = windowLength
+      override val filterGammaParams: filterParamsTemplate = new filterParamsTemplate {
+        val taps: Seq[Double] = coefficients4
       }
-      override val bandpower2Params: bandpowerParamsTemplate = new bandpowerParamsTemplate {
-        val idxStartBin: Int = 0
-        val idxEndBin: Int = 2
-        val nBins: Int = windowLength
+      override val bandpowerParams: sumSquaresParamsTemplate = new sumSquaresParamsTemplate {
+        val windowSize = windowLength
       }
       override val svmParams:svmParamsTemplate = new svmParamsTemplate {
         val nSupports: Int = 2
-        val nFeatures:Int = 3
+        val nFeatures:Int = 4
         val nClasses: Int = 2
         val nDegree: Int = 1
         val kernelType: String = "poly"
@@ -222,42 +215,28 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       val windowSize = windowLength
     }
 
-    // FFTBufferParams
-    val fftBufferParams = new FFTBufferParams[FixedPoint] {
+    val filterAlphaParams = new FIRFilterParams[FixedPoint] {
       val protoData = FixedPoint(dataWidth.W,dataBP.BP)
-      val lanes = windowLength
+      val taps = coefficients2.map(ConvertableTo[FixedPoint].fromDouble(_))
+    }
+    val filterBetaParams = new FIRFilterParams[FixedPoint] {
+      val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+      val taps = coefficients3.map(ConvertableTo[FixedPoint].fromDouble(_))
+    }
+    val filterGammaParams = new FIRFilterParams[FixedPoint] {
+      val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+      val taps = coefficients4.map(ConvertableTo[FixedPoint].fromDouble(_))
     }
 
-    // FFTConfigs
-    val fftConfig = FFTConfig(
-      genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP)),
-      genOut = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP)),
-      n = windowLength,
-      lanes = windowLength,
-      pipelineDepth = 0,
-      quadrature = false,
-    )
-
-    // BandpowerParams
-    val bandpower1Params = new BandpowerParams[FixedPoint] {
-      val idxStartBin = 0
-      val idxEndBin = 2
-      val nBins = windowLength
-      val genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP))
-      val genOut = FixedPoint(dataWidth.W,dataBP.BP)
-    }
-    val bandpower2Params = new BandpowerParams[FixedPoint] {
-      val idxStartBin = 0
-      val idxEndBin = 2
-      val nBins = windowLength
-      val genIn = DspComplex(FixedPoint(dataWidth.W,dataBP.BP), FixedPoint(dataWidth.W,dataBP.BP))
-      val genOut = FixedPoint(dataWidth.W,dataBP.BP)
+    val bandpowerParams = new sumSquaresParams[FixedPoint] {
+      val protoData = FixedPoint(dataWidth.W,dataBP.BP)
+      val windowSize = windowLength
     }
 
     val svmParams = new SVMParams[FixedPoint] {
       val protoData = FixedPoint(dataWidth.W,dataBP.BP)
       val nSupports = 2
-      val nFeatures = 3
+      val nFeatures = 4
       val nClasses = 2
       val nDegree = 1
       val kernelType = "poly"
@@ -292,10 +271,10 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
 
     WellnessIntegrationTesterFP(filter1Params: FIRFilterParams[FixedPoint],
       lineLength1Params: lineLengthParams[FixedPoint],
-      fftBufferParams: FFTBufferParams[FixedPoint],
-      fftConfig: FFTConfig[FixedPoint],
-      bandpower1Params: BandpowerParams[FixedPoint],
-      bandpower2Params: BandpowerParams[FixedPoint],
+      filterAlphaParams: FIRFilterParams[FixedPoint],
+      filterBetaParams: FIRFilterParams[FixedPoint],
+      filterGammaParams: FIRFilterParams[FixedPoint],
+      bandpowerParams: sumSquaresParams[FixedPoint],
       svmParams: SVMParams[FixedPoint],
       configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
       goldenModelParameters: wellnessIntegrationParameterBundle, debug, 0) should be (true)
