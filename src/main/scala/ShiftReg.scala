@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.core.FixedPoint
 import dspjunctions.ValidWithSync
 import dsptools.numbers._
-import wellness.FixedPointWellnessGenParams.{dataBP, dataWidth}
+//import wellness.FixedPointWellnessGenParams.{dataBP, dataWidth}
 
 trait ShiftRegParams[T <: Data] {
   val protoData: T

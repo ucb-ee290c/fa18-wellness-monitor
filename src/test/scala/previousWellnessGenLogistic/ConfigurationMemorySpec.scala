@@ -1,3 +1,4 @@
+/*
 package wellness
 
 import chisel3._
@@ -14,11 +15,11 @@ class ConfigurationMemorySpec extends FlatSpec with Matchers {
         val protoData = SInt(32.W)
         val nDimensions = scala.util.Random.nextInt(8)+2
         val nFeatures = scala.util.Random.nextInt(6)+2
-        val nSupports = scala.util.Random.nextInt(6)+2
-        val nClassifiers = 1
       }
 
       ConfigurationMemoryTester(params, debug) should be (true)
     }
   }
 }
+
+ */

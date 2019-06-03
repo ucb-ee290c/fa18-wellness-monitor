@@ -1,3 +1,4 @@
+/*
 package wellness
 
 import chisel3._
@@ -27,3 +28,4 @@ object StandaloneWellness extends App {
     val in2 = InModuleBody { ioInNode2.makeIO() }
   }).module)
 }
+*/

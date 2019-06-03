@@ -1,3 +1,4 @@
+
 package wellness
 
 import chisel3._
@@ -8,7 +9,8 @@ import chisel3.{Bundle, Flipped, Input, Module, SInt, Vec}
 import chisel3.core.{FixedPoint, Wire}
 import dspjunctions.ValidWithSync
 import dsptools.numbers.{ConvertableTo, Ring}
-import wellness.FixedPointWellnessGenParams.{dataBP, dataWidth}
+//import wellness.FixedPointWellnessGenParams.{dataBP, dataWidth}
+import wellness.FixedPointWellnessParams.{dataBP, dataWidth}
 
 class dummyIO[T <: chisel3.Data : Ring] extends Bundle {
   //val dummyIn = Input(Seq(10,10))
