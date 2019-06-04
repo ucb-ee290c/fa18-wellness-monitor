@@ -66,7 +66,7 @@ class LogisticSpec extends FlatSpec with Matchers {
         val nFeatures = scala.util.Random.nextInt(10) + 5            // the number of reduced dimensions, coming from PCA if ever
         val nThresholds = scala.util.Random.nextInt(10) + 5          // the number of threshold points for logit estimation
 
-        val onlineLearn = 0          // online learning activation switch
+        val onlineLearn = 1          // online learning activation switch
         val nWindow = 5              // the training window for ictal segments
         val nInterCount = 60         // the training window for interictal segments
 
@@ -92,7 +92,7 @@ class LogisticSpec extends FlatSpec with Matchers {
         val nFeatures = scala.util.Random.nextInt(10) + 5            // the number of reduced dimensions, coming from PCA if ever
         val nThresholds = scala.util.Random.nextInt(10) + 5          // the number of threshold points for logit estimation
 
-        val onlineLearn = 0          // online learning activation switch
+        val onlineLearn = 1          // online learning activation switch
         val nWindow = 5              // the training window for ictal segments
         val nInterCount = 60         // the training window for interictal segments
 
