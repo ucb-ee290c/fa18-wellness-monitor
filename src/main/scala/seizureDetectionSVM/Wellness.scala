@@ -512,5 +512,4 @@ trait HasPeripheryWellnessModuleImp extends LazyModuleImp {
   outer.wellness.module.streamIn.bits := streamIn.bits
 
 }
-
  */

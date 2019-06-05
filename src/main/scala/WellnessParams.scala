@@ -1,4 +1,3 @@
-
 package wellness
 
 // *********************************************
@@ -69,7 +68,7 @@ object FixedPointWellnessParams {
   val neuralNetsParams = new NeuralNetParams[FixedPoint] {
     val protoData = FixedPoint(dataWidth.W,dataBP.BP)
     val nFeatures = 4
-    val nNeurons = 100
+    val nNeurons = 10
   }
 
   val configurationMemoryParams = new ConfigurationMemoryParams[FixedPoint] {
@@ -79,5 +78,3 @@ object FixedPointWellnessParams {
     val nNeurons: Int = neuralNetsParams.nNeurons
   }
 }
-
-

@@ -100,5 +100,4 @@ object FixedPointWellnessParams {
     val nClassifiers: Int = computeNClassifiers(svmParams)
   }
 }
-
  */

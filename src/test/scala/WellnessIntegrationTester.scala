@@ -1,4 +1,3 @@
-
 package wellness
 
 import chisel3.experimental.FixedPoint

@@ -1,7 +1,6 @@
 /*
 package wellness
 
-
 import java.io._
 
 import chisel3._
@@ -281,5 +280,4 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
   }
 
 }
-
  */

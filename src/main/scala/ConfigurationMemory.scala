@@ -1,4 +1,3 @@
-
 package wellness
 
 import memorybuffer._
@@ -105,3 +104,4 @@ class ConfigurationMemory[T <: chisel3.Data : Real : Order : BinaryRepresentatio
   io.out.bits.confInputMuxSel := inputMuxSel
 
 }
+

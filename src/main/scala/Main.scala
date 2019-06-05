@@ -1,4 +1,3 @@
-
 package wellness
 
 import dsptools.numbers._
