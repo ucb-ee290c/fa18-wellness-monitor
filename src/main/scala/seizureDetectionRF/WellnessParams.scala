@@ -1,4 +1,4 @@
-
+/*
 package wellness
 
 // *********************************************
@@ -82,4 +82,5 @@ object FixedPointWellnessParams {
     val nDepth: Int = randomForestParams.nDepth
   }
 }
+*/
 

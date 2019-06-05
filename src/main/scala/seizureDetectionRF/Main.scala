@@ -1,4 +1,4 @@
-
+/*
 package wellness
 
 import dsptools.numbers._
@@ -28,3 +28,4 @@ object StandaloneWellness extends App {
     val in2 = InModuleBody { ioInNode2.makeIO() }
   }).module)
 }
+*/
