@@ -71,7 +71,7 @@ class ConfigurationMemory[T <: chisel3.Data : Real : Order : BinaryRepresentatio
   randomForestLeafVotesMemory.io.in.bits := io.in.bits.wrdata
   randomForestLeafVotesMemory.io.in.sync := false.B
   randomForestLeafVotesMemory.io.in.valid := io.in.valid && (addr === randomForestLeafVotesMemoryAddr)
-  io.out.bits.confrandomForestLeafVotes := randomForestLeafVotesMemory.io.out.bits.head
+  io.out.bits.confrandomForestLeafVotes := randomForestLeafVotesMemory.io.out.bits
 
   //No need for a MemoryBuffer for a single bit. Addressing is similar to others though.
   val inputMuxSel = RegInit(false.B)

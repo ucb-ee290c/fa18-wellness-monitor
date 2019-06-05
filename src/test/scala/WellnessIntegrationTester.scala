@@ -115,7 +115,7 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   //var FeatureBundle = Seq(bandpowerAlphaResult, bandpowerBetaResult, bandpowerGammaResult, lineLength1ResultReg1)
   var FeatureBundle = Seq.fill(4)(0.toDouble)
   var neuralNetsResult = neuralNets.poke(FeatureBundle.map(_.toDouble), referenceneuralNetsweightMatrix.map(_.map(_.toDouble)), referenceneuralNetsweightVec.map(_.toDouble),
-                  referenceneuralNetsbiasVec.map(_.toDouble), referenceneuralNetsbiasScalar.toDouble)
+    referenceneuralNetsbiasVec.map(_.toDouble), referenceneuralNetsbiasScalar.toDouble)
 
   var dataWidth = 0
   var dataBP = 0
