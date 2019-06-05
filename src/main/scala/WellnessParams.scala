@@ -6,7 +6,7 @@ package wellness
 // *********************************************
 import firFilter._
 import features._
-import randomforest._
+import neuralNet._
 import chisel3._
 import chisel3.core.FixedPoint
 import dsptools.numbers._
@@ -66,20 +66,17 @@ object FixedPointWellnessParams {
     val windowSize = lineLength1Params.windowSize
   }
 
-  val randomForestParams = new RandomForestParams[FixedPoint] {
+  val neuralNetsParams = new NeuralNetParams[FixedPoint] {
     val protoData = FixedPoint(dataWidth.W,dataBP.BP)
     val nFeatures = 4
-    val nDepth = 4
-    val nTrees = 100
-
-    val featureSelect = Seq.fill(nTrees, (1 << nDepth) - 1)(0)
+    val nNeurons = 10
   }
 
   val configurationMemoryParams = new ConfigurationMemoryParams[FixedPoint] {
 
-    val protoData = randomForestParams.protoData.cloneType
-    val nTrees: Int = randomForestParams.nTrees
-    val nDepth: Int = randomForestParams.nDepth
+    val protoData = neuralNetsParams.protoData.cloneType
+    val nFeatures: Int = neuralNetsParams.nFeatures
+    val nNeurons: Int = neuralNetsParams.nNeurons
   }
 }
 

@@ -17,7 +17,7 @@ object StandaloneWellness extends App {
     filterBetaParams = FixedPointWellnessParams.filterBetaParams,
     filterGammaParams = FixedPointWellnessParams.filterGammaParams,
     bandpowerParams = FixedPointWellnessParams.bandpowerParams,
-    randomForestParams = FixedPointWellnessParams.randomForestParams,
+    neuralNetsParams = FixedPointWellnessParams.neuralNetsParams,
     configurationMemoryParams = FixedPointWellnessParams.configurationMemoryParams
   ) with dspblocks.TLStandaloneBlock {
     val ioInNode2 = BundleBridgeSource(() => new AXI4StreamBundle(AXI4StreamBundleParameters(n = 8)))

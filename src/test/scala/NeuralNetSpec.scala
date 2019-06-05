@@ -8,7 +8,7 @@ class NeuralNetSpec extends FlatSpec with Matchers {
   behavior of "NeuralNet"
 
   it should "work with random Floats" in {
-    val debug = 1
+    val debug = 0
 
     val dataWidth = 32
     val dataBP = 8

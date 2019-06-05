@@ -8,7 +8,7 @@ import dsptools.numbers._
 import firFilter._
 import features._
 import memorybuffer._
-import randomforest._
+import neuralNet._
 import freechips.rocketchip.config.Parameters
 
 import scala.collection.mutable.ArrayBuffer
@@ -25,52 +25,78 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   val bandpowerAlpha = new GoldenDoublesumSquares(goldenModelParameters.bandpowerParams.windowSize,c.bandpowerParams.protoData.getClass.getTypeName)
   val bandpowerBeta = new GoldenDoublesumSquares(goldenModelParameters.bandpowerParams.windowSize,c.bandpowerParams.protoData.getClass.getTypeName)
   val bandpowerGamma = new GoldenDoublesumSquares(goldenModelParameters.bandpowerParams.windowSize,c.bandpowerParams.protoData.getClass.getTypeName)
-  val randomForest = new GoldenRandomForest(
-    goldenModelParameters.randomForestParams.nFeatures,
-    goldenModelParameters.randomForestParams.nDepth,
-    goldenModelParameters.randomForestParams.nTrees,
-    goldenModelParameters.randomForestParams.featureSelect)
+  val neuralNets = new GoldenNeuralNet(
+    goldenModelParameters.neuralNetsParams.nFeatures,
+    goldenModelParameters.neuralNetsParams.nNeurons)
 
   var input = scala.util.Random.nextFloat*16 - 8
-  if (c.randomForestParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
+  if (c.neuralNetsParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
     input = scala.util.Random.nextInt(16)
   }
-  else if (c.randomForestParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
+  else if (c.neuralNetsParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
     input = scala.util.Random.nextInt(32) - 16
   }
 
   // Define some arbitrary default values for PCA and SVM to be used in random input tests
-  var referencerandomForestThresholds = Seq.fill(100, (1 << 4) - 1)(scala.util.Random.nextInt(20))
-  var referencerandomForestLeafVotes = Seq.fill(100, (1 << 4))(scala.util.Random.nextInt(5))
+  var referenceneuralNetsweightMatrix = Seq.fill(100, 4)(scala.util.Random.nextInt(10)-5)
+  var referenceneuralNetsweightVec = Seq.fill(100)(scala.util.Random.nextInt(10)-5)
+  var referenceneuralNetsbiasVec = Seq.fill(100)(scala.util.Random.nextInt(10)-5)
+  var referenceneuralNetsbiasScalar = scala.util.Random.nextInt(10)-5
 
   // Configure the input mux selection to accept data from RISC-V core instead of external input
   poke(c.io.inConf.bits.confInputMuxSel, 0)
 
-  val randomForestThresholdsMemoryParams = new MemoryBufferParams[T] {
+  val neuralNetsweightMatrixMemoryParams = new MemoryBufferParams[T] {
     val protoData: T = c.configurationMemoryParams.protoData.cloneType
-    val nRows: Int = (1 << c.configurationMemoryParams.nDepth) - 1
-    val nColumns: Int = c.configurationMemoryParams.nTrees
+    val nRows: Int = c.configurationMemoryParams.nFeatures
+    val nColumns: Int = c.configurationMemoryParams.nNeurons
   }
 
-  val randomForestLeafVotesMemoryParams = new MemoryBufferParams[T] {
+  val neuralNetsweightVecMemoryParams = new MemoryBufferParams[T] {
     val protoData: T = c.configurationMemoryParams.protoData.cloneType
-    val nRows: Int = 1 << c.configurationMemoryParams.nDepth
-    val nColumns: Int = c.configurationMemoryParams.nTrees
+    val nRows: Int = c.configurationMemoryParams.nNeurons
+    val nColumns: Int = 1
+  }
+
+  val neuralNetsbiasVecMemoryParams = new MemoryBufferParams[T] {
+    val protoData: T = c.configurationMemoryParams.protoData.cloneType
+    val nRows: Int = c.configurationMemoryParams.nNeurons
+    val nColumns: Int = 1
+  }
+
+  val neuralNetsbiasScalarMemoryParams = new MemoryBufferParams[T] {
+    val protoData: T = c.configurationMemoryParams.protoData.cloneType
+    val nRows: Int = 1
+    val nColumns: Int = 1
   }
 
   // Fill the configuration inputs of the DUT
 
-  for(x <- 0 until randomForestThresholdsMemoryParams.nColumns) {
-    for (y <- 0 until randomForestThresholdsMemoryParams.nRows) {
-      poke(c.io.inConf.bits.confrandomForestThresholds(x)(y), referencerandomForestThresholds(x)(y))
+  for(x <- 0 until neuralNetsweightMatrixMemoryParams.nColumns) {
+    for (y <- 0 until neuralNetsweightMatrixMemoryParams.nRows) {
+      poke(c.io.inConf.bits.confneuralNetsweightMatrix(x)(y), referenceneuralNetsweightMatrix(x)(y))
     }
   }
 
-  for(x <- 0 until randomForestLeafVotesMemoryParams.nColumns) {
-    for (y <- 0 until randomForestLeafVotesMemoryParams.nRows) {
-      poke(c.io.inConf.bits.confrandomForestLeafVotes(x)(y), referencerandomForestLeafVotes(x)(y))
+  for(x <- 0 until neuralNetsweightVecMemoryParams.nColumns) {
+    for (y <- 0 until neuralNetsweightVecMemoryParams.nRows) {
+      poke(c.io.inConf.bits.confneuralNetsweightVec(y), referenceneuralNetsweightVec(y))
     }
   }
+
+  for(x <- 0 until neuralNetsbiasVecMemoryParams.nColumns) {
+    for (y <- 0 until neuralNetsbiasVecMemoryParams.nRows) {
+      poke(c.io.inConf.bits.confneuralNetsbiasVec(y), referenceneuralNetsbiasVec(y))
+    }
+  }
+
+  for(x <- 0 until neuralNetsbiasScalarMemoryParams.nColumns) {
+    for (y <- 0 until neuralNetsbiasScalarMemoryParams.nRows) {
+      poke(c.io.inConf.bits.confneuralNetsbiasScalar, referenceneuralNetsbiasScalar)
+    }
+  }
+
+
   // poke initial values, as well as the declaration of the variables, set to 0 first
 
   var bandpowerAlphaResult = bandpowerAlpha.poke(value = 0)
@@ -87,13 +113,14 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   var filter1Result = filter1.poke(0)
 
   //var FeatureBundle = Seq(bandpowerAlphaResult, bandpowerBetaResult, bandpowerGammaResult, lineLength1ResultReg1)
-  var FeatureBundle = Seq.fill(randomForestThresholdsMemoryParams.nRows)(0.toDouble)
-  var randomForestResult = randomForest.poke(FeatureBundle.map(_.toDouble), referencerandomForestThresholds.map(_.map(_.toDouble)), referencerandomForestLeafVotes.map(_.map(_.toDouble)))
+  var FeatureBundle = Seq.fill(4)(0.toDouble)
+  var neuralNetsResult = neuralNets.poke(FeatureBundle.map(_.toDouble), referenceneuralNetsweightMatrix.map(_.map(_.toDouble)), referenceneuralNetsweightVec.map(_.toDouble),
+                  referenceneuralNetsbiasVec.map(_.toDouble), referenceneuralNetsbiasScalar.toDouble)
 
   var dataWidth = 0
   var dataBP = 0
   // determine the dataWidth and dataBP parameters override for Fixed Point numbers
-  if (c.randomForestParams.protoData.getClass.getTypeName == "chisel3.core.FixedPoint") {
+  if (c.neuralNetsParams.protoData.getClass.getTypeName == "chisel3.core.FixedPoint") {
     dataWidth = utilities.readCSV("scripts/generated_files/datasize.csv").flatMap(_.map(_.toInt)).head
     dataBP = utilities.readCSV("scripts/generated_files/datasize.csv").flatMap(_.map(_.toInt)).last
   }
@@ -110,10 +137,10 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
       input = referenceInput(i)
 
     } else {
-      if (c.randomForestParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
+      if (c.neuralNetsParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
         input = scala.util.Random.nextInt(16)
       }
-      else if (c.randomForestParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
+      else if (c.neuralNetsParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
         input = scala.util.Random.nextInt(32) - 16
       }
     }
@@ -122,10 +149,9 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     // The order of poking matters. For sequential modules connected to eachother, poking should be from last-to-first.
     // For combinational modules between sequential modules, it should be from first-to-last.
 
-    randomForestResult = randomForest.poke(FeatureBundle.map(_.toDouble), referencerandomForestThresholds.map(_.map(_.toDouble)),
-      referencerandomForestLeafVotes.map(_.map(_.toDouble)))
     FeatureBundle = Seq(bandpowerAlphaResult, bandpowerBetaResult, bandpowerGammaResult, lineLength1ResultReg1)
-
+    neuralNetsResult = neuralNets.poke(FeatureBundle.map(_.toDouble), referenceneuralNetsweightMatrix.map(_.map(_.toDouble)), referenceneuralNetsweightVec.map(_.toDouble),
+      referenceneuralNetsbiasVec.map(_.toDouble), referenceneuralNetsbiasScalar.toDouble)
     // TODO: double check why this is delayed, is there a register here?
 
     bandpowerAlphaResult = bandpowerAlpha.poke(filterAlphaResult)
@@ -165,16 +191,16 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
         }
       }
 
-      if (c.randomForestParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
-        expect(c.io.rawVotes, randomForestResult)
+      if (c.neuralNetsParams.protoData.getClass.getTypeName == "chisel3.core.SInt") {
+        expect(c.io.rawVotes, neuralNetsResult)
       } else {
-        fixTolLSBs.withValue(log2Ceil((randomForestResult.abs * tolerance).toInt + 1) + dataBP - 1) {
-          expect(c.io.rawVotes, randomForestResult)
+        fixTolLSBs.withValue(log2Ceil((neuralNetsResult.abs * tolerance).toInt + 1) + dataBP - 1) {
+          expect(c.io.rawVotes, neuralNetsResult)
         }
         // strict check for the class votes
-        //expect(c.io.out.bits, randomForestResult)
+        //expect(c.io.out.bits, neuralNetsResult)
       }
-      //outputContainer += randomForestResult
+      //outputContainer += neuralNetsResult
     }
   }
 
@@ -188,7 +214,7 @@ object WellnessIntegrationTesterFP {
             filterBetaParams: FIRFilterParams[FixedPoint],
             filterGammaParams: FIRFilterParams[FixedPoint],
             bandpowerParams: sumSquaresParams[FixedPoint],
-            randomForestParams: RandomForestParams[FixedPoint],
+            neuralNetsParams: NeuralNetParams[FixedPoint],
             configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
             goldenModelParameters: wellnessIntegrationParameterBundle, debug: Int, testType: Int): Boolean = {
     if (debug == 1) {
@@ -199,7 +225,7 @@ object WellnessIntegrationTesterFP {
         filterBetaParams: FIRFilterParams[FixedPoint],
         filterGammaParams: FIRFilterParams[FixedPoint],
         bandpowerParams: sumSquaresParams[FixedPoint],
-        randomForestParams: RandomForestParams[FixedPoint],
+        neuralNetsParams: NeuralNetParams[FixedPoint],
         configurationMemoryParams: ConfigurationMemoryParams[FixedPoint])) {
         c => new wellnessTester(c, goldenModelParameters, testType)
       }
@@ -211,7 +237,7 @@ object WellnessIntegrationTesterFP {
         filterBetaParams: FIRFilterParams[FixedPoint],
         filterGammaParams: FIRFilterParams[FixedPoint],
         bandpowerParams: sumSquaresParams[FixedPoint],
-        randomForestParams: RandomForestParams[FixedPoint],
+        neuralNetsParams: NeuralNetParams[FixedPoint],
         configurationMemoryParams: ConfigurationMemoryParams[FixedPoint]),
         TestSetup.dspTesterOptions) {
         c => new wellnessTester(c, goldenModelParameters, testType)

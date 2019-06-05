@@ -8,7 +8,7 @@ import dspjunctions.ValidWithSync
 import dsptools.numbers._
 import firFilter._
 import features._
-import randomforest._
+import neuralNet._
 import freechips.rocketchip.amba.axi4stream._
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
@@ -153,8 +153,10 @@ class TLReadQueue
   * @param params is explained at wellness.ConfigurationMemory
   */
 class WellnessConfigurationBundle[T <: Data](params: ConfigurationMemoryParams[T]) extends Bundle {
-  val confrandomForestThresholds = Vec(params.nTrees, Vec((1 << params.nDepth) - 1, params.protoData))
-  val confrandomForestLeafVotes = Vec(params.nTrees, Vec(1 << params.nDepth, params.protoData))
+  val confneuralNetsweightMatrix = Vec(params.nNeurons, Vec(params.nFeatures, params.protoData))
+  val confneuralNetsweightVec = Vec(params.nNeurons, params.protoData)
+  val confneuralNetsbiasVec = Vec(params.nNeurons, params.protoData)
+  val confneuralNetsbiasScalar = params.protoData
   val confInputMuxSel = Bool()
 
   override def cloneType: this.type = WellnessConfigurationBundle(params).asInstanceOf[this.type]
@@ -179,14 +181,14 @@ class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1P
                                                  filterBetaParams: FIRFilterParams[T],
                                                  filterGammaParams: FIRFilterParams[T],
                                                  bandpowerParams: sumSquaresParams[T],
-                                                 randomForestParams: RandomForestParams[T],
+                                                 neuralNetsParams: NeuralNetParams[T],
                                                  configurationMemoryParams: ConfigurationMemoryParams[T]) extends Bundle {
 
   val streamIn = Flipped(ValidWithSync(filter1Params.protoData.cloneType)) // Streaming Input from external source
   val in = Flipped(DecoupledIO(filter1Params.protoData.cloneType)) // Test Input from RISC-V core
   val inConf = Flipped(ValidWithSync(WellnessConfigurationBundle(configurationMemoryParams))) // Configuration input from Configuration Memory
   val out = ValidWithSync(Bool()) // Not used right now
-  val rawVotes = Output(randomForestParams.protoData)
+  val rawVotes = Output(neuralNetsParams.protoData)
   val lineOut = Output(lineLength1Params.protoData) // Not used in actual implementation, only for debug purposes
   val bandpower1Out = Output(bandpowerParams.protoData) // Not used in actual implementation, only for debug purposes
   val bandpower2Out = Output(bandpowerParams.protoData) // Not used in actual implementation, only for debug purposes
@@ -199,7 +201,7 @@ class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1P
                                                         filterBetaParams: FIRFilterParams[T],
                                                         filterGammaParams: FIRFilterParams[T],
                                                         bandpowerParams: sumSquaresParams[T],
-                                                        randomForestParams: RandomForestParams[T],
+                                                        neuralNetsParams: NeuralNetParams[T],
                                                         configurationMemoryParams: ConfigurationMemoryParams[T]).asInstanceOf[this.type]
 }
 object WellnessModuleIO {
@@ -209,7 +211,7 @@ object WellnessModuleIO {
                                       filterBetaParams: FIRFilterParams[T],
                                       filterGammaParams: FIRFilterParams[T],
                                       bandpowerParams: sumSquaresParams[T],
-                                      randomForestParams: RandomForestParams[T],
+                                      neuralNetsParams: NeuralNetParams[T],
                                       configurationMemoryParams: ConfigurationMemoryParams[T]): WellnessModuleIO[T] =
     new WellnessModuleIO(filter1Params: FIRFilterParams[T],
       lineLength1Params: lineLengthParams[T],
@@ -217,7 +219,7 @@ object WellnessModuleIO {
       filterBetaParams: FIRFilterParams[T],
       filterGammaParams: FIRFilterParams[T],
       bandpowerParams: sumSquaresParams[T],
-      randomForestParams: RandomForestParams[T],
+      neuralNetsParams: NeuralNetParams[T],
       configurationMemoryParams: ConfigurationMemoryParams[T])
 }
 
@@ -226,7 +228,7 @@ object WellnessModuleIO {
   * A prototype wellness module definition with 1 Line Length and 2 Band Power features.
   * @param filter1Params Parameters of the FIR filter before Line Length Extractor
   * @param lineLength1Params Parameters of the Line Length Extractor
-  * @param randomForestParams Parameters of the SVM
+  * @param neuralNetsParams Parameters of the SVM
   * @param configurationMemoryParams Parameters of the Configuration Memory
   *                                  Note that configuration memory is not actually inside the Wellness Module,
   *                                  but Wellness Module requires this parameter bundle to properly connect to Conf Mem
@@ -238,7 +240,7 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   val filterBetaParams: FIRFilterParams[T],
   val filterGammaParams: FIRFilterParams[T],
   val bandpowerParams: sumSquaresParams[T],
-  val randomForestParams: RandomForestParams[T],
+  val neuralNetsParams: NeuralNetParams[T],
   val configurationMemoryParams: ConfigurationMemoryParams[T])(implicit val p: Parameters) extends Module {
   val io = IO(WellnessModuleIO[T](  filter1Params: FIRFilterParams[T],
                                     lineLength1Params: lineLengthParams[T],
@@ -246,7 +248,7 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
                                     filterBetaParams: FIRFilterParams[T],
                                     filterGammaParams: FIRFilterParams[T],
                                     bandpowerParams: sumSquaresParams[T],
-                                    randomForestParams: RandomForestParams[T],
+                                    neuralNetsParams: NeuralNetParams[T],
                                     configurationMemoryParams: ConfigurationMemoryParams[T]) )
 
   // Block instantiation
@@ -261,7 +263,7 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   val bandpowerBeta = Module(new sumSquares(bandpowerParams))
   val bandpowerGamma = Module(new sumSquares(bandpowerParams))
 
-  val randomForest = Module(new RandomForest(randomForestParams))
+  val neuralNets = Module(new NeuralNet(neuralNetsParams))
 
   io.in.ready := true.B
 
@@ -309,7 +311,7 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
 
   // Extra pipeline registers for linelength to align with bandpower delay
   // we need one register since its Linelength vs Filter - Bandpower
-  val lineLength1Reg1 = RegNext(lineLength1.io.out.bits.asTypeOf(randomForestParams.protoData))
+  val lineLength1Reg1 = RegNext(lineLength1.io.out.bits.asTypeOf(neuralNetsParams.protoData))
   //val lineLength1Reg2 = RegNext(lineLength1Reg1)
   val lineLength1Valid1 = RegNext(lineLength1.io.out.valid)
   //val lineLength1Valid2 = RegNext(lineLength1Valid1)
@@ -321,24 +323,26 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   // val norm_invstd = utilities.readCSV("scripts/generated_files/normalization_recipvar.csv").flatMap(_.map(_.toDouble))
 
   // Features to Classifier
-  val FeatureVector = Wire(Vec(4,randomForestParams.protoData))
-  FeatureVector(0) := bandpowerAlpha.io.out.bits.asTypeOf(randomForestParams.protoData)
-  FeatureVector(1) := bandpowerBeta.io.out.bits.asTypeOf(randomForestParams.protoData)
-  FeatureVector(2) := bandpowerGamma.io.out.bits.asTypeOf(randomForestParams.protoData)
-  FeatureVector(3) := lineLength1Reg1.asTypeOf(randomForestParams.protoData)
+  val FeatureVector = Wire(Vec(4,neuralNetsParams.protoData))
+  FeatureVector(0) := bandpowerAlpha.io.out.bits.asTypeOf(neuralNetsParams.protoData)
+  FeatureVector(1) := bandpowerBeta.io.out.bits.asTypeOf(neuralNetsParams.protoData)
+  FeatureVector(2) := bandpowerGamma.io.out.bits.asTypeOf(neuralNetsParams.protoData)
+  FeatureVector(3) := lineLength1Reg1.asTypeOf(neuralNetsParams.protoData)
 
-  randomForest.io.in.valid := (lineLength1Valid1 && bandpowerAlpha.io.out.valid && bandpowerBeta.io.out.valid && bandpowerGamma.io.out.valid)
-  randomForest.io.in.bits := FeatureVector
-  randomForest.io.in.sync := false.B
+  neuralNets.io.in.valid := (lineLength1Valid1 && bandpowerAlpha.io.out.valid && bandpowerBeta.io.out.valid && bandpowerGamma.io.out.valid)
+  neuralNets.io.in.bits := FeatureVector
+  neuralNets.io.in.sync := false.B
 
-  randomForest.io.thresholds := io.inConf.bits.confrandomForestThresholds
-  randomForest.io.leafVotes := io.inConf.bits.confrandomForestLeafVotes
+  neuralNets.io.weightMatrix := io.inConf.bits.confneuralNetsweightMatrix
+  neuralNets.io.weightVec := io.inConf.bits.confneuralNetsweightVec
+  neuralNets.io.biasVec := io.inConf.bits.confneuralNetsbiasVec
+  neuralNets.io.biasScalar := io.inConf.bits.confneuralNetsbiasScalar
 
   // SVM to Output
-  io.out.valid := randomForest.io.out.valid
-  io.out.sync := randomForest.io.out.sync
-  io.out.bits := randomForest.io.out.bits
-  io.rawVotes := randomForest.io.rawVotes
+  io.out.valid := neuralNets.io.out.valid
+  io.out.sync := neuralNets.io.out.sync
+  io.out.bits := neuralNets.io.out.bits
+  io.rawVotes := neuralNets.io.rawVotes
 
   // pinned out outputs for debug purposes
   io.filterOut := filter1.io.out.bits
@@ -352,7 +356,7 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   * TLDspBlock specialization of WellnessModule
   * @param filter1Params Parameters of the FIR filter before Line Length Extractor
   * @param lineLength1Params Parameters of the Line Length Extractor
-  * @param randomForestParams Parameters of the SVM
+  * @param neuralNetsParams Parameters of the SVM
   * @param configurationMemoryParams Parameters of the Configuration Memory
   */
 abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real : Order : BinaryRepresentation]
@@ -363,7 +367,7 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real :
   val filterBetaParams: FIRFilterParams[T],
   val filterGammaParams: FIRFilterParams[T],
   val bandpowerParams: sumSquaresParams[T],
-  val randomForestParams: RandomForestParams[T],
+  val neuralNetsParams: NeuralNetParams[T],
   val configurationMemoryParams: ConfigurationMemoryParams[T]
 )(implicit p: Parameters) extends DspBlock[D, U, EO, EI, B] {
   val streamNode = AXI4StreamNexusNode(
@@ -388,7 +392,7 @@ abstract class WellnessDataPathBlock[D, U, EO, EI, B <: Data, T <: Data : Real :
       filterBetaParams: FIRFilterParams[T],
       filterGammaParams: FIRFilterParams[T],
       bandpowerParams: sumSquaresParams[T],
-      randomForestParams: RandomForestParams[T],
+      neuralNetsParams: NeuralNetParams[T],
       configurationMemoryParams: ConfigurationMemoryParams[T]))
 
     val configurationMemory = Module(new ConfigurationMemory(configurationMemoryParams))
@@ -425,14 +429,14 @@ class TLWellnessDataPathBlock[T <: Data : Real : Order : BinaryRepresentation]
   filterBetaParams: FIRFilterParams[T],
   filterGammaParams: FIRFilterParams[T],
   bandpowerParams: sumSquaresParams[T],
-  randomForestParams: RandomForestParams[T],
+  neuralNetsParams: NeuralNetParams[T],
   configurationMemoryParams: ConfigurationMemoryParams[T]
 )(implicit p: Parameters) extends
   WellnessDataPathBlock[TLClientPortParameters, TLManagerPortParameters, TLEdgeOut, TLEdgeIn, TLBundle, T](
     filter1Params,
     lineLength1Params,
     filterAlphaParams, filterBetaParams, filterGammaParams, bandpowerParams,
-    randomForestParams,
+    neuralNetsParams,
     configurationMemoryParams)
   with TLDspBlock
 
@@ -445,7 +449,7 @@ class WellnessThing[T <: Data : Real : Order : BinaryRepresentation]
   val filterBetaParams: FIRFilterParams[T],
   val filterGammaParams: FIRFilterParams[T],
   val bandpowerParams: sumSquaresParams[T],
-  val randomForestParams: RandomForestParams[T],
+  val neuralNetsParams: NeuralNetParams[T],
   val configurationMemoryParams: ConfigurationMemoryParams[T],
   val depth: Int = 32
 )(implicit p: Parameters) extends LazyModule {
@@ -457,7 +461,7 @@ class WellnessThing[T <: Data : Real : Order : BinaryRepresentation]
     filter1Params,
     lineLength1Params,
     filterAlphaParams, filterBetaParams, filterGammaParams, bandpowerParams,
-    randomForestParams,
+    neuralNetsParams,
     configurationMemoryParams))
   val readQueue = LazyModule(new TLReadQueue(depth))
 
@@ -486,7 +490,7 @@ trait HasPeripheryWellness extends BaseSubsystem {
     wellnessParams.filterBetaParams,
     wellnessParams.filterGammaParams,
     wellnessParams.bandpowerParams,
-    wellnessParams.randomForestParams,
+    wellnessParams.neuralNetsParams,
     wellnessParams.configurationMemoryParams))
   // Connect memory interfaces to pbus
   pbus.toVariableWidthSlave(Some("wellnessWrite")) { wellness.writeQueue.mem.get }

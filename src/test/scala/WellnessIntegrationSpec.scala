@@ -10,7 +10,7 @@ import dsptools.numbers._
 import features._
 import firFilter._
 import org.scalatest.{FlatSpec, Matchers}
-import randomforest._
+import neuralNet._
 
 import scala.collection.{Seq, mutable}
 
@@ -42,16 +42,14 @@ abstract class sumSquaresParamsTemplate {
   val windowSize:Int
 }
 
-abstract class randomForestParamsTemplate {
-  val nFeatures: Int
-  val nTrees: Int
-  val nDepth: Int
-  val featureSelect: Seq[Seq[Int]]
+abstract class neuralNetsParamsTemplate {
+  val nFeatures:Int
+  val nNeurons:Int
 }
 
 abstract class configurationMemoryParamsTemplate {
-  val nTrees:Int
-  val nDepth:Int
+  val nFeatures:Int
+  val nNeurons:Int
 }
 
 /**
@@ -84,16 +82,13 @@ class wellnessIntegrationParameterBundle {
   val bandpowerParams:sumSquaresParamsTemplate = new sumSquaresParamsTemplate {
     val windowSize = 0
   }
-  val randomForestParams: randomForestParamsTemplate = new randomForestParamsTemplate {
+  val neuralNetsParams: neuralNetsParamsTemplate = new neuralNetsParamsTemplate {
     val nFeatures: Int = 0
-    val nDepth: Int = 0
-    val nTrees: Int = 0
-
-    val featureSelect = Seq.fill(nTrees, (1 << nDepth) - 1)(0)
+    val nNeurons: Int = 0
   }
   val configurationMemoryParams:configurationMemoryParamsTemplate = new configurationMemoryParamsTemplate {
-    val nTrees: Int = 0
-    val nDepth: Int = 0
+    val nFeatures: Int = 0
+    val nNeurons: Int = 0
   }
 }
 
@@ -165,18 +160,15 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
         val windowSize = windowLength
       }
 
-      override val randomForestParams:randomForestParamsTemplate = new randomForestParamsTemplate {
+      override val neuralNetsParams:neuralNetsParamsTemplate = new neuralNetsParamsTemplate {
         val protoData = FixedPoint(dataWidth.W,dataBP.BP)
         val nFeatures = 4
-        val nDepth = 4
-        val nTrees = 100
-
-        val featureSelect = Seq.fill(nTrees, (1 << nDepth) - 1)(0)
+        val nNeurons = 10
       }
 
       override val configurationMemoryParams: configurationMemoryParamsTemplate = new configurationMemoryParamsTemplate {
-        val nTrees: Int = randomForestParams.nTrees
-        val nDepth: Int = randomForestParams.nDepth
+        val nFeatures: Int = neuralNetsParams.nFeatures
+        val nNeurons: Int = neuralNetsParams.nNeurons
       }
     }
 
@@ -208,19 +200,16 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       val windowSize = windowLength
     }
 
-    val randomForestParams = new RandomForestParams[FixedPoint] {
+    val neuralNetsParams = new NeuralNetParams[FixedPoint] {
       val protoData = FixedPoint(dataWidth.W,dataBP.BP)
       val nFeatures = 4
-      val nDepth = 4
-      val nTrees = 100
-
-      val featureSelect = Seq.fill(nTrees, (1 << nDepth) - 1)(0)
+      val nNeurons = 10
     }
 
     val configurationMemoryParams = new ConfigurationMemoryParams[FixedPoint] {
-      val protoData = randomForestParams.protoData.cloneType
-      val nTrees: Int = randomForestParams.nTrees
-      val nDepth: Int = randomForestParams.nDepth
+      val protoData = neuralNetsParams.protoData.cloneType
+      val nFeatures: Int = neuralNetsParams.nFeatures
+      val nNeurons: Int = neuralNetsParams.nNeurons
     }
 
     WellnessIntegrationTesterFP(filter1Params: FIRFilterParams[FixedPoint],
@@ -229,7 +218,7 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       filterBetaParams: FIRFilterParams[FixedPoint],
       filterGammaParams: FIRFilterParams[FixedPoint],
       bandpowerParams: sumSquaresParams[FixedPoint],
-      randomForestParams: RandomForestParams[FixedPoint],
+      neuralNetsParams: NeuralNetParams[FixedPoint],
       configurationMemoryParams: ConfigurationMemoryParams[FixedPoint],
       goldenModelParameters: wellnessIntegrationParameterBundle, debug, 0) should be (true)
   }
