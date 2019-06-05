@@ -26,12 +26,70 @@ else
 		check=1
 		cp src/main/scala/seizureDetectionSVM/* src/main/scala/
 		cp src/test/scala/seizureDetectionSVM/* src/test/scala/
+	elif [ $1 = "gen" ]; then
+		cp src/main/scala/previousWellnessGenLogistic/* src/main/scala
+
+		if [ -f "src/main/scala/Wellness.scala" ]; then
+			rm src/main/scala/Wellness.scala
+		fi
+		
+		FILE=src/main/scala/ConfigurationMemory.scala
+		tail -n +2 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+
+		FILE=src/main/scala/Main.scala
+		tail -n +2 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+
+		FILE=src/main/scala/WellnessGen.scala
+		tail -n +2 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+
+		FILE=src/main/scala/WellnessParams.scala
+		tail -n +2 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+
+		cp src/test/scala/previousWellnessGenLogistic/* src/test/scala
+
+		if [ -f "src/test/scala/WellnessIntegrationSpec.scala" ]; then
+			rm src/test/scala/WellnessIntegrationSpec.scala
+			rm src/test/scala/WellnessIntegrationTester.scala
+		fi
+
+		FILE=src/test/scala/ConfigurationMemorySpec.scala
+		tail -n +2 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+
+		FILE=src/test/scala/ConfigurationMemoryTester.scala
+		tail -n +2 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+
+		FILE=src/test/scala/WellnessGenIntegrationSpec.scala
+		tail -n +2 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+
+		FILE=src/test/scala/WellnessGenIntegrationTester.scala
+		tail -n +2 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+
+		echo "Reverted to Generator config"
 	else
 		echo "Wrong arguments given! Check the script"
 	fi
 
 	if [ $check = 1 ]; then
-		# Now remove the 1st and last lines, to uncomment the blocks
+		# If ConfigurationMemory testers are present, delete it
+		if [ -f "src/test/scala/ConfigurationMemorySpec.scala" ]; then
+			rm src/test/scala/ConfigurationMemory*
+		fi
+
+		# If WellnessGen exists, delete it
+		if [ -f "src/test/scala/WellnessGenIntegrationSpec" ]; then
+			rm src/test/scala/WellnessGen*
+			rm src/main/scala/WellnessGen.scala
+		fi
+
+		# Now remove the 1st and last lines of added files, to uncomment the blocks
 		FILE=src/main/scala/ConfigurationMemory.scala
 		tail -n +2 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
 		head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"

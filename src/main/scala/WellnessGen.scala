@@ -1,4 +1,3 @@
-/*
 package wellness
 
 // *********************************************
@@ -865,4 +864,3 @@ trait HasPeripheryWellnessModuleImp extends LazyModuleImp {
   outer.wellness.module.streamIn.valid := streamIn.valid
   outer.wellness.module.streamIn.bits := streamIn.bits
 }
-*/

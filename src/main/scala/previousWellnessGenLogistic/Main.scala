@@ -1,4 +1,3 @@
-
 /*
 // original Main.scala using the WellnessGen (Logistic version)
 package wellness

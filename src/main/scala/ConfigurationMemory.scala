@@ -1,14 +1,22 @@
 package wellness
 
-import memorybuffer._
 import chisel3._
 import dspjunctions.ValidWithSync
 import dsptools.numbers._
+import memorybuffer._
+
+/**
+  * Configuration Memory
+  * @trait ConfigurationMemoryParams containts parameter definitions
+  * @class ConfigurationMemoryBundle is the write input bundle for Configuration Memory
+  * @class ConfigurationMemoryIO is the IO bundle for ConfigurationMemory
+  * @class ConfigurationMemory is the generator definition
+  */
 
 trait ConfigurationMemoryParams[T <: Data] {
   val protoData: T
-  val nFeatures: Int // number of dimensions in input data
-  val nNeurons: Int // number of neurons in hidden layer
+  val nDimensions: Int
+  val nFeatures: Int
 }
 
 class ConfigurationMemoryBundle[T <: Data](params: ConfigurationMemoryParams[T]) extends Bundle {
@@ -33,8 +41,8 @@ object ConfigurationMemoryIO {
 }
 
 class ConfigurationMemory[T <: chisel3.Data : Real : Order : BinaryRepresentation](val params: ConfigurationMemoryParams[T]) extends Module {
+  require(params.nDimensions >= 1, "nDimensions must be at least 1")
   require(params.nFeatures >= 1, "nFeatures must be at least 1")
-  require(params.nNeurons >= 1, "nNeurons must be at least 1")
   val io = IO(ConfigurationMemoryIO[T](params))
   // These signals are actually not important for this block. They are there for easy integration into the feature
   // datapaths, if it's ever necessary.
@@ -44,59 +52,60 @@ class ConfigurationMemory[T <: chisel3.Data : Real : Order : BinaryRepresentatio
   // MemoryBuffers inside ConfigurationMemory are address mapped. If the write address matches the address of a memory,
   // the data is shifted into that memory.
   val addr = io.in.bits.wraddr
-  val neuralNetsweightMatrixMemoryAddr = 0.U
-  val neuralNetsweightVecMemoryAddr = 1.U
-  val neuralNetsbiasVecMemoryAddr = 2.U
-  val neuralNetsbiasScalarMemoryAddr = 3.U
-  val inputMuxSelAddr = 4.U
+  val pcaVectorMemoryAddr = 0.U
+  val logisticWeightsVectorMemoryAddr = 1.U
+  val logisticInterceptMemoryAddr = 2.U
+  val inputMuxSelAddr = 3.U
+  val pcaNormalizationMemoryAddr = 4.U
 
-  //MemoryBuffer definition for Random Forest weightMatrix
-  val neuralNetsweightMatrixMemoryParams = new MemoryBufferParams[T] {
+  //MemoryBuffer definition for PCA
+  val pcaVectorMemoryParams = new MemoryBufferParams[T] {
+    override val protoData: T = params.protoData.cloneType
+    override val nRows: Int = params.nDimensions
+    override val nColumns: Int = params.nFeatures
+  }
+  val pcaVectorMemory = Module(new MemoryBuffer[T](pcaVectorMemoryParams))
+  pcaVectorMemory.io.in.bits := io.in.bits.wrdata
+  pcaVectorMemory.io.in.sync := false.B
+  pcaVectorMemory.io.in.valid := io.in.valid && (addr === pcaVectorMemoryAddr)
+  io.out.bits.confPCAVector := pcaVectorMemory.io.out.bits
+
+  //MemoryBuffer definition for PCA Normalization
+  val pcaNormalizationMemoryParams = new MemoryBufferParams[T] {
+    override val protoData: T = params.protoData.cloneType
+    override val nRows: Int = 2
+    override val nColumns: Int = params.nDimensions
+  }
+  val pcaNormalizationMemory = Module(new MemoryBuffer[T](pcaNormalizationMemoryParams))
+  pcaNormalizationMemory.io.in.bits := io.in.bits.wrdata
+  pcaNormalizationMemory.io.in.sync := false.B
+  pcaNormalizationMemory.io.in.valid := io.in.valid && (addr === pcaNormalizationMemoryAddr)
+  io.out.bits.confPCANormalizationData := pcaNormalizationMemory.io.out.bits
+
+  //MemoryBuffer definition for SVM Support Vector
+  val logisticWeightsVectorMemoryParams = new MemoryBufferParams[T] {
     override val protoData: T = params.protoData.cloneType
     override val nRows: Int = params.nFeatures
-    override val nColumns: Int = params.nNeurons
-  }
-  val neuralNetsweightMatrixMemory = Module(new MemoryBuffer[T](neuralNetsweightMatrixMemoryParams))
-  neuralNetsweightMatrixMemory.io.in.bits := io.in.bits.wrdata
-  neuralNetsweightMatrixMemory.io.in.sync := false.B
-  neuralNetsweightMatrixMemory.io.in.valid := io.in.valid && (addr === neuralNetsweightMatrixMemoryAddr)
-  io.out.bits.confneuralNetsweightMatrix := neuralNetsweightMatrixMemory.io.out.bits
-
-  //MemoryBuffer definition for Random Forest Leaf Votes
-  val neuralNetsweightVecMemoryParams = new MemoryBufferParams[T] {
-    override val protoData: T = params.protoData.cloneType
-    override val nRows: Int = params.nNeurons
     override val nColumns: Int = 1
   }
-  val neuralNetsweightVecMemory = Module(new MemoryBuffer[T](neuralNetsweightVecMemoryParams))
-  neuralNetsweightVecMemory.io.in.bits := io.in.bits.wrdata
-  neuralNetsweightVecMemory.io.in.sync := false.B
-  neuralNetsweightVecMemory.io.in.valid := io.in.valid && (addr === neuralNetsweightVecMemoryAddr)
-  io.out.bits.confneuralNetsweightVec := neuralNetsweightVecMemory.io.out.bits(0)
+  val logisticWeightsVectorMemory = Module(new MemoryBuffer[T](logisticWeightsVectorMemoryParams))
+  logisticWeightsVectorMemory.io.in.bits := io.in.bits.wrdata
+  logisticWeightsVectorMemory.io.in.sync := false.B
+  logisticWeightsVectorMemory.io.in.valid := io.in.valid && (addr === logisticWeightsVectorMemoryAddr)
+  io.out.bits.confLogisticWeightsVector := logisticWeightsVectorMemory.io.out.bits
 
-  val neuralNetsbiasVecMemoryParams = new MemoryBufferParams[T] {
-    override val protoData: T = params.protoData.cloneType
-    override val nRows: Int = params.nNeurons
-    override val nColumns: Int = 1
-  }
-  val neuralNetsbiasVecMemory = Module(new MemoryBuffer[T](neuralNetsbiasVecMemoryParams))
-  neuralNetsbiasVecMemory.io.in.bits := io.in.bits.wrdata
-  neuralNetsbiasVecMemory.io.in.sync := false.B
-  neuralNetsbiasVecMemory.io.in.valid := io.in.valid && (addr === neuralNetsbiasVecMemoryAddr)
-  io.out.bits.confneuralNetsbiasVec := neuralNetsbiasVecMemory.io.out.bits(0)
+  //MemoryBuffer definition for SVM Alpha Vector
 
-  //MemoryBuffer definition for Random Forest Leaf Votes
-  val neuralNetsbiasScalarMemoryParams = new MemoryBufferParams[T] {
+  val logisticInterceptMemoryParams = new MemoryBufferParams[T] {
     override val protoData: T = params.protoData.cloneType
     override val nRows: Int = 1
     override val nColumns: Int = 1
   }
-  val neuralNetsbiasScalarMemory = Module(new MemoryBuffer[T](neuralNetsbiasScalarMemoryParams))
-  neuralNetsbiasScalarMemory.io.in.bits := io.in.bits.wrdata
-  neuralNetsbiasScalarMemory.io.in.sync := false.B
-  neuralNetsbiasScalarMemory.io.in.valid := io.in.valid && (addr === neuralNetsbiasScalarMemoryAddr)
-  io.out.bits.confneuralNetsbiasScalar := neuralNetsbiasScalarMemory.io.out.bits(0)
-
+  val logisticInterceptMemory = Module(new MemoryBuffer[T](logisticInterceptMemoryParams))
+  logisticInterceptMemory.io.in.bits := io.in.bits.wrdata
+  logisticInterceptMemory.io.in.sync := false.B
+  logisticInterceptMemory.io.in.valid := io.in.valid && (addr === logisticInterceptMemoryAddr)
+  io.out.bits.confLogisticIntercept := logisticInterceptMemory.io.out.bits
 
   //No need for a MemoryBuffer for a single bit. Addressing is similar to others though.
   val inputMuxSel = RegInit(false.B)
@@ -104,4 +113,5 @@ class ConfigurationMemory[T <: chisel3.Data : Real : Order : BinaryRepresentatio
   io.out.bits.confInputMuxSel := inputMuxSel
 
 }
+
 

@@ -1,4 +1,3 @@
-/*
 package wellness
 
 // *********************************************
@@ -925,4 +924,3 @@ class wellnessGenIntegrationSpec extends FlatSpec with Matchers {
     ) should be (true)
   }
 }
- */

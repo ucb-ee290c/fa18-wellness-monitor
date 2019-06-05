@@ -1,4 +1,3 @@
-/*
 package wellness
 
 import chisel3._
@@ -243,4 +242,3 @@ object ConfigurationMemoryTester {
     }
   }
 }
- */
