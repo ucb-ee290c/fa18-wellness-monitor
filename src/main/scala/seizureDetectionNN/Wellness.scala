@@ -156,7 +156,7 @@ class WellnessConfigurationBundle[T <: Data](params: ConfigurationMemoryParams[T
   val confneuralNetsweightMatrix = Vec(params.nNeurons, Vec(params.nFeatures, params.protoData))
   val confneuralNetsweightVec = Vec(params.nNeurons, params.protoData)
   val confneuralNetsbiasVec = Vec(params.nNeurons, params.protoData)
-  val confneuralNetsbiasScalar = params.protoData
+  val confneuralNetsbiasScalar = Vec(1,params.protoData)
   val confInputMuxSel = Bool()
 
   override def cloneType: this.type = WellnessConfigurationBundle(params).asInstanceOf[this.type]
@@ -176,13 +176,13 @@ object WellnessConfigurationBundle {
   * classVotes: Class Votes from SVM
   */
 class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1Params: FIRFilterParams[T],
-                                                 lineLength1Params: lineLengthParams[T],
-                                                 filterAlphaParams: FIRFilterParams[T],
-                                                 filterBetaParams: FIRFilterParams[T],
-                                                 filterGammaParams: FIRFilterParams[T],
-                                                 bandpowerParams: sumSquaresParams[T],
-                                                 neuralNetsParams: NeuralNetParams[T],
-                                                 configurationMemoryParams: ConfigurationMemoryParams[T]) extends Bundle {
+                                                                        lineLength1Params: lineLengthParams[T],
+                                                                        filterAlphaParams: FIRFilterParams[T],
+                                                                        filterBetaParams: FIRFilterParams[T],
+                                                                        filterGammaParams: FIRFilterParams[T],
+                                                                        bandpowerParams: sumSquaresParams[T],
+                                                                        neuralNetsParams: NeuralNetParams[T],
+                                                                        configurationMemoryParams: ConfigurationMemoryParams[T]) extends Bundle {
 
   val streamIn = Flipped(ValidWithSync(filter1Params.protoData.cloneType)) // Streaming Input from external source
   val in = Flipped(DecoupledIO(filter1Params.protoData.cloneType)) // Test Input from RISC-V core
@@ -196,23 +196,23 @@ class WellnessModuleIO[T <: Data : Real : Order : BinaryRepresentation](filter1P
   val filterOut = Output(filter1Params.protoData) // Not used in actual implementation, only for debug purposes
 
   override def cloneType: this.type = WellnessModuleIO( filter1Params: FIRFilterParams[T],
-                                                        lineLength1Params: lineLengthParams[T],
-                                                        filterAlphaParams: FIRFilterParams[T],
-                                                        filterBetaParams: FIRFilterParams[T],
-                                                        filterGammaParams: FIRFilterParams[T],
-                                                        bandpowerParams: sumSquaresParams[T],
-                                                        neuralNetsParams: NeuralNetParams[T],
-                                                        configurationMemoryParams: ConfigurationMemoryParams[T]).asInstanceOf[this.type]
+    lineLength1Params: lineLengthParams[T],
+    filterAlphaParams: FIRFilterParams[T],
+    filterBetaParams: FIRFilterParams[T],
+    filterGammaParams: FIRFilterParams[T],
+    bandpowerParams: sumSquaresParams[T],
+    neuralNetsParams: NeuralNetParams[T],
+    configurationMemoryParams: ConfigurationMemoryParams[T]).asInstanceOf[this.type]
 }
 object WellnessModuleIO {
   def apply[T <: chisel3.Data : Real : Order : BinaryRepresentation](filter1Params: FIRFilterParams[T],
-                                      lineLength1Params: lineLengthParams[T],
-                                      filterAlphaParams: FIRFilterParams[T],
-                                      filterBetaParams: FIRFilterParams[T],
-                                      filterGammaParams: FIRFilterParams[T],
-                                      bandpowerParams: sumSquaresParams[T],
-                                      neuralNetsParams: NeuralNetParams[T],
-                                      configurationMemoryParams: ConfigurationMemoryParams[T]): WellnessModuleIO[T] =
+                                                                     lineLength1Params: lineLengthParams[T],
+                                                                     filterAlphaParams: FIRFilterParams[T],
+                                                                     filterBetaParams: FIRFilterParams[T],
+                                                                     filterGammaParams: FIRFilterParams[T],
+                                                                     bandpowerParams: sumSquaresParams[T],
+                                                                     neuralNetsParams: NeuralNetParams[T],
+                                                                     configurationMemoryParams: ConfigurationMemoryParams[T]): WellnessModuleIO[T] =
     new WellnessModuleIO(filter1Params: FIRFilterParams[T],
       lineLength1Params: lineLengthParams[T],
       filterAlphaParams: FIRFilterParams[T],
@@ -243,13 +243,13 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   val neuralNetsParams: NeuralNetParams[T],
   val configurationMemoryParams: ConfigurationMemoryParams[T])(implicit val p: Parameters) extends Module {
   val io = IO(WellnessModuleIO[T](  filter1Params: FIRFilterParams[T],
-                                    lineLength1Params: lineLengthParams[T],
-                                    filterAlphaParams: FIRFilterParams[T],
-                                    filterBetaParams: FIRFilterParams[T],
-                                    filterGammaParams: FIRFilterParams[T],
-                                    bandpowerParams: sumSquaresParams[T],
-                                    neuralNetsParams: NeuralNetParams[T],
-                                    configurationMemoryParams: ConfigurationMemoryParams[T]) )
+    lineLength1Params: lineLengthParams[T],
+    filterAlphaParams: FIRFilterParams[T],
+    filterBetaParams: FIRFilterParams[T],
+    filterGammaParams: FIRFilterParams[T],
+    bandpowerParams: sumSquaresParams[T],
+    neuralNetsParams: NeuralNetParams[T],
+    configurationMemoryParams: ConfigurationMemoryParams[T]) )
 
   // Block instantiation
   val filter1 = Module(new ConstantCoefficientFIRFilter(filter1Params))
@@ -336,7 +336,7 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   neuralNets.io.weightMatrix := io.inConf.bits.confneuralNetsweightMatrix
   neuralNets.io.weightVec := io.inConf.bits.confneuralNetsweightVec
   neuralNets.io.biasVec := io.inConf.bits.confneuralNetsbiasVec
-  neuralNets.io.biasScalar := io.inConf.bits.confneuralNetsbiasScalar
+  neuralNets.io.biasScalar := io.inConf.bits.confneuralNetsbiasScalar(0)
 
   // SVM to Output
   io.out.valid := neuralNets.io.out.valid

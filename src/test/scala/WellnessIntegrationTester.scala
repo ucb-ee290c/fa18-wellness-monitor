@@ -92,7 +92,7 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
 
   for(x <- 0 until neuralNetsbiasScalarMemoryParams.nColumns) {
     for (y <- 0 until neuralNetsbiasScalarMemoryParams.nRows) {
-      poke(c.io.inConf.bits.confneuralNetsbiasScalar, referenceneuralNetsbiasScalar)
+      poke(c.io.inConf.bits.confneuralNetsbiasScalar(0), referenceneuralNetsbiasScalar)
     }
   }
 

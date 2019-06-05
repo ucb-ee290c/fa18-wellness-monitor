@@ -156,7 +156,7 @@ class WellnessConfigurationBundle[T <: Data](params: ConfigurationMemoryParams[T
   val confneuralNetsweightMatrix = Vec(params.nNeurons, Vec(params.nFeatures, params.protoData))
   val confneuralNetsweightVec = Vec(params.nNeurons, params.protoData)
   val confneuralNetsbiasVec = Vec(params.nNeurons, params.protoData)
-  val confneuralNetsbiasScalar = params.protoData
+  val confneuralNetsbiasScalar = Vec(1,params.protoData)
   val confInputMuxSel = Bool()
 
   override def cloneType: this.type = WellnessConfigurationBundle(params).asInstanceOf[this.type]
@@ -336,7 +336,7 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   neuralNets.io.weightMatrix := io.inConf.bits.confneuralNetsweightMatrix
   neuralNets.io.weightVec := io.inConf.bits.confneuralNetsweightVec
   neuralNets.io.biasVec := io.inConf.bits.confneuralNetsbiasVec
-  neuralNets.io.biasScalar := io.inConf.bits.confneuralNetsbiasScalar
+  neuralNets.io.biasScalar := io.inConf.bits.confneuralNetsbiasScalar(0)
 
   // SVM to Output
   io.out.valid := neuralNets.io.out.valid

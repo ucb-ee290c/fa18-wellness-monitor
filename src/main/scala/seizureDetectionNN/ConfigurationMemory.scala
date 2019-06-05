@@ -1,4 +1,5 @@
 /*
+
 package wellness
 
 import memorybuffer._
@@ -73,18 +74,18 @@ class ConfigurationMemory[T <: chisel3.Data : Real : Order : BinaryRepresentatio
   neuralNetsweightVecMemory.io.in.bits := io.in.bits.wrdata
   neuralNetsweightVecMemory.io.in.sync := false.B
   neuralNetsweightVecMemory.io.in.valid := io.in.valid && (addr === neuralNetsweightVecMemoryAddr)
-  io.out.bits.confneuralNetsweightVec := neuralNetsweightVecMemory.io.out.bits
+  io.out.bits.confneuralNetsweightVec := neuralNetsweightVecMemory.io.out.bits(0)
 
   val neuralNetsbiasVecMemoryParams = new MemoryBufferParams[T] {
     override val protoData: T = params.protoData.cloneType
     override val nRows: Int = params.nNeurons
     override val nColumns: Int = 1
   }
-  val neuralNetsbiasVecMemory = Module(new MemoryBuffer[T](neuralNetsweightMatrixMemoryParams))
+  val neuralNetsbiasVecMemory = Module(new MemoryBuffer[T](neuralNetsbiasVecMemoryParams))
   neuralNetsbiasVecMemory.io.in.bits := io.in.bits.wrdata
   neuralNetsbiasVecMemory.io.in.sync := false.B
   neuralNetsbiasVecMemory.io.in.valid := io.in.valid && (addr === neuralNetsbiasVecMemoryAddr)
-  io.out.bits.confneuralNetsbiasVec := neuralNetsbiasVecMemory.io.out.bits
+  io.out.bits.confneuralNetsbiasVec := neuralNetsbiasVecMemory.io.out.bits(0)
 
   //MemoryBuffer definition for Random Forest Leaf Votes
   val neuralNetsbiasScalarMemoryParams = new MemoryBufferParams[T] {
@@ -92,11 +93,11 @@ class ConfigurationMemory[T <: chisel3.Data : Real : Order : BinaryRepresentatio
     override val nRows: Int = 1
     override val nColumns: Int = 1
   }
-  val neuralNetsbiasScalarMemory = Module(new MemoryBuffer[T](neuralNetsweightVecMemoryParams))
+  val neuralNetsbiasScalarMemory = Module(new MemoryBuffer[T](neuralNetsbiasScalarMemoryParams))
   neuralNetsbiasScalarMemory.io.in.bits := io.in.bits.wrdata
   neuralNetsbiasScalarMemory.io.in.sync := false.B
   neuralNetsbiasScalarMemory.io.in.valid := io.in.valid && (addr === neuralNetsbiasScalarMemoryAddr)
-  io.out.bits.confneuralNetsbiasScalar := neuralNetsbiasScalarMemory.io.out.bits
+  io.out.bits.confneuralNetsbiasScalar := neuralNetsbiasScalarMemory.io.out.bits(0)
 
 
   //No need for a MemoryBuffer for a single bit. Addressing is similar to others though.
@@ -105,4 +106,5 @@ class ConfigurationMemory[T <: chisel3.Data : Real : Order : BinaryRepresentatio
   io.out.bits.confInputMuxSel := inputMuxSel
 
 }
+
 */
