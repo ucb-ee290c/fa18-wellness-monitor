@@ -12,20 +12,20 @@ else
 	check=0
 	if [ $1 = "logistic" ]; then
 		check=1
-		cp src/main/scala/seizureDetectionLogistic/* src/main/scala/
-		cp src/test/scala/seizureDetectionLogistic/* src/test/scala/
+		cp src/main/scala/biocasAdel/seizureDetectionLogistic/* src/main/scala/
+		cp src/test/scala/biocasAdel/seizureDetectionLogistic/* src/test/scala/
 	elif [ $1 = "rf" ]; then
 		check=1
-		cp src/main/scala/seizureDetectionRF/* src/main/scala/
-		cp src/test/scala/seizureDetectionRF/* src/test/scala/
+		cp src/main/scala/biocasAdel/seizureDetectionRF/* src/main/scala/
+		cp src/test/scala/biocasAdel/seizureDetectionRF/* src/test/scala/
 	elif [ $1 = "nn" ]; then
 		check=1
-		cp src/main/scala/seizureDetectionNN/* src/main/scala/
-		cp src/test/scala/seizureDetectionNN/* src/test/scala/
+		cp src/main/scala/biocasAdel/seizureDetectionNN/* src/main/scala/
+		cp src/test/scala/biocasAdel/seizureDetectionNN/* src/test/scala/
 	elif [ $1 = "svm" ]; then
 		check=1
-		cp src/main/scala/seizureDetectionSVM/* src/main/scala/
-		cp src/test/scala/seizureDetectionSVM/* src/test/scala/
+		cp src/main/scala/biocasAdel/seizureDetectionSVM/* src/main/scala/
+		cp src/test/scala/biocasAdel/seizureDetectionSVM/* src/test/scala/
 	elif [ $1 = "gen" ]; then
 		cp src/main/scala/previousWellnessGenLogistic/* src/main/scala
 
@@ -84,7 +84,7 @@ else
 		fi
 
 		# If WellnessGen exists, delete it
-		if [ -f "src/test/scala/WellnessGenIntegrationSpec" ]; then
+		if [ -f "src/test/scala/WellnessGenIntegrationSpec.scala" ]; then
 			rm src/test/scala/WellnessGen*
 			rm src/main/scala/WellnessGen.scala
 		fi
