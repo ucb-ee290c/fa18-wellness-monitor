@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Load the seizure detection modules from src/main/scala/seizureDetection*
 # Also load the corresponding test environment from src/test/scala/seizureDetection*
 # For Adel use
@@ -6,8 +6,18 @@
 
 # From the stash folders, put the files in the main directory
 
+machine=0
+if [ "$(uname)" == "Darwin" ]; then
+	machine=1
+elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
+	machine=2
+fi
+
+
 if [ $# -eq 0 ]; then
-	echo "No arguments provided! Check the script"
+	echo "No arguments provided! Should be either 'logistic, 'svm', 'rf', 'nn', or 'gen'"
+elif [ $machine = 0 ]; then
+	echo "Machine not identified!"
 else
 	check=0
 	if [ $1 = "logistic" ]; then
@@ -35,19 +45,35 @@ else
 		
 		FILE=src/main/scala/ConfigurationMemory.scala
 		tail -n +2 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
-		head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		if [ $machine = 1 ]; then
+			ghead -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		else
+			head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		fi
 
 		FILE=src/main/scala/Main.scala
 		tail -n +2 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
-		head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		if [ $machine = 1 ]; then
+			ghead -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		else
+			head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		fi
 
 		FILE=src/main/scala/WellnessGen.scala
 		tail -n +2 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
-		head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		if [ $machine = 1 ]; then
+			ghead -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		else
+			head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		fi
 
 		FILE=src/main/scala/WellnessParams.scala
 		tail -n +2 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
-		head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		if [ $machine = 1 ]; then
+			ghead -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		else
+			head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		fi
 
 		cp src/test/scala/previousWellnessGenLogistic/* src/test/scala
 
@@ -58,23 +84,39 @@ else
 
 		FILE=src/test/scala/ConfigurationMemorySpec.scala
 		tail -n +2 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
-		head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		if [ $machine = 1 ]; then
+			ghead -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		else
+			head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		fi
 
 		FILE=src/test/scala/ConfigurationMemoryTester.scala
 		tail -n +2 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
-		head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		if [ $machine = 1 ]; then
+			ghead -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		else
+			head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		fi
 
 		FILE=src/test/scala/WellnessGenIntegrationSpec.scala
 		tail -n +2 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
-		head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		if [ $machine = 1 ]; then
+			ghead -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		else
+			head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		fi
 
 		FILE=src/test/scala/WellnessGenIntegrationTester.scala
 		tail -n +2 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
-		head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		if [ $machine = 1 ]; then
+			ghead -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		else
+			head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		fi
 
 		echo "Reverted to Generator config"
 	else
-		echo "Wrong arguments given! Check the script"
+		echo "Wrong arguments given! Should be either 'logistic', 'svm', 'rf', 'nn', or 'gen'"
 	fi
 
 	if [ $check = 1 ]; then
@@ -92,28 +134,52 @@ else
 		# Now remove the 1st and last lines of added files, to uncomment the blocks
 		FILE=src/main/scala/ConfigurationMemory.scala
 		tail -n +2 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
-		head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		if [ $machine = 1 ]; then
+			ghead -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		else
+			head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		fi
 
 		FILE=src/main/scala/Main.scala
 		tail -n +2 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
-		head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		if [ $machine = 1 ]; then
+			ghead -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		else
+			head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		fi
 
 		FILE=src/main/scala/Wellness.scala
 		tail -n +2 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
-		head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		if [ $machine = 1 ]; then
+			ghead -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		else
+			head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		fi
 
 		FILE=src/main/scala/WellnessParams.scala
 		tail -n +2 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
-		head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		if [ $machine = 1 ]; then
+			ghead -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		else
+			head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		fi
 
 		FILE=src/test/scala/WellnessIntegrationSpec.scala
 		tail -n +2 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
-		head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		if [ $machine = 1 ]; then
+			ghead -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		else
+			head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		fi
 
 		FILE=src/test/scala/WellnessIntegrationTester.scala
 		tail -n +2 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
-		head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
-	
+		if [ $machine = 1 ]; then
+			ghead -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		else
+			head -n -1 "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+		fi
+
 		echo "Done replacing files, check it out"
 	fi
 fi
