@@ -18,7 +18,7 @@ class NeuralNetSpec extends FlatSpec with Matchers {
         val protoData = FixedPoint(dataWidth.W,dataBP.BP)
         val nFeatures = scala.util.Random.nextInt(5) + 1
         val nNeurons = scala.util.Random.nextInt(20) + 1
-        val nLayers = scala.util.Random.nextInt(5) + 2
+        val nLayers = scala.util.Random.nextInt(2) + 2
       }
       FixedPointNeuralNetTester(params, dataBP, debug) should be(true)
     }

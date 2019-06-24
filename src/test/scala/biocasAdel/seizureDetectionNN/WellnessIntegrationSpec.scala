@@ -44,11 +44,13 @@ abstract class sumSquaresParamsTemplate {
 abstract class neuralNetsParamsTemplate {
   val nFeatures:Int
   val nNeurons:Int
+  val nLayers:Int
 }
 
 abstract class configurationMemoryParamsTemplate {
   val nFeatures:Int
   val nNeurons:Int
+  val nLayers:Int
 }
 
 /**
@@ -84,10 +86,12 @@ class wellnessIntegrationParameterBundle {
   val neuralNetsParams: neuralNetsParamsTemplate = new neuralNetsParamsTemplate {
     val nFeatures: Int = 0
     val nNeurons: Int = 0
+    val nLayers: Int = 0
   }
   val configurationMemoryParams:configurationMemoryParamsTemplate = new configurationMemoryParamsTemplate {
     val nFeatures: Int = 0
     val nNeurons: Int = 0
+    val nLayers: Int = 0
   }
 }
 
@@ -163,11 +167,13 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
         val protoData = FixedPoint(dataWidth.W,dataBP.BP)
         val nFeatures = 4
         val nNeurons = 10
+        val nLayers = 3
       }
 
       override val configurationMemoryParams: configurationMemoryParamsTemplate = new configurationMemoryParamsTemplate {
         val nFeatures: Int = neuralNetsParams.nFeatures
         val nNeurons: Int = neuralNetsParams.nNeurons
+        val nLayers: Int = neuralNetsParams.nLayers
       }
     }
 
@@ -203,12 +209,14 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
       val protoData = FixedPoint(dataWidth.W,dataBP.BP)
       val nFeatures = 4
       val nNeurons = 10
+      val nLayers = 3
     }
 
     val configurationMemoryParams = new ConfigurationMemoryParams[FixedPoint] {
       val protoData = neuralNetsParams.protoData.cloneType
       val nFeatures: Int = neuralNetsParams.nFeatures
       val nNeurons: Int = neuralNetsParams.nNeurons
+      val nLayers: Int = neuralNetsParams.nLayers
     }
 
     WellnessIntegrationTesterFP(filter1Params: FIRFilterParams[FixedPoint],
@@ -223,4 +231,5 @@ class WellnessIntegrationSpec extends FlatSpec with Matchers {
   }
 
 }
+
 */

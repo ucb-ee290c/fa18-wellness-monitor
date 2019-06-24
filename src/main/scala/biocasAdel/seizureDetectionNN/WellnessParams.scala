@@ -70,6 +70,7 @@ object FixedPointWellnessParams {
     val protoData = FixedPoint(dataWidth.W,dataBP.BP)
     val nFeatures = 4
     val nNeurons = 10
+    val nLayers = 3
   }
 
   val configurationMemoryParams = new ConfigurationMemoryParams[FixedPoint] {
@@ -77,6 +78,8 @@ object FixedPointWellnessParams {
     val protoData = neuralNetsParams.protoData.cloneType
     val nFeatures: Int = neuralNetsParams.nFeatures
     val nNeurons: Int = neuralNetsParams.nNeurons
+    val nLayers: Int = neuralNetsParams.nLayers
   }
 }
+
 */
