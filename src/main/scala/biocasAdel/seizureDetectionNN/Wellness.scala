@@ -153,10 +153,11 @@ class TLReadQueue
   * @param params is explained at wellness.ConfigurationMemory
   */
 class WellnessConfigurationBundle[T <: Data](params: ConfigurationMemoryParams[T]) extends Bundle {
-  val confneuralNetsweightMatrix = Vec(params.nNeurons, Vec(params.nFeatures, params.protoData))
-  val confneuralNetsweightVec = Vec(params.nNeurons, params.protoData)
-  val confneuralNetsbiasVec = Vec(params.nNeurons, params.protoData)
-  val confneuralNetsbiasScalar = Vec(1,params.protoData)
+  val confneuralNetsinputWeights = Vec(params.nNeurons, Vec(params.nFeatures, params.protoData))
+  val confneuralNetsmidAndOutputWeights = Vec(params.nNeurons * (params.nLayers - 1) + 1,
+    Vec(params.nNeurons, params.protoData))
+  val confneuralNetsbiasVecs = Vec(params.nLayers, Vec(params.nNeurons, params.protoData))
+  val confneuralNetsoutputBias = Vec(1,params.protoData)
   val confInputMuxSel = Bool()
 
   override def cloneType: this.type = WellnessConfigurationBundle(params).asInstanceOf[this.type]
@@ -333,10 +334,10 @@ class WellnessModule[T <: chisel3.Data : Real : Order : BinaryRepresentation]
   neuralNets.io.in.bits := FeatureVector
   neuralNets.io.in.sync := false.B
 
-  neuralNets.io.weightMatrix := io.inConf.bits.confneuralNetsweightMatrix
-  neuralNets.io.weightVec := io.inConf.bits.confneuralNetsweightVec
-  neuralNets.io.biasVec := io.inConf.bits.confneuralNetsbiasVec
-  neuralNets.io.biasScalar := io.inConf.bits.confneuralNetsbiasScalar(0)
+  neuralNets.io.inputWeights := io.inConf.bits.confneuralNetsinputWeights
+  neuralNets.io.midAndOutputWeights := io.inConf.bits.confneuralNetsmidAndOutputWeights
+  neuralNets.io.biasVecs := io.inConf.bits.confneuralNetsbiasVecs
+  neuralNets.io.outputBias := io.inConf.bits.confneuralNetsoutputBias(0)
 
   // SVM to Output
   io.out.valid := neuralNets.io.out.valid
@@ -508,4 +509,5 @@ trait HasPeripheryWellnessModuleImp extends LazyModuleImp {
   outer.wellness.module.streamIn.bits := streamIn.bits
 
 }
+
 */

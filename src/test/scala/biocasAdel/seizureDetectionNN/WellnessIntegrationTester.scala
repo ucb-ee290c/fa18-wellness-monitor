@@ -27,7 +27,8 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   val bandpowerGamma = new GoldenDoublesumSquares(goldenModelParameters.bandpowerParams.windowSize,c.bandpowerParams.protoData.getClass.getTypeName)
   val neuralNets = new GoldenNeuralNet(
     goldenModelParameters.neuralNetsParams.nFeatures,
-    goldenModelParameters.neuralNetsParams.nNeurons)
+    goldenModelParameters.neuralNetsParams.nNeurons,
+    goldenModelParameters.neuralNetsParams.nLayers)
 
   var input = scala.util.Random.nextFloat*16 - 8
   if (c.neuralNetsParams.protoData.getClass.getTypeName == "chisel3.core.UInt") {
@@ -38,33 +39,33 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
   }
 
   // Define some arbitrary default values for PCA and SVM to be used in random input tests
-  var referenceneuralNetsweightMatrix = Seq.fill(100, 4)(scala.util.Random.nextInt(10)-5)
-  var referenceneuralNetsweightVec = Seq.fill(100)(scala.util.Random.nextInt(10)-5)
-  var referenceneuralNetsbiasVec = Seq.fill(100)(scala.util.Random.nextInt(10)-5)
-  var referenceneuralNetsbiasScalar = scala.util.Random.nextInt(10)-5
+  var referenceneuralNetsinputWeights = Seq.fill(100, 4)(scala.util.Random.nextInt(10)-5)
+  var referenceneuralNetsmidAndOutputWeights = Seq.fill(100, 100)(scala.util.Random.nextInt(10)-5)
+  var referenceneuralNetsbiasVecs = Seq.fill(3, 100)(scala.util.Random.nextInt(10)-5)
+  var referenceneuralNetsoutputBias = scala.util.Random.nextInt(10)-5
 
   // Configure the input mux selection to accept data from RISC-V core instead of external input
   poke(c.io.inConf.bits.confInputMuxSel, 0)
 
-  val neuralNetsweightMatrixMemoryParams = new MemoryBufferParams[T] {
+  val neuralNetsinputWeightsMemoryParams = new MemoryBufferParams[T] {
     val protoData: T = c.configurationMemoryParams.protoData.cloneType
     val nRows: Int = c.configurationMemoryParams.nFeatures
     val nColumns: Int = c.configurationMemoryParams.nNeurons
   }
 
-  val neuralNetsweightVecMemoryParams = new MemoryBufferParams[T] {
+  val neuralNetsmidAndOutputWeightsMemoryParams = new MemoryBufferParams[T] {
     val protoData: T = c.configurationMemoryParams.protoData.cloneType
     val nRows: Int = c.configurationMemoryParams.nNeurons
-    val nColumns: Int = 1
+    val nColumns: Int = c.configurationMemoryParams.nNeurons * (c.configurationMemoryParams.nLayers - 1) + 1
   }
 
-  val neuralNetsbiasVecMemoryParams = new MemoryBufferParams[T] {
+  val neuralNetsbiasVecsMemoryParams = new MemoryBufferParams[T] {
     val protoData: T = c.configurationMemoryParams.protoData.cloneType
     val nRows: Int = c.configurationMemoryParams.nNeurons
-    val nColumns: Int = 1
+    val nColumns: Int = c.configurationMemoryParams.nLayers
   }
 
-  val neuralNetsbiasScalarMemoryParams = new MemoryBufferParams[T] {
+  val neuralNetsoutputBiasMemoryParams = new MemoryBufferParams[T] {
     val protoData: T = c.configurationMemoryParams.protoData.cloneType
     val nRows: Int = 1
     val nColumns: Int = 1
@@ -72,27 +73,27 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
 
   // Fill the configuration inputs of the DUT
 
-  for(x <- 0 until neuralNetsweightMatrixMemoryParams.nColumns) {
-    for (y <- 0 until neuralNetsweightMatrixMemoryParams.nRows) {
-      poke(c.io.inConf.bits.confneuralNetsweightMatrix(x)(y), referenceneuralNetsweightMatrix(x)(y))
+  for(x <- 0 until neuralNetsinputWeightsMemoryParams.nColumns) {
+    for (y <- 0 until neuralNetsinputWeightsMemoryParams.nRows) {
+      poke(c.io.inConf.bits.confneuralNetsinputWeights(x)(y), referenceneuralNetsinputWeights(x)(y))
     }
   }
 
-  for(x <- 0 until neuralNetsweightVecMemoryParams.nColumns) {
-    for (y <- 0 until neuralNetsweightVecMemoryParams.nRows) {
-      poke(c.io.inConf.bits.confneuralNetsweightVec(y), referenceneuralNetsweightVec(y))
+  for(x <- 0 until neuralNetsmidAndOutputWeightsMemoryParams.nColumns) {
+    for (y <- 0 until neuralNetsmidAndOutputWeightsMemoryParams.nRows) {
+      poke(c.io.inConf.bits.confneuralNetsmidAndOutputWeights(x)(y), referenceneuralNetsmidAndOutputWeights(x)(y))
     }
   }
 
-  for(x <- 0 until neuralNetsbiasVecMemoryParams.nColumns) {
-    for (y <- 0 until neuralNetsbiasVecMemoryParams.nRows) {
-      poke(c.io.inConf.bits.confneuralNetsbiasVec(y), referenceneuralNetsbiasVec(y))
+  for(x <- 0 until neuralNetsbiasVecsMemoryParams.nColumns) {
+    for (y <- 0 until neuralNetsbiasVecsMemoryParams.nRows) {
+      poke(c.io.inConf.bits.confneuralNetsbiasVecs(x)(y), referenceneuralNetsbiasVecs(x)(y))
     }
   }
 
-  for(x <- 0 until neuralNetsbiasScalarMemoryParams.nColumns) {
-    for (y <- 0 until neuralNetsbiasScalarMemoryParams.nRows) {
-      poke(c.io.inConf.bits.confneuralNetsbiasScalar(0), referenceneuralNetsbiasScalar)
+  for(x <- 0 until neuralNetsoutputBiasMemoryParams.nColumns) {
+    for (y <- 0 until neuralNetsoutputBiasMemoryParams.nRows) {
+      poke(c.io.inConf.bits.confneuralNetsoutputBias(0), referenceneuralNetsoutputBias)
     }
   }
 
@@ -114,8 +115,8 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
 
   //var FeatureBundle = Seq(bandpowerAlphaResult, bandpowerBetaResult, bandpowerGammaResult, lineLength1ResultReg1)
   var FeatureBundle = Seq.fill(4)(0.toDouble)
-  var neuralNetsResult = neuralNets.poke(FeatureBundle.map(_.toDouble), referenceneuralNetsweightMatrix.map(_.map(_.toDouble)), referenceneuralNetsweightVec.map(_.toDouble),
-    referenceneuralNetsbiasVec.map(_.toDouble), referenceneuralNetsbiasScalar.toDouble)
+  var neuralNetsResult = neuralNets.poke(FeatureBundle.map(_.toDouble), referenceneuralNetsinputWeights.map(_.map(_.toDouble)), referenceneuralNetsmidAndOutputWeights.map(_.map(_.toDouble)),
+    referenceneuralNetsbiasVecs.map(_.map(_.toDouble)), referenceneuralNetsoutputBias.toDouble)
 
   var dataWidth = 0
   var dataBP = 0
@@ -150,8 +151,8 @@ class wellnessTester[T <: chisel3.Data](c: WellnessModule[T], goldenModelParamet
     // For combinational modules between sequential modules, it should be from first-to-last.
 
     FeatureBundle = Seq(bandpowerAlphaResult, bandpowerBetaResult, bandpowerGammaResult, lineLength1ResultReg1)
-    neuralNetsResult = neuralNets.poke(FeatureBundle.map(_.toDouble), referenceneuralNetsweightMatrix.map(_.map(_.toDouble)), referenceneuralNetsweightVec.map(_.toDouble),
-      referenceneuralNetsbiasVec.map(_.toDouble), referenceneuralNetsbiasScalar.toDouble)
+    neuralNetsResult = neuralNets.poke(FeatureBundle.map(_.toDouble), referenceneuralNetsinputWeights.map(_.map(_.toDouble)), referenceneuralNetsmidAndOutputWeights.map(_.map(_.toDouble)),
+      referenceneuralNetsbiasVecs.map(_.map(_.toDouble)), referenceneuralNetsoutputBias.toDouble)
     // TODO: double check why this is delayed, is there a register here?
 
     bandpowerAlphaResult = bandpowerAlpha.poke(filterAlphaResult)
@@ -245,4 +246,5 @@ object WellnessIntegrationTesterFP {
     }
   }
 }
+
 */
