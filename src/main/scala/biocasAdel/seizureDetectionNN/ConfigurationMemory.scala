@@ -75,7 +75,7 @@ class ConfigurationMemory[T <: chisel3.Data : Real : Order : BinaryRepresentatio
   neuralNetsmidAndOutputWeightsMemory.io.in.bits := io.in.bits.wrdata
   neuralNetsmidAndOutputWeightsMemory.io.in.sync := false.B
   neuralNetsmidAndOutputWeightsMemory.io.in.valid := io.in.valid && (addr === neuralNetsmidAndOutputWeightsMemoryAddr)
-  io.out.bits.confneuralNetsmidAndOutputWeights := neuralNetsmidAndOutputWeightsMemory.io.out.bits(0)
+  io.out.bits.confneuralNetsmidAndOutputWeights := neuralNetsmidAndOutputWeightsMemory.io.out.bits
 
   val neuralNetsbiasVecsMemoryParams = new MemoryBufferParams[T] {
     override val protoData: T = params.protoData.cloneType
@@ -86,7 +86,7 @@ class ConfigurationMemory[T <: chisel3.Data : Real : Order : BinaryRepresentatio
   neuralNetsbiasVecsMemory.io.in.bits := io.in.bits.wrdata
   neuralNetsbiasVecsMemory.io.in.sync := false.B
   neuralNetsbiasVecsMemory.io.in.valid := io.in.valid && (addr === neuralNetsbiasVecsMemoryAddr)
-  io.out.bits.confneuralNetsbiasVecs := neuralNetsbiasVecsMemory.io.out.bits(0)
+  io.out.bits.confneuralNetsbiasVecs := neuralNetsbiasVecsMemory.io.out.bits
 
   //MemoryBuffer definition for Random Forest Leaf Votes
   val neuralNetsoutputBiasMemoryParams = new MemoryBufferParams[T] {
